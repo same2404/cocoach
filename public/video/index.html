@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CoCoach — Features</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap');
+body{font-family:'Inter',sans-serif;background:#0B1120;color:#F8FAFC;overflow:hidden;height:100vh;width:100vw}
+
+/* Slideshow container */
+.slideshow{position:relative;width:100%;height:100%}
+.slide{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.8s ease;pointer-events:none}
+.slide.active{opacity:1;pointer-events:auto}
+
+/* Slide layouts */
+.slide-inner{max-width:900px;width:90%;text-align:center;padding:2rem}
+.slide h1{font-size:clamp(2rem,5vw,3.5rem);font-weight:900;letter-spacing:-0.02em;line-height:1.1;margin-bottom:0.5rem}
+.slide h2{font-size:clamp(1rem,2.5vw,1.5rem);font-weight:600;color:#94A3B8;margin-bottom:1.5rem}
+.slide p{font-size:clamp(0.85rem,1.8vw,1.1rem);color:#CBD5E1;line-height:1.6;max-width:600px;margin:0 auto 1.5rem}
+
+/* Gradient text */
+.grad{background:linear-gradient(135deg,#10B981,#06B6D4,#8B5CF6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+
+/* Tag pills */
+.tags{display:flex;gap:0.5rem;justify-content:center;flex-wrap:wrap;margin-top:1rem}
+.tag{font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;padding:0.35rem 0.8rem;border-radius:9999px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05)}
+.tag.green{color:#10B981;border-color:rgba(16,185,129,0.3);background:rgba(16,185,129,0.1)}
+.tag.cyan{color:#06B6D4;border-color:rgba(6,182,212,0.3);background:rgba(6,182,212,0.1)}
+.tag.purple{color:#A78BFA;border-color:rgba(167,139,250,0.3);background:rgba(167,139,250,0.1)}
+.tag.amber{color:#F59E0B;border-color:rgba(245,158,11,0.3);background:rgba(245,158,11,0.1)}
+
+/* Animated pitch (slide 2) */
+.pitch{width:min(320px,70vw);aspect-ratio:105/68;border:2px solid rgba(16,185,129,0.3);border-radius:8px;position:relative;margin:1.5rem auto 0;overflow:hidden;background:rgba(16,185,129,0.03)}
+.pitch::before{content:'';position:absolute;left:50%;top:0;bottom:0;width:1px;background:rgba(16,185,129,0.2)}
+.pitch::after{content:'';position:absolute;left:50%;top:50%;width:60px;height:60px;border:1px solid rgba(16,185,129,0.2);border-radius:50%;transform:translate(-50%,-50%)}
+.dot{position:absolute;width:10px;height:10px;border-radius:50%;transition:all 2s ease}
+.dot.home{background:#10B981;box-shadow:0 0 8px rgba(16,185,129,0.5)}
+.dot.away{background:#F59E0B;box-shadow:0 0 8px rgba(245,158,11,0.5)}
+.dot.ball{background:#fff;width:6px;height:6px;box-shadow:0 0 6px rgba(255,255,255,0.8)}
+
+/* Player cards (slide 3) */
+.cards{display:flex;gap:0.75rem;justify-content:center;flex-wrap:wrap;margin-top:1.5rem}
+.card{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:1rem;width:130px;text-align:center;animation:cardIn 0.6s ease backwards}
+.card:nth-child(2){animation-delay:0.1s}
+.card:nth-child(3){animation-delay:0.2s}
+.card:nth-child(4){animation-delay:0.3s}
+@keyframes cardIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.card .num{font-size:1.8rem;font-weight:900;color:#10B981}
+.card .name{font-size:0.75rem;font-weight:700;margin-top:0.25rem}
+.card .pos{font-size:0.65rem;color:#64748B;margin-top:0.1rem}
+.bar{height:4px;border-radius:2px;background:rgba(255,255,255,0.1);margin-top:0.5rem;overflow:hidden}
+.bar-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,#10B981,#06B6D4);animation:barGrow 1.2s ease forwards;transform-origin:left}
+@keyframes barGrow{from{width:0}}
+
+/* Naomi animation (slide 4) */
+.naomi-visual{display:flex;gap:1rem;justify-content:center;margin-top:1.5rem;flex-wrap:wrap}
+.src-card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:0.8rem 1rem;min-width:140px;text-align:center;animation:pulse 2s ease infinite}
+.src-card:nth-child(2){animation-delay:0.5s}
+.src-card:nth-child(3){animation-delay:1s}
+@keyframes pulse{0%,100%{border-color:rgba(255,255,255,0.08)}50%{border-color:rgba(16,185,129,0.4)}}
+.src-card .icon{font-size:1.5rem;margin-bottom:0.3rem}
+.src-card .label{font-size:0.7rem;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.05em}
+.src-card .status{font-size:0.65rem;color:#10B981;margin-top:0.2rem;font-weight:600}
+.src-card .status.loading{color:#F59E0B}
+
+/* Multi-club visual (slide 6) */
+.clubs{display:flex;gap:0.6rem;justify-content:center;flex-wrap:wrap;margin-top:1.5rem}
+.club-badge{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:0.6rem 1rem;display:flex;align-items:center;gap:0.5rem;font-size:0.8rem;font-weight:700;animation:clubIn 0.5s ease backwards}
+.club-badge:nth-child(2){animation-delay:0.15s}
+.club-badge:nth-child(3){animation-delay:0.3s}
+.club-badge:nth-child(4){animation-delay:0.45s}
+@keyframes clubIn{from{opacity:0;scale:0.8}to{opacity:1;scale:1}}
+.club-badge .dot-sm{width:8px;height:8px;border-radius:50%}
+.dot-green{background:#10B981}
+.dot-amber{background:#F59E0B}
+.dot-cyan{background:#06B6D4}
+.dot-purple{background:#A78BFA}
+
+/* Pricing tiers (slide 7) */
+.tiers{display:flex;gap:0.75rem;justify-content:center;flex-wrap:wrap;margin-top:1.5rem}
+.tier{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:1.2rem 1rem;min-width:150px;text-align:center;position:relative;overflow:hidden}
+.tier.featured{border-color:rgba(16,185,129,0.5);background:rgba(16,185,129,0.06)}
+.tier.featured::before{content:'BELIEBT';position:absolute;top:0;left:0;right:0;background:#10B981;color:#0B1120;font-size:0.55rem;font-weight:900;letter-spacing:0.1em;padding:0.2rem;text-align:center}
+.tier .price{font-size:1.6rem;font-weight:900;color:#10B981;margin-top:0.5rem}
+.tier .tier-name{font-size:0.75rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#94A3B8;margin-top:0.2rem}
+.tier .feat{font-size:0.65rem;color:#CBD5E1;margin-top:0.6rem;line-height:1.6}
+
+/* Progress bar */
+.progress{position:fixed;bottom:0;left:0;height:3px;background:linear-gradient(90deg,#10B981,#06B6D4);transition:width 0.3s ease;z-index:100}
+
+/* Slide indicator */
+.indicators{position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);display:flex;gap:0.4rem;z-index:100}
+.ind{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.15);transition:all 0.3s ease}
+.ind.active{background:#10B981;width:18px;border-radius:3px}
+
+/* Logo */
+.logo{position:fixed;top:1.2rem;left:1.5rem;z-index:100;font-size:0.85rem;font-weight:900;letter-spacing:0.04em}
+.logo span{color:#10B981}
+
+/* Subtle bg animation */
+.bg-glow{position:fixed;width:400px;height:400px;border-radius:50%;filter:blur(120px);opacity:0.08;pointer-events:none;z-index:0}
+.bg-1{background:#10B981;top:-100px;left:-100px;animation:float1 8s ease-in-out infinite}
+.bg-2{background:#8B5CF6;bottom:-100px;right:-100px;animation:float2 10s ease-in-out infinite}
+@keyframes float1{0%,100%{transform:translate(0,0)}50%{transform:translate(60px,40px)}}
+@keyframes float2{0%,100%{transform:translate(0,0)}50%{transform:translate(-40px,-60px)}}
+</style>
+</head>
+<body>
+
+<div class="bg-glow bg-1"></div>
+<div class="bg-glow bg-2"></div>
+
+<div class="logo">⚽ <span>Co</span>Coach</div>
+
+<div class="slideshow" id="slideshow">
+
+  <!-- Slide 1: Hero -->
+  <div class="slide active" data-duration="7000">
+    <div class="slide-inner">
+      <h1><span class="grad">CoCoach</span></h1>
+      <h2>Das Fußball-Management System für Vereine jeder Größe</h2>
+      <p>Von der Taktiktafel bis zur Spieleranalyse — KI-gestützt, cloud-basiert, für immer mehrere Vereine gleichzeitig.</p>
+      <div class="tags">
+        <span class="tag green">Taktiktafel 3D</span>
+        <span class="tag cyan">KI-Scouting</span>
+        <span class="tag purple">Multi-Verein</span>
+        <span class="tag amber">Naomi Agent</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide 2: Taktiktafel -->
+  <div class="slide" data-duration="8000">
+    <div class="slide-inner">
+      <h1><span class="grad">Taktiktafel</span></h1>
+      <h2>Interaktive 3D-Aufstellung mit Laufweganimationen</h2>
+      <p>Setze deine Aufstellung, zeichne Laufwege und simuliere Spielsituationen in Echtzeit.</p>
+      <div class="pitch" id="pitch"></div>
+    </div>
+  </div>
+
+  <!-- Slide 3: Spieleranalyse -->
+  <div class="slide" data-duration="7500">
+    <div class="slide-inner">
+      <h1><span class="grad">Spieleranalyse</span></h1>
+      <h2>Leistungsdaten, GPS, Minuten & Status im Überblick</h2>
+      <div class="cards">
+        <div class="card"><div class="num">14</div><div class="name">M. Müller</div><div class="pos">ZM</div><div class="bar"><div class="bar-fill" style="width:85%"></div></div></div>
+        <div class="card"><div class="num">9</div><div class="name">L. Weber</div><div class="pos">ST</div><div class="bar"><div class="bar-fill" style="width:72%"></div></div></div>
+        <div class="card"><div class="num">7</div><div class="name">K. Fischer</div><div class="pos">RA</div><div class="bar"><div class="bar-fill" style="width:91%"></div></div></div>
+        <div class="card"><div class="num">1</div><div class="name">T. Hoffmann</div><div class="pos">TW</div><div class="bar"><div class="bar-fill" style="width:68%"></div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide 4: Naomi Agent -->
+  <div class="slide" data-duration="8000">
+    <div class="slide-inner">
+      <h1><span class="grad">Naomi</span> Agent</h1>
+      <h2>KI-lädt automatisch Vereinsdaten aus dem Netz</h2>
+      <p>Kader, Spielplan und Tabelle — Naomi scrapet fussball.de, kicker.de und deine Vereinswebsite.</p>
+      <div class="naomi-visual">
+        <div class="src-card"><div class="icon">🌐</div><div class="label">fussball.de</div><div class="status loading" id="s1">Suche...</div></div>
+        <div class="src-card"><div class="icon">🔍</div><div class="label">kicker.de</div><div class="status loading" id="s2">Suche...</div></div>
+        <div class="src-card"><div class="icon">🏟️</div><div class="label">Vereinssite</div><div class="status loading" id="s3">Suche...</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide 5: Scout & Spielvorbereitung -->
+  <div class="slide" data-duration="7500">
+    <div class="slide-inner">
+      <h1><span class="grad">Scout</span> & Spielvorbereitung</h1>
+      <h2>Gegner analysieren, Formationen planen, Taktik anpassen</h2>
+      <p>Analysiere Gegner-Stärken, erstelle Spielpläne und exportiere Taktik-Ausbildungen für dein Team.</p>
+      <div class="tags">
+        <span class="tag green">Gegneranalyse</span>
+        <span class="tag cyan">Formationen</span>
+        <span class="tag purple">Spielpläne</span>
+        <span class="tag amber">Video-Analyse</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide 6: Multi-Verein -->
+  <div class="slide" data-duration="7500">
+    <div class="slide-inner">
+      <h1><span class="grad">Multi-Verein</span></h1>
+      <h2>Mehrere Vereine parallel verwalten</h2>
+      <p>Wechsle zwischen Vereinen mit einem Klick — jede Daten ist isoliert, jede Taktik eigens gespeichert.</p>
+      <div class="clubs">
+        <div class="club-badge"><span class="dot-sm dot-green"></span>FC Auggen e.V.</div>
+        <div class="club-badge"><span class="dot-sm dot-amber"></span>SV Musterstadt</div>
+        <div class="club-badge"><span class="dot-sm dot-cyan"></span>TSV Rheintal</div>
+        <div class="club-badge"><span class="dot-sm dot-purple"></span>FC Bergheim</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide 7: Lizenzsystem -->
+  <div class="slide" data-duration="7500">
+    <div class="slide-inner">
+      <h1><span class="grad">Lizenz</span> & Preise</h1>
+      <h2>Faire Preise für jeden Verein</h2>
+      <div class="tiers">
+        <div class="tier"><div class="tier-name">Basic</div><div class="price">€29</div><div class="feat">Kader, Spielplan<br>Taktiktafel</div></div>
+        <div class="tier featured"><div class="tier-name">Pro</div><div class="price">€79</div><div class="feat">Alles in Basic +<br>Naomi Agent, Scout, GPS</div></div>
+        <div class="tier"><div class="tier-name">Enterprise</div><div class="price">€149</div><div class="feat">Alles in Pro +<br>Multi-Verein, API</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide 8: CTA -->
+  <div class="slide" data-duration="7000">
+    <div class="slide-inner">
+      <h1><span class="grad">Bereit?</span></h1>
+      <h2>Starte jetzt mit CoCoach</h2>
+      <p>FC Auggen e.V. nutzt CoCoach bereits. Fordere deine Demo an und erlebe das System live.</p>
+      <div class="tags">
+        <span class="tag green">⚽ Demo anfordern</span>
+        <span class="tag cyan">📞 Kontakt</span>
+        <span class="tag purple">🚀 Jetzt starten</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="progress" id="progress"></div>
+<div class="indicators" id="indicators"></div>
+
+<script>
+const slides = document.querySelectorAll('.slide');
+const progress = document.getElementById('progress');
+const indicatorsEl = document.getElementById('indicators');
+let current = 0;
+let timer;
+
+// Create indicators
+slides.forEach((_, i) => {
+  const dot = document.createElement('div');
+  dot.className = 'ind' + (i === 0 ? ' active' : '');
+  dot.addEventListener('click', () => goTo(i));
+  indicatorsEl.appendChild(dot);
+});
+
+function goTo(index) {
+  slides[current].classList.remove('active');
+  indicatorsEl.children[current].classList.remove('active');
+  current = index;
+  slides[current].classList.add('active');
+  indicatorsEl.children[current].classList.add('active');
+  startTimer();
+}
+
+function next() {
+  goTo((current + 1) % slides.length);
+}
+
+function startTimer() {
+  clearTimeout(timer);
+  const duration = parseInt(slides[current].dataset.duration) || 7000;
+  progress.style.width = '0%';
+  progress.style.transition = 'none';
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      progress.style.transition = `width ${duration}ms linear`;
+      progress.style.width = '100%';
+    });
+  });
+  timer = setTimeout(next, duration);
+}
+
+// Taktiktafel animation (slide 2)
+const pitch = document.getElementById('pitch');
+const homePositions = [
+  {x:8,y:50},{x:22,y:20},{x:22,y:40},{x:22,y:60},{x:22,y:80},
+  {x:38,y:30},{x:38,y:55},{x:38,y:75},{x:55,y:35},{x:55,y:65},{x:68,y:50}
+];
+const awayPositions = [
+  {x:90,y:50},{x:78,y:25},{x:78,y:45},{x:78,y:65},{x:78,y:80},
+  {x:62,y:28},{x:62,y:55},{x:62,y:78},{x:48,y:40},{x:48,y:65},{x:35,y:50}
+];
+
+homePositions.forEach((p,i) => {
+  const dot = document.createElement('div');
+  dot.className = 'dot home';
+  dot.style.left = p.x + '%'; dot.style.top = p.y + '%'; dot.style.transform = 'translate(-50%,-50%)';
+  pitch.appendChild(dot);
+});
+awayPositions.forEach((p,i) => {
+  const dot = document.createElement('div');
+  dot.className = 'dot away';
+  dot.style.left = p.x + '%'; dot.style.top = p.y + '%'; dot.style.transform = 'translate(-50%,-50%)';
+  pitch.appendChild(dot);
+});
+const ball = document.createElement('div');
+ball.className = 'dot ball';
+ball.style.left = '50%'; ball.style.top = '50%'; ball.style.transform = 'translate(-50%,-50%)';
+pitch.appendChild(ball);
+
+function animatePitch() {
+  const dots = pitch.querySelectorAll('.dot');
+  dots.forEach(d => {
+    const curX = parseFloat(d.style.left);
+    const curY = parseFloat(d.style.top);
+    const isBall = d.classList.contains('ball');
+    const offsetX = (Math.random() - 0.5) * (isBall ? 15 : 6);
+    const offsetY = (Math.random() - 0.5) * (isBall ? 10 : 4);
+    const newX = Math.max(2, Math.min(98, curX + offsetX));
+    const newY = Math.max(5, Math.min(95, curY + offsetY));
+    d.style.left = newX + '%';
+    d.style.top = newY + '%';
+  });
+}
+
+setInterval(animatePitch, 2200);
+
+// Naomi status animation
+function animateNaomi() {
+  const statuses = ['s1','s2','s3'];
+  const messages = [
+    ['Laden...','Suche...','Wartet...'],
+    ['Analysiere...','Laden...','Suche...'],
+    ['Fertig! ✓','Analysiere...','Laden...'],
+    ['Fertig! ✓','Fertig! ✓','Analysiere...'],
+  ];
+  let step = 0;
+  setInterval(() => {
+    step = (step + 1) % messages.length;
+    statuses.forEach((id, i) => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.textContent = messages[step][i];
+        el.className = 'status' + (messages[step][i].includes('Fertig') ? '' : ' loading');
+      }
+    });
+  }, 2000);
+}
+animateNaomi();
+
+// Keyboard nav
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === ' ') next();
+  if (e.key === 'ArrowLeft') goTo((current - 1 + slides.length) % slides.length);
+});
+
+startTimer();
+</script>
+</body>
+</html>

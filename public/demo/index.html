@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CoCoach - Demo</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>*{font-family:'Inter',system-ui,sans-serif;margin:0;padding:0;box-sizing:border-box}
+body{background:#0f172a;color:#f8fafc;overflow:hidden;height:100vh}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:#1e293b}::-webkit-scrollbar-thumb{background:#475569;border-radius:3px}
+.fi{animation:fi .3s ease}
+@keyframes fi{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.ni{transition:all .15s}.ni:hover{background:rgba(16,185,129,.1)}.ni.a{background:rgba(16,185,129,.15);border-left:3px solid #10b981}
+.ch{transition:all .2s}.ch:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,.3)}
+.pitch{background:linear-gradient(180deg,#1a5e1f,#1e6b24 50%,#1a5e1f);border:2px solid #2d8a35;border-radius:12px;position:relative}
+.pitch::before{content:'';position:absolute;top:50%;left:0;right:0;height:2px;background:rgba(255,255,255,.2)}
+.pitch::after{content:'';position:absolute;top:50%;left:50%;width:80px;height:80px;border:2px solid rgba(255,255,255,.15);border-radius:50%;transform:translate(-50%,-50%)}
+.pd{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;border:2px solid rgba(255,255,255,.3);position:absolute;transition:all .3s;cursor:pointer;text-shadow:0 1px 2px rgba(0,0,0,.5)}
+.pd:hover{transform:scale(1.15);border-color:#fff;z-index:10}
+.bar{border-radius:4px 4px 0 0;transition:height .6s ease}
+.pcard{transition:all .2s}.pcard:hover{background:rgba(16,185,129,.08)}
+.sbar{height:4px;border-radius:2px;background:#334155;overflow:hidden}
+.sbar-fill{height:100%;border-radius:2px;transition:width .6s ease}</style>
+</head>
+<body class="flex h-screen">
+<aside class="w-14 md:w-52 bg-slate-900 border-r border-slate-800 flex flex-col shrink-0">
+  <div class="p-3 border-b border-slate-800 flex items-center gap-2">
+    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-xs font-black shrink-0">CC</div>
+    <div class="hidden md:block"><h1 class="text-[11px] font-black uppercase tracking-wider">CoCoach</h1><p class="text-[9px] text-slate-500">Manager 26/27</p></div>
+  </div>
+  <div class="px-3 py-2 border-b border-slate-800 hidden md:flex items-center gap-2">
+    <span class="text-lg">&#9917;</span><div><p class="text-[11px] font-bold">FC Auggen e.V.</p><p class="text-[9px] text-slate-500">Verbandsliga Sudbaden</p></div>
+  </div>
+  <nav class="flex-1 py-2" id="nav"></nav>
+  <div class="p-3 border-t border-slate-800 hidden md:block"><p class="text-[9px] text-slate-600 text-center">CoCoach v26.27</p></div>
+</aside>
+<main class="flex-1 overflow-y-auto" id="main"></main>
+<script>
+const P=[{n:1,name:"Lukas Meier",pos:"TW",age:24},{n:2,name:"Jonas Weber",pos:"RV",age:22},{n:4,name:"Tim Fischer",pos:"IV",age:26},{n:5,name:"Marco Schmidt",pos:"IV",age:28},{n:3,name:"Kevin Braun",pos:"LV",age:21},{n:6,name:"David Koch",pos:"ZM",age:23},{n:8,name:"Patrick Schulz",pos:"ZM",age:25},{n:10,name:"Alexander Wolf",pos:"OM",age:24},{n:7,name:"Nico Becker",pos:"RA",age:22},{n:11,name:"Fabian Hartmann",pos:"LA",age:20},{n:9,name:"Stefan Richter",pos:"ST",age:25},{n:14,name:"Maximilian Engel",pos:"ZM",age:19},{n:15,name:"Chris Lehmann",pos:"IV",age:23},{n:16,name:"Tobias Konig",pos:"RA",age:21},{n:17,name:"Florian Decker",pos:"ST",age:22},{n:18,name:"Alexander Vogt",pos:"LV",age:20},{n:20,name:"Martin Kaiser",pos:"ZM",age:24},{n:22,name:"Ben Scholz",pos:"TW",age:19}];
+const M=[{d:"15.02.",o:"FC Radolfzell",h:1,r:"3:1",p:3},{d:"22.02.",o:"SV Kandern",h:0,r:"1:1",p:1},{d:"01.03.",o:"FC Altlsruhe",h:1,r:"2:0",p:3},{d:"08.03.",o:"TuS Mohlin",h:0,r:"0:2",p:0},{d:"15.03.",o:"SpVgg Freiburg II",h:1,r:"4:2",p:3},{d:"22.03.",o:"FC Gutach",h:0,r:"1:1",p:1},{d:"29.03.",o:"FC Weil",h:1,r:"2:1",p:3},{d:"05.04.",o:"SC March",h:0,r:"3:0",p:3},{d:"12.04.",o:"FC Auggen II",h:1,r:"1:1",p:1},{d:"19.04.",o:"SV Brieg",h:0,r:"2:3",p:3}];
+const TS=[{d:"Di 22.04.",t:"18:30",tp:"Aufwarmen & Passspiel",dur:"90",int:"Leicht",cl:"#10b981"},{d:"Do 24.04.",t:"18:30",tp:"1 gegen 1 Dribbling",dur:"90",int:"Mittel",cl:"#f59e0b"},{d:"Fr 25.04.",t:"17:00",tp:"Sprint-Intervalle",dur:"75",int:"Hoch",cl:"#ef4444"},{d:"Di 29.04.",t:"18:30",tp:"Taktik Spielform",dur:"90",int:"Mittel",cl:"#3b82f6"},{d:"Do 01.05.",t:"18:30",tp:"Standards & Abschluss",dur:"90",int:"Mittel",cl:"#f59e0b"},{d:"Fr 02.05.",t:"17:00",tp:"Regeneration & Yoga",dur:"60",int:"Leicht",cl:"#10b981"},{d:"Di 06.05.",t:"18:30",tp:"Kondition Sprint",dur:"90",int:"Hoch",cl:"#ef4444"},{d:"Do 08.05.",t:"18:30",tp:"Spielvorbereitung",dur:"90",int:"Mittel",cl:"#3b82f6"}];
+const NAV=[{id:"dashboard",label:"Dashboard",ic:"&#128202;"},{id:"kader",label:"Mannschaft",ic:"&#128101;",neu:1},{id:"training",label:"Trainingsplanung",ic:"&#127947;"},{id:"spiel",label:"Spielvorbereitung",ic:"&#128203;"},{id:"stats",label:"Statistiken",ic:"&#128200;"}];
+let activeTab='dashboard';
+const nav=document.getElementById('nav');
+const main=document.getElementById('main');
+const pc={TW:"#f59e0b",IV:"#3b82f6",RV:"#3b82f6",LV:"#3b82f6",ZM:"#10b981",OM:"#10b981",RA:"#8b5cf6",LA:"#8b5cf6",ST:"#ef4444"};
+
+NAV.forEach(t=>{
+  const b=document.createElement('button');
+  b.className='ni w-full flex items-center gap-3 px-3 py-2.5 text-left';
+  b.dataset.tab=t.id;
+  b.innerHTML='<span class="text-base w-6 text-center">'+t.ic+'</span><span class="text-xs font-semibold hidden md:inline">'+t.label+'</span>'+(t.neu?'<span class="ml-auto hidden md:inline"><span class="text-[8px] font-black px-1.5 py-0.5 rounded text-white" style="background:linear-gradient(135deg,#10b981,#06b6d4)">NEU</span></span>':'');
+  b.onclick=()=>showTab(t.id);
+  nav.appendChild(b);
+});
+
+function showTab(id){
+  activeTab=id;
+  nav.querySelectorAll('.ni').forEach(b=>b.classList.toggle('a',b.dataset.tab===id));
+  main.innerHTML='';
+  const c=document.createElement('div');
+  c.className='fi p-4 md:p-6';
+  main.appendChild(c);
+  ({dashboard:rDash,kader:rKader,training:rTraining,spiel:rSpiel,stats:rStats})[id](c);
+}
+
+function rDash(c){
+  const w=M.reduce((a,m)=>a+(m.h?m.r.split(':')[0]>m.r.split(':')[1]?3:m.r.split(':')[0]===m.r.split(':')[1]?1:0:0),0);
+  const d=M.reduce((a,m)=>a+(m.h?m.r.split(':')[0]===m.r.split(':')[1]?1:0:0),0);
+  const l=M.length-w-d;
+  const gf=M.reduce((a,m)=>a+parseInt(m.r.split(':')[0]),0);
+  const ga=M.reduce((a,m)=>a+parseInt(m.r.split(':')[1]),0);
+  c.innerHTML=`
+    <div class="flex items-center justify-between mb-6">
+      <div><h2 class="text-lg font-black uppercase tracking-wider">Dashboard</h2><p class="text-xs text-slate-500">FC Auggen e.V. - Saison 2026/27</p></div>
+      <span class="text-[10px] font-bold bg-emerald-500/15 text-emerald-400 px-2 py-1 rounded-lg border border-emerald-500/30">Aktuelle Saison</span>
+    </div>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+      <div class="ch bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Tabellenplatz</p>
+        <p class="text-2xl font-black text-white">3.</p>
+        <p class="text-[11px] text-emerald-400 font-bold">42 Punkte</p>
+      </div>
+      <div class="ch bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Spiele</p>
+        <p class="text-2xl font-black text-white">${M.length}</p>
+        <p class="text-[11px] text-slate-400">${w}S ${d}U ${l}N</p>
+      </div>
+      <div class="ch bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Tore</p>
+        <p class="text-2xl font-black text-white">${gf}:${ga}</p>
+        <p class="text-[11px] text-slate-400">+ ${gf-ga} Diff.</p>
+      </div>
+      <div class="ch bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Kader</p>
+        <p class="text-2xl font-black text-white">${P.length}</p>
+        <p class="text-[11px] text-slate-400">Spieler</p>
+      </div>
+    </div>
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <h3 class="text-xs font-black uppercase tracking-wider mb-3 text-slate-400">Letzte Ergebnisse</h3>
+        ${M.slice(-5).map(m=>`
+          <div class="flex items-center justify-between py-2 border-b border-slate-800/50 last:border-0">
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] text-slate-500 w-12">${m.d}</span>
+              <span class="text-xs">${m.h?'&#127968;':'&#9992;'}</span>
+              <span class="text-xs font-semibold">${m.o}</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-black ${m.p===3?'text-emerald-400':m.p===1?'text-amber-400':'text-red-400'}">${m.r}</span>
+              <span class="text-[10px] font-bold ${m.p===3?'text-emerald-400':m.p===1?'text-amber-400':'text-red-400'} bg-slate-800 px-1.5 py-0.5 rounded">${m.p}P</span>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <h3 class="text-xs font-black uppercase tracking-wider mb-3 text-slate-400">Naechste Trainings</h3>
+        ${TS.slice(0,4).map(s=>`
+          <div class="flex items-center gap-3 py-2 border-b border-slate-800/50 last:border-0" style="border-left:3px solid ${s.cl};padding-left:10px">
+            <div><p class="text-xs font-bold">${s.d}</p><p class="text-[11px] text-slate-500">${s.t} - ${s.dur} min</p></div>
+            <span class="ml-auto text-[10px] font-bold px-2 py-0.5 rounded" style="background:${s.cl}20;color:${s.cl}">${s.int}</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>`;
+}
+
+function rKader(c){
+  const posGroups={TW:P.filter(p=>p.pos==='TW'),AV:P.filter(p=>['RV','LV','IV'].includes(p.pos)),MF:P.filter(p=>['ZM','OM'].includes(p.pos)),ST:P.filter(p=>['ST','RA','LA'].includes(p.pos))};
+  c.innerHTML=`
+    <div class="flex items-center justify-between mb-4">
+      <div><h2 class="text-lg font-black uppercase tracking-wider">Mannschaft</h2><p class="text-xs text-slate-500">${P.length} Spieler · ${P.filter(p=>p.pos==='TW').length} TW</p></div>
+    </div>
+    <div class="flex gap-2 mb-4 flex-wrap" id="kfilter"></div>
+    <div id="klist"></div>`;
+  const kf=c.querySelector('#kfilter');
+  const kl=c.querySelector('#klist');
+  let filter='Alle';
+  const btns=['Alle','TW','AV','MF','ST'];
+  btns.forEach(b=>{
+    const el=document.createElement('button');
+    el.className='px-3 py-1.5 rounded-lg text-[11px] font-bold border cursor-pointer '+(filter===b?'bg-emerald-500/15 text-emerald-400 border-emerald-500/30':'bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500');
+    el.textContent=b;
+    el.onclick=()=>{filter=b;kf.querySelectorAll('button').forEach(x=>x.className='px-3 py-1.5 rounded-lg text-[11px] font-bold border cursor-pointer bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500');el.className='px-3 py-1.5 rounded-lg text-[11px] font-bold border cursor-pointer bg-emerald-500/15 text-emerald-400 border-emerald-500/30';renderList()};
+    kf.appendChild(el);
+  });
+  function renderList(){
+    let fp=P;
+    if(filter==='TW')fp=P.filter(p=>p.pos==='TW');
+    else if(filter==='AV')fp=P.filter(p=>['RV','LV','IV'].includes(p.pos));
+    else if(filter==='MF')fp=P.filter(p=>['ZM','OM'].includes(p.pos));
+    else if(filter==='ST')fp=P.filter(p=>['ST','RA','LA'].includes(p.pos));
+    kl.innerHTML='<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">'+fp.map(p=>`
+      <div class="pcard flex items-center gap-3 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2.5">
+        <div class="w-9 h-9 rounded-full flex items-center justify-center text-xs font-black text-white shrink-0" style="background:${pc[p.pos]||'#64748b'}">${p.n}</div>
+        <div class="min-w-0 flex-1"><p class="text-xs font-bold truncate">${p.name}</p><p class="text-[10px] text-slate-500">${p.pos} · ${p.age} J.</p></div>
+      </div>
+    `).join('')+'</div>';
+  }
+  renderList();
+}
+
+function rTraining(c){
+  const days=['Mo','Di','Mi','Do','Fr','Sa','So'];
+  c.innerHTML=`
+    <div class="flex items-center justify-between mb-4">
+      <div><h2 class="text-lg font-black uppercase tracking-wider">Trainingsplanung</h2><p class="text-xs text-slate-500">Woche 17 - 22.04. bis 28.04.2026</p></div>
+      <div class="flex gap-2">
+        <button class="px-3 py-1.5 rounded-lg text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700 hover:border-slate-500 cursor-pointer">Cloud Sync</button>
+        <button class="px-3 py-1.5 rounded-lg text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 cursor-pointer">Bearbeiten</button>
+      </div>
+    </div>
+    <div class="grid grid-cols-7 gap-2 mb-4">${days.map(d=>`<div class="text-center text-[10px] font-bold uppercase tracking-wider text-slate-600 py-1">${d}</div>`).join('')}</div>
+    <div class="grid grid-cols-7 gap-2">
+      ${[0,1,2,3,4,5,6].map(i=>{
+        const sess=i<5?TS[i]:null;
+        if(!sess) return '<div class="min-h-[80px] bg-slate-900/50 border border-slate-800/30 rounded-lg"></div>';
+        return '<div class="min-h-[80px] bg-slate-900 border border-slate-800 rounded-lg p-2 cursor-pointer hover:border-slate-600 transition-all" style="border-left:3px solid '+sess.cl+'"><p class="text-[9px] text-slate-500">'+sess.t+'</p><p class="text-[10px] font-bold mt-1 leading-tight">'+sess.tp+'</p><span class="inline-block mt-1 text-[8px] font-bold px-1.5 py-0.5 rounded" style="background:'+sess.cl+'20;color:'+sess.cl+'">'+sess.int+'</span></div>';
+      }).join('')}
+    </div>
+    <div class="mt-6 bg-slate-900 border border-slate-800 rounded-xl p-4">
+      <h3 class="text-xs font-black uppercase tracking-wider mb-3 text-slate-400">Alle Einheiten</h3>
+      ${TS.map((s,i)=>`
+        <div class="flex items-center gap-3 py-2.5 border-b border-slate-800/50 last:border-0" style="border-left:3px solid ${s.cl};padding-left:12px">
+          <div class="min-w-0 flex-1"><p class="text-xs font-bold">${s.d} - ${s.tp}</p><p class="text-[10px] text-slate-500">${s.t} Uhr · ${s.dur} Min</p></div>
+          <span class="text-[10px] font-bold px-2 py-0.5 rounded shrink-0" style="background:${s.cl}20;color:${s.cl}">${s.int}</span>
+        </div>
+      `).join('')}
+    </div>`;
+}
+
+function rSpiel(c){
+  const formation=[{name:"Meier",n:1,x:50,y:88,pos:"TW"},{name:"Weber",n:2,x:80,y:70,pos:"RV"},{name:"Fischer",n:4,x:62,y:72,pos:"IV"},{name:"Schmidt",n:5,x:38,y:72,pos:"IV"},{name:"Braun",n:3,x:20,y:70,pos:"LV"},{name:"Koch",n:6,x:65,y:50,pos:"ZM"},{name:"Schulz",n:8,x:35,y:50,pos:"ZM"},{name:"Wolf",n:10,x:50,y:38,pos:"OM"},{name:"Becker",n:7,x:80,y:32,pos:"RA"},{name:"Hartmann",n:11,x:20,y:32,pos:"LA"},{name:"Richter",n:9,x:50,y:20,pos:"ST"}];
+  c.innerHTML=`
+    <div class="flex items-center justify-between mb-6">
+      <div><h2 class="text-lg font-black uppercase tracking-wider">Spielvorbereitung</h2><p class="text-xs text-slate-500">Naechstes Spiel</p></div>
+    </div>
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 mb-6 flex items-center justify-between">
+      <div class="flex items-center gap-4">
+        <div class="w-12 h-12 rounded-xl bg-emerald-500/15 flex items-center justify-center text-xl">&#9917;</div>
+        <div><p class="text-sm font-black">FC Auggen vs. SV Kandern</p><p class="text-xs text-slate-500">So. 27.04.2026 - 15:00 Uhr</p><p class="text-[10px] text-slate-600">Verbandsliga - Spieltag 11</p></div>
+      </div>
+      <span class="text-[10px] font-bold bg-amber-500/15 text-amber-400 px-2 py-1 rounded-lg border border-amber-500/30">Heim</span>
+    </div>
+    <div class="grid md:grid-cols-2 gap-6">
+      <div>
+        <h3 class="text-xs font-black uppercase tracking-wider mb-3 text-slate-400">Aufstellung 4-3-3</h3>
+        <div class="pitch w-full aspect-[3/4] max-w-[320px] mx-auto relative">
+          ${formation.map(p=>`<div class="pd" style="left:${p.x}%;top:${p.y}%;transform:translate(-50%,-50%);background:${pc[p.pos]||'#64748b'}" title="${p.name} #${p.n} - ${p.pos}">${p.n}</div>`).join('')}
+        </div>
+      </div>
+      <div>
+        <h3 class="text-xs font-black uppercase tracking-wider mb-3 text-slate-400">Gegner-Scouting</h3>
+        <div class="space-y-3">
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-3">
+            <p class="text-[10px] font-bold text-slate-500 uppercase">Staerken</p>
+            <p class="text-xs text-slate-300 mt-1">Schnelle Umschaltspiel, starke Fluegelarbeit, Druck auf den Raum</p>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-3">
+            <p class="text-[10px] font-bold text-slate-500 uppercase">Schwaechen</p>
+            <p class="text-xs text-slate-300 mt-1">Luecken in der Abwehr bei Umschaltung, verletzlicher ZM-Bereich</p>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-3">
+            <p class="text-[10px] font-bold text-slate-500 uppercase">Spielplan</p>
+            <p class="text-xs text-slate-300 mt-1">pressing-abhaengig, 4-4-2 Basis, hohe Linie</p>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-3">
+            <p class="text-[10px] font-bold text-slate-500 uppercase">Taktischer Plan</p>
+            <p class="text-xs text-slate-300 mt-1">Ballbesitz, schnelles Spiel ueber die Aussen, Flaechen ueberladen</p>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function rStats(c){
+  const form=M.map(m=>m.p===3?'W':m.p===1?'D':'L');
+  const goals=M.map(m=>parseInt(m.r.split(':')[0]));
+  const maxG=Math.max(...goals);
+  const pts=[];let acc=0;M.forEach(m=>{acc+=m.p;pts.push(acc)});
+  const maxP=Math.max(...pts);
+  c.innerHTML=`
+    <div class="flex items-center justify-between mb-6">
+      <div><h2 class="text-lg font-black uppercase tracking-wider">Statistiken</h2><p class="text-xs text-slate-500">Saison 2026/27</p></div>
+    </div>
+    <div class="grid md:grid-cols-2 gap-6">
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <h3 class="text-xs font-black uppercase tracking-wider mb-4 text-slate-400">Tore pro Spiel</h3>
+        <div class="flex items-end gap-2 h-32">
+          ${goals.map((g,i)=>`<div class="flex-1 flex flex-col items-center gap-1"><div class="w-full rounded-t" style="height:${(g/maxG)*100}%;background:${M[i].p===3?'#10b981':M[i].p===1?'#f59e0b':'#ef4444'}"></div><span class="text-[9px] text-slate-600">${M[i].d.split('.')[0]}</span></div>`).join('')}
+        </div>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <h3 class="text-xs font-black uppercase tracking-wider mb-4 text-slate-400">Punkteverlauf</h3>
+        <div class="relative h-32">
+          <svg viewBox="0 0 300 100" class="w-full h-full">
+            <polyline points="${pts.map((p,i)=>`${(i/(pts.length-1))*295+2},${95-(p/maxP)*90}`).join(' ')}" fill="none" stroke="#10b981" stroke-width="2"/>
+            ${pts.map((p,i)=>`<circle cx="${(i/(pts.length-1))*295+2}" cy="${95-(p/maxP)*90}" r="3" fill="#10b981"/>`).join('')}
+          </svg>
+        </div>
+        <p class="text-center text-[10px] text-slate-500 mt-2">${pts[pts.length-1]} Punkte nach ${M.length} Spielen</p>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <h3 class="text-xs font-black uppercase tracking-wider mb-3 text-slate-400">Form</h3>
+        <div class="flex gap-1.5">${form.map(f=>`<span class="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black ${f==='W'?'bg-emerald-500/20 text-emerald-400':f==='D'?'bg-amber-500/20 text-amber-400':'bg-red-500/20 text-red-400'}">${f}</span>`).join('')}</div>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <h3 class="text-xs font-black uppercase tracking-wider mb-3 text-slate-400">Topscorer</h3>
+        ${[{name:"Stefan Richter",g:7},{name:"Alexander Wolf",g:4},{name:"Nico Becker",g:3}].map((s,i)=>`
+          <div class="flex items-center gap-3 py-2 border-b border-slate-800/50 last:border-0">
+            <span class="text-xs font-black text-emerald-400 w-4">${i+1}.</span>
+            <span class="text-xs font-bold flex-1">${s.name}</span>
+            <span class="text-xs font-black">${s.g} Tore</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>`;
+}
+
+showTab('dashboard');
+</script>
+</body>
+</html>

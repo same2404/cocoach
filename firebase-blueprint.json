@@ -1,0 +1,418 @@
+{
+  "entities": {
+    "Spieler": {
+      "title": "Spieler",
+      "description": "Represents a player, coach, or official in the club.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "number": { "type": "integer" },
+        "firstName": { "type": "string" },
+        "lastName": { "type": "string" },
+        "name": { "type": "string" },
+        "position": { "type": "string" },
+        "category": { "type": "string", "enum": ["player", "staff", "official"] },
+        "geburtsdatum": { "type": "string" },
+        "wochentag": { "type": "string" },
+        "status": { "type": "string" },
+        "notizen": { "type": "string" },
+        "adresse": { "type": "string" },
+        "telefon": { "type": "string" },
+        "email": { "type": "string" },
+        "oberteil": { "type": "string" },
+        "kurze_hose": { "type": "string" },
+        "lange_hose": { "type": "string" },
+        "schuhe": { "type": "string" },
+        "nummer": { "type": "integer" },
+        "einsatzzeitenGesamt": { "type": "integer", "description": "Gesamte Einsatzzeit in Pflichtspielen." },
+        "finance": {
+          "type": "object",
+          "properties": {
+            "baseSalary": { "type": "number" },
+            "bonusPerMatch": { "type": "number" },
+            "sideAgreementAmount": { "type": "number" },
+            "ist": { "type": "number" },
+            "sideAgreements": { "type": "string" }
+          }
+        }
+      },
+      "required": ["id", "firstName", "lastName", "category"]
+    },
+    "Training": {
+      "title": "Training",
+      "description": "Represents a training session.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "datum": { "type": "string" },
+        "wochentag": { "type": "string" },
+        "uhrzeit": { "type": "string" },
+        "ort": { "type": "string" },
+        "inhalte": { "type": "string" },
+        "teilnehmer": { "type": "array", "items": { "type": "string" } },
+        "fehlend": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["id", "datum"]
+    },
+    "Vorbereitung": {
+      "title": "Vorbereitung",
+      "description": "Represents a preparation unit (summer or winter).",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string" },
+        "time": { "type": "string" },
+        "type": { "type": "string" },
+        "content": { "type": "string" },
+        "intensity": { "type": "string" },
+        "location": { "type": "string" },
+        "treffpunkt": { "type": "string" },
+        "opponent": { "type": "string" },
+        "ergebnis": { "type": "string" },
+        "status": { "type": "string" },
+        "notes": { "type": "string" },
+        "remarks": { "type": "string" }
+      },
+      "required": ["id", "date"]
+    },
+    "Spiel": {
+      "title": "Spiel",
+      "description": "Represents a match.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "datum": { "type": "string" },
+        "gegner": { "type": "string" },
+        "heim_auswärts": { "type": "string", "enum": ["Heim", "Auswärts"] },
+        "ergebnis": { "type": "string" }
+      },
+      "required": ["id", "datum", "gegner"]
+    },
+    "Finanz": {
+      "title": "Finanz",
+      "description": "Represents a financial entry for a player.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "baseSalary": { "type": "number" },
+        "bonusPerMatch": { "type": "number" },
+        "ist": { "type": "number" }
+      },
+      "required": ["id", "name"]
+    },
+    "LogEntry": {
+      "title": "LogEntry",
+      "description": "Represents an audit log entry.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "tabName": { "type": "string" },
+        "message": { "type": "string" }
+      },
+      "required": ["id", "timestamp"]
+    },
+    "AttendanceRecord": {
+      "title": "AttendanceRecord",
+      "description": "Represents attendance for a player across sessions.",
+      "type": "object",
+      "properties": {
+        "playerId": { "type": "string" },
+        "sessions": { "type": "object" }
+      },
+      "required": ["playerId"]
+    },
+    "Match": {
+      "title": "Match",
+      "description": "Represents a match metadata.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "opponent": { "type": "string" },
+        "location": { "type": "string" },
+        "date": { "type": "string" },
+        "kickOff": { "type": "string" },
+        "meetingTime": { "type": "string" },
+        "meetingPoint": { "type": "string" },
+        "isHome": { "type": "boolean" },
+        "competition": { "type": "string" },
+        "result": { "type": "string" },
+        "endTime": { "type": "string" },
+        "trainerNote": { "type": "string" },
+        "notes": { "type": "string" }
+      },
+      "required": ["id", "opponent"]
+    },
+    "MatchMinuteRecord": {
+      "title": "MatchMinuteRecord",
+      "description": "Represents match minutes for a player.",
+      "type": "object",
+      "properties": {
+        "playerId": { "type": "string" },
+        "minutes": { "type": "object" }
+      },
+      "required": ["playerId"]
+    },
+    "DayPlan": {
+      "title": "DayPlan",
+      "description": "Represents a plan for a single day in the yearly plan.",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string" },
+        "activity": { "type": "string" },
+        "type": { "type": "string", "enum": ["training", "competitive", "test", "off", "Testspiel", "Pflichtspiel", "Event"] },
+        "location": { "type": "string" },
+        "time": { "type": "string" },
+        "treffpunkt": { "type": "string" },
+        "opponent": { "type": "string" },
+        "ergebnis": { "type": "string" }
+      },
+      "required": ["date", "type"]
+    },
+    "CardRecord": {
+      "title": "CardRecord",
+      "description": "Represents card records for a player.",
+      "type": "object",
+      "properties": {
+        "playerId": { "type": "string" },
+        "cards": { "type": "object" }
+      },
+      "required": ["playerId"]
+    },
+    "ScoutingEntry": {
+      "title": "ScoutingEntry",
+      "description": "Represents a scouting candidate.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "age": { "type": "integer" },
+        "position": { "type": "string" },
+        "club": { "type": "string" },
+        "recommendation": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
+    "MeetingEntry": {
+      "title": "MeetingEntry",
+      "description": "Represents a meeting entry.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string" },
+        "playerName": { "type": "string" },
+        "notes": { "type": "string" }
+      },
+      "required": ["id", "date", "playerName"]
+    },
+    "TrainingDocumentGlobal": {
+      "title": "TrainingDocumentGlobal",
+      "description": "Represents globally stored training document metadata.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "uploadedAt": { "type": "string" },
+        "mimeType": { "type": "string" },
+        "url": { "type": "string", "description": "Legacy field, avoid storing heavy data here if possible." }
+      },
+      "required": ["id", "name", "uploadedAt", "mimeType"]
+    },
+    "TrainingDocumentContent": {
+      "title": "TrainingDocumentContent",
+      "description": "Stores the actual base64 content of a document.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "base64": { "type": "string" }
+      },
+      "required": ["id", "base64"]
+    },
+    "TrainingSession": {
+      "title": "TrainingSession",
+      "description": "Represents a detailed training session plan.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string" },
+        "sessionFocus": { "type": "string" },
+        "trainingDocumentId": { "type": "string" }
+      },
+      "required": ["id", "date"]
+    },
+    "IndividualTrainingRecord": {
+      "title": "IndividualTrainingRecord",
+      "description": "Represents individual training data for a player.",
+      "type": "object",
+      "properties": {
+        "playerId": { "type": "string" },
+        "date": { "type": "string" },
+        "notes": { "type": "string" }
+      },
+      "required": ["playerId", "date"]
+    },
+    "MatchPlanningEntry": {
+      "title": "MatchPlanningEntry",
+      "description": "Represents a planning entry for a player in a specific match.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "playerId": { "type": "string" },
+        "matchId": { "type": "string" },
+        "date": { "type": "string" },
+        "opponent": { "type": "string" },
+        "location": { "type": "string" },
+        "meeting": { "type": "string" },
+        "start": { "type": "string" },
+        "end": { "type": "string" },
+        "result": { "type": "string" },
+        "playtime": { "type": "string" },
+        "trainerNote": { "type": "string" },
+        "notes": { "type": "string" }
+      },
+      "required": ["id", "playerId", "matchId"]
+    },
+    "AppUser": {
+      "title": "AppUser",
+      "description": "Represents a user of the application.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string", "enum": ["owner", "admin", "viewer"] },
+        "status": { "type": "string", "enum": ["approved", "pending", "rejected"] },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role", "status"]
+    },
+    "AccessRequest": {
+      "title": "AccessRequest",
+      "description": "Represents an access request from a user.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "email": { "type": "string" },
+        "name": { "type": "string" },
+        "message": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["pending", "processed"] }
+      },
+      "required": ["id", "email", "name", "timestamp", "status"]
+    },
+    "PlayerSessionLog": {
+      "title": "PlayerSessionLog",
+      "description": "Represents a performance and load session log submitted by a player.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "playerId": { "type": "string" },
+        "playerName": { "type": "string" },
+        "date": { "type": "string" },
+        "type": { "type": "string", "enum": ["Training", "Match"] },
+        "focus": { "type": "string" },
+        "duration": { "type": "integer" },
+        "rpe": { "type": "integer" },
+        "calculatedLoad": { "type": "integer" },
+        "timestamp": { "type": "string" },
+        "matchMinutes": { "type": "integer" },
+        "goals": { "type": "integer" },
+        "assists": { "type": "integer" },
+        "passAccuracy": { "type": "integer" },
+        "tackleRate": { "type": "integer" },
+        "kpis": { "type": "object" }
+      },
+      "required": ["id", "playerId", "date", "type", "focus", "duration", "rpe"]
+    },
+    "AcademySessionEvaluation": {
+      "title": "AcademySessionEvaluation",
+      "description": "Represents an AI evaluation of a football academy session or match.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "datum": { "type": "string" },
+        "typ": { "type": "string" },
+        "bewertungen": { "type": "array" },
+        "createdAt": { "type": "integer" },
+        "rawInputNotes": { "type": "string" }
+      },
+      "required": ["datum", "typ", "bewertungen"]
+    },
+    "AcademyWeeklyReport": {
+      "title": "AcademyWeeklyReport",
+      "description": "Represents an aggregated weekly report for the football academy.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "kwLabel": { "type": "string" },
+        "createdAt": { "type": "integer" },
+        "wochenbericht": { "type": "array" },
+        "top_spieler": { "type": "array" },
+        "kritisch": { "type": "array" },
+        "empfehlungen": { "type": "string" }
+      },
+      "required": ["wochenbericht", "top_spieler", "kritisch", "empfehlungen"]
+    },
+    "CustomFormation": {
+      "title": "CustomFormation",
+      "description": "Custom tactics formation created by coaches",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "positions": { "type": "array" },
+        "runs": { "type": "array" },
+        "zones": { "type": "array" },
+        "roles": { "type": "object" },
+        "highlightedPlayerIds": { "type": "array" },
+        "lockedPlayerIds": { "type": "array" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "name", "positions"]
+    }
+  },
+  "firestore": {
+    "app_users": { "schema": "AppUser", "description": "Collection of authorized application users." },
+    "access_requests": { "schema": "AccessRequest", "description": "Collection of access requests." },
+    "spieler": { "schema": "Spieler", "description": "Collection of players, coaches, and officials." },
+    "training": { "schema": "Training", "description": "Collection of training sessions." },
+    "vorbereitung_sommer": { "schema": "Vorbereitung", "description": "Summer preparation units." },
+    "vorbereitung_winter": { "schema": "Vorbereitung", "description": "Winter preparation units." },
+    "spiele": { "schema": "Spiel", "description": "Collection of matches." },
+    "budget_finanz": { "schema": "Finanz", "description": "Financial records for players." },
+    "audit_log": { "schema": "LogEntry", "description": "Audit log of changes." },
+    "attendance": { "schema": "AttendanceRecord", "description": "Player attendance data." },
+    "competitive_matches": { "schema": "Match", "description": "Competitive match metadata." },
+    "test_matches": { "schema": "Match", "description": "Test match metadata." },
+    "competitive_planning": { "schema": "MatchPlanningEntry", "description": "Planning entries for competitive matches." },
+    "test_planning": { "schema": "MatchPlanningEntry", "description": "Planning entries for test matches." },
+    "competitive_minutes": { "schema": "MatchMinuteRecord", "description": "Competitive match minutes." },
+    "test_minutes": { "schema": "MatchMinuteRecord", "description": "Test match minutes." },
+    "yearly_plan": { "schema": "DayPlan", "description": "Yearly plan entries." },
+    "card_records": { "schema": "CardRecord", "description": "Player card statistics." },
+    "scouting_candidates": { "schema": "ScoutingEntry", "description": "Scouting candidates." },
+    "meetings_data": { "schema": "MeetingEntry", "description": "Meeting entries." },
+    "training_sessions": { "schema": "TrainingSession", "description": "Detailed training session plans." },
+    "training_documents_global": { "schema": "TrainingDocumentGlobal", "description": "Global store for training documents metadata." },
+    "training_documents_content": { "schema": "TrainingDocumentContent", "description": "Storage for document binary content." },
+    "individual_training": { "schema": "IndividualTrainingRecord", "description": "Individual training records." },
+    "run_records": { "schema": "object", "description": "Running records." },
+    "physio_entries": { "schema": "object", "description": "Physio entries." },
+    "formation": { "schema": "object", "description": "Formation settings." },
+    "depth_chart": { "schema": "DepthChartEntry", "description": "Depth chart data." },
+    "finance_meta": { "schema": "object", "description": "Financial metadata." },
+    "winter_prep_config": { "schema": "object", "description": "Winter preparation configuration." },
+    "matches": { "schema": "Match", "description": "Master list of all matches for the season." },
+    "tactic_setups": { "schema": "object", "description": "Tactic board formation setup items." },
+    "player_performance": { "schema": "object", "description": "Individual player performance entries." },
+    "player_performance_team": { "schema": "object", "description": "Overall team performance statistics." },
+    "player_session_logs": { "schema": "PlayerSessionLog", "description": "Performance and load session logs submitted by players." },
+    "academy_evaluations": { "schema": "AcademySessionEvaluation", "description": "Evaluations of football academy sessions." },
+    "academy_weekly_reports": { "schema": "AcademyWeeklyReport", "description": "Weekly reports of football academy." },
+    "video_analyses": { "schema": "object", "description": "AI video analysis tracking records and timelines." },
+    "custom_formations": { "schema": "CustomFormation", "description": "Custom tactical formations created by trainers." },
+    "trainer_chat_messages": { "schema": "object", "description": "Trainer chat messages and briefings." }
+  }
+}

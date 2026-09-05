@@ -1,0 +1,6 @@
+{
+  "name": "CoCoach",
+  "description": "A comprehensive team management tool for FC Auggen, featuring formation planning, scouting, tactic boards, and uniform design.",
+  "requestFramePermissions": ["web-share"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

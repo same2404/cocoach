@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>CoCoach QR-A4 Ausschneidebogen</title>
+<style>
+  @page { size: A4; margin: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  html, body { width: 210mm; height: 297mm; background: #ffffff; font-family: Arial, Helvetica, sans-serif; }
+
+  .sheet { position: relative; width: 210mm; height: 297mm; background: #f2f2f2; }
+
+  .card {
+    position: absolute; width: 103mm; height: 145mm; background: #ffffff;
+    display: flex; flex-direction: column; align-items: center; padding: 6.5mm;
+  }
+  .card::before {
+    content: ""; position: absolute; inset: 2.6mm;
+    border: 0.7mm solid #C00000; border-radius: 2.5mm; pointer-events: none;
+  }
+  .card::after {
+    content: ""; position: absolute; left: 4.5mm; right: 4.5mm; top: 4.5mm; bottom: 4.5mm;
+    border: 0.25mm solid rgba(192,0,0,0.35); border-radius: 1.8mm; pointer-events: none;
+  }
+  .c1 { left: 1.5mm; top: 1.5mm; }
+  .c2 { left: 105.5mm; top: 1.5mm; }
+  .c3 { left: 1.5mm; top: 149.5mm; }
+  .c4 { left: 105.5mm; top: 149.5mm; }
+
+  .brand { display: flex; align-items: center; gap: 2mm; margin-bottom: 2mm; }
+  .co {
+    background: #C00000; color: #ffffff; font-weight: 900; font-size: 11.5mm;
+    padding: 0.5mm 2.6mm 0.5mm 3mm; border-radius: 2.6mm; letter-spacing: 1px; line-height: 1;
+  }
+  .coach { color: #0a0e17; font-weight: 900; font-size: 11.5mm; letter-spacing: 1px; line-height: 1; }
+  .sub { font-size: 3mm; color: #555; font-weight: bold; letter-spacing: 1.2px; text-transform: uppercase; margin-bottom: 3mm; }
+  .qr { width: 56mm; height: 56mm; display: block; }
+  .cta {
+    margin-top: 4mm; background: #C00000; color: #ffffff; font-weight: 900;
+    font-size: 4mm; letter-spacing: 1.6px; padding: 2.4mm 7mm; border-radius: 7mm; text-transform: uppercase;
+    box-shadow: 0 1.8mm 4mm rgba(192,0,0,0.3);
+  }
+  .features { margin-top: auto; text-align: center; font-size: 2.7mm; color: #333; font-weight: bold; letter-spacing: 0.4px; }
+  .features .dot { color: #C00000; }
+  .foot { margin-top: 1.6mm; font-size: 2.2mm; color: #888; text-align: center; }
+
+  .cutline-v { position: absolute; left: 104.5mm; top: 0; width: 1mm; height: 297mm; }
+  .cutline-v::after {
+    content: ""; position: absolute; left: 0; top: 0; width: 100%; height: 297mm;
+    border-left: 0.2mm dashed #999; pointer-events: none;
+  }
+  .cutline-h { position: absolute; left: 0; top: 148mm; width: 210mm; height: 1mm; }
+  .cutline-h::after {
+    content: ""; position: absolute; left: 0; top: 0; width: 210mm; height: 100%;
+    border-top: 0.2mm dashed #999; pointer-events: none;
+  }
+  .note { position: absolute; left: 0; right: 0; bottom: 0.8mm; text-align: center; font-size: 2mm; color: #aaa; letter-spacing: 1px; }
+</style>
+</head>
+<body>
+  <div class="sheet">
+    <div class="cutline-v"></div>
+    <div class="cutline-h"></div>
+
+    <div class="card c1">
+      <div class="brand"><span class="co">CO</span><span class="coach">COACH</span></div>
+      <div class="sub">Die moderne Fußball-App</div>
+      <img class="qr" src="../qr-coach.png" alt="QR-Code CoCoach Demo">
+      <div class="cta">Scanne mich</div>
+      <div class="features">Demo-Video ansehen<span class="dot"> · </span>Aufs Handy<span class="dot"> · </span>Ohne App</div>
+      <div class="foot">Taktik &middot; Kader &middot; Training &middot; Budget &middot; Analyse</div>
+    </div>
+
+    <div class="card c2">
+      <div class="brand"><span class="co">CO</span><span class="coach">COACH</span></div>
+      <div class="sub">Die moderne Fußball-App</div>
+      <img class="qr" src="../qr-coach.png" alt="QR-Code CoCoach Demo">
+      <div class="cta">Scanne mich</div>
+      <div class="features">Demo-Video ansehen<span class="dot"> · </span>Aufs Handy<span class="dot"> · </span>Ohne App</div>
+      <div class="foot">Taktik &middot; Kader &middot; Training &middot; Budget &middot; Analyse</div>
+    </div>
+
+    <div class="card c3">
+      <div class="brand"><span class="co">CO</span><span class="coach">COACH</span></div>
+      <div class="sub">Die moderne Fußball-App</div>
+      <img class="qr" src="../qr-coach.png" alt="QR-Code CoCoach Demo">
+      <div class="cta">Scanne mich</div>
+      <div class="features">Demo-Video ansehen<span class="dot"> · </span>Aufs Handy<span class="dot"> · </span>Ohne App</div>
+      <div class="foot">Taktik &middot; Kader &middot; Training &middot; Budget &middot; Analyse</div>
+    </div>
+
+    <div class="card c4">
+      <div class="brand"><span class="co">CO</span><span class="coach">COACH</span></div>
+      <div class="sub">Die moderne Fußball-App</div>
+      <img class="qr" src="../qr-coach.png" alt="QR-Code CoCoach Demo">
+      <div class="cta">Scanne mich</div>
+      <div class="features">Demo-Video ansehen<span class="dot"> · </span>Aufs Handy<span class="dot"> · </span>Ohne App</div>
+      <div class="foot">Taktik &middot; Kader &middot; Training &middot; Budget &middot; Analyse</div>
+    </div>
+
+    <div class="note">4 Karten je A4 &middot; an den gestrichelten Linien ausschneiden</div>
+  </div>
+</body>
+</html>

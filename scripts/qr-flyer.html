@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>CoCoach QR-Flyer</title>
+<style>
+  @page { size: 105mm 148mm; margin: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  html, body { width: 105mm; height: 148mm; background: #ffffff; font-family: Arial, Helvetica, sans-serif; }
+  .frame {
+    width: 105mm; height: 148mm; padding: 9mm;
+    display: flex; flex-direction: column; align-items: center;
+    background: #ffffff; position: relative;
+  }
+  .frame::before {
+    content: ""; position: absolute; inset: 3.5mm;
+    border: 0.75mm solid #C00000; border-radius: 3mm; pointer-events: none;
+  }
+  .frame::after {
+    content: ""; position: absolute; left: 6mm; right: 6mm; top: 6mm; bottom: 6mm;
+    border: 0.3mm solid rgba(192,0,0,0.35); border-radius: 2mm; pointer-events: none;
+  }
+  .brand { display: flex; align-items: center; gap: 2.5mm; margin-bottom: 2.5mm; }
+  .co {
+    background: #C00000; color: #ffffff; font-weight: 900; font-size: 13mm;
+    padding: 0.5mm 3mm 0.5mm 3.5mm; border-radius: 3mm; letter-spacing: 1px; line-height: 1;
+  }
+  .coach { color: #0a0e17; font-weight: 900; font-size: 13mm; letter-spacing: 1px; line-height: 1; }
+  .sub { font-size: 3.6mm; color: #555; font-weight: bold; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 4mm; }
+  .qr { width: 62mm; height: 62mm; display: block; }
+  .cta {
+    margin-top: 5mm; background: #C00000; color: #ffffff; font-weight: 900;
+    font-size: 4.6mm; letter-spacing: 2px; padding: 2.8mm 8mm; border-radius: 8mm; text-transform: uppercase;
+    box-shadow: 0 2mm 5mm rgba(192,0,0,0.35);
+  }
+  .features { margin-top: auto; text-align: center; font-size: 3.1mm; color: #333; font-weight: bold; letter-spacing: 0.5px; }
+  .features .dot { color: #C00000; }
+  .foot { margin-top: 2mm; font-size: 2.6mm; color: #888; text-align: center; }
+</style>
+</head>
+<body>
+  <div class="frame">
+    <div class="brand"><span class="co">CO</span><span class="coach">COACH</span></div>
+    <div class="sub">Die moderne Fußball-App</div>
+    <img class="qr" src="../qr-coach.png" alt="QR-Code CoCoach Demo">
+    <div class="cta">Scanne mich</div>
+    <div class="features">Jetzt Demo-Video ansehen<span class="dot"> · </span>Aufs Handy<span class="dot"> · </span>Ohne App-Installation</div>
+    <div class="foot">Taktiktafel &middot; Kader &middot; Training &middot; Budget &middot; Analyse</div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CoCoach — Präsentation 2026</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0A0E17;
+    --card: #121824;
+    --border: #1E293B;
+    --accent: #F59E0B;
+    --green: #10B981;
+    --red: #EF4444;
+    --blue: #3B82F6;
+    --purple: #8B5CF6;
+    --text: #F8FAFC;
+    --muted: #94A3B8;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+
+  /* ── Slide System ── */
+  .slide {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 60px 80px;
+    position: relative;
+    page-break-after: always;
+  }
+
+  .slide::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--green), var(--blue));
+  }
+
+  .slide-number {
+    position: absolute;
+    bottom: 30px;
+    right: 40px;
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 600;
+  }
+
+  /* ── Typography ── */
+  h1 {
+    font-size: 52px;
+    font-weight: 900;
+    letter-spacing: -2px;
+    line-height: 1.1;
+    margin-bottom: 16px;
+  }
+
+  h2 {
+    font-size: 36px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    margin-bottom: 12px;
+  }
+
+  h3 {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+
+  .subtitle {
+    font-size: 18px;
+    color: var(--muted);
+    font-weight: 500;
+    margin-bottom: 40px;
+  }
+
+  .highlight { color: var(--accent); }
+  .green { color: var(--green); }
+  .blue { color: var(--blue); }
+  .purple { color: var(--purple); }
+  .red { color: var(--red); }
+
+  /* ── Grid Layouts ── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+  .grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 16px; }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+  }
+
+  .card-accent {
+    border-color: var(--accent);
+    box-shadow: 0 0 30px rgba(245, 158, 11, 0.1);
+  }
+
+  .card-green {
+    border-color: var(--green);
+    box-shadow: 0 0 30px rgba(16, 185, 129, 0.1);
+  }
+
+  .card-blue {
+    border-color: var(--blue);
+    box-shadow: 0 0 30px rgba(59, 130, 246, 0.1);
+  }
+
+  .card-purple {
+    border-color: var(--purple);
+    box-shadow: 0 0 30px rgba(139, 92, 246, 0.1);
+  }
+
+  .card-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    margin-bottom: 16px;
+  }
+
+  .card-title {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+
+  .card-desc {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  /* ── Stats ── */
+  .stat {
+    text-align: center;
+    padding: 24px;
+  }
+
+  .stat-number {
+    font-size: 48px;
+    font-weight: 900;
+    letter-spacing: -2px;
+  }
+
+  .stat-label {
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 4px;
+  }
+
+  /* ── Pricing Table ── */
+  .price-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+  }
+
+  .price-table th,
+  .price-table td {
+    padding: 14px 20px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+  }
+
+  .price-table th {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    font-weight: 700;
+  }
+
+  .price-table td:first-child {
+    font-weight: 600;
+  }
+
+  .price-highlight {
+    background: rgba(245, 158, 11, 0.08);
+  }
+
+  /* ── Tags ── */
+  .tag {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .tag-green { background: rgba(16,185,129,0.15); color: var(--green); }
+  .tag-blue { background: rgba(59,130,246,0.15); color: var(--blue); }
+  .tag-yellow { background: rgba(245,158,11,0.15); color: var(--accent); }
+  .tag-purple { background: rgba(139,92,246,0.15); color: var(--purple); }
+  .tag-red { background: rgba(239,68,68,0.15); color: var(--red); }
+
+  /* ── Lists ── */
+  .feature-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .feature-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    font-size: 15px;
+  }
+
+  .feature-list .icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  /* ── Flow Diagram ── */
+  .flow {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin: 24px 0;
+  }
+
+  .flow-step {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 24px;
+    text-align: center;
+    flex: 1;
+  }
+
+  .flow-step .emoji { font-size: 28px; margin-bottom: 8px; }
+  .flow-step .label { font-size: 12px; font-weight: 700; }
+  .flow-arrow { font-size: 24px; color: var(--accent); }
+
+  /* ── Mockup Phone ── */
+  .phone-mockup {
+    width: 280px;
+    height: 560px;
+    background: var(--card);
+    border: 2px solid var(--border);
+    border-radius: 32px;
+    padding: 12px;
+    margin: 0 auto;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .phone-notch {
+    width: 80px;
+    height: 24px;
+    background: var(--bg);
+    border-radius: 0 0 12px 12px;
+    margin: 0 auto 16px;
+  }
+
+  .phone-content {
+    background: #0F172A;
+    border-radius: 16px;
+    height: calc(100% - 40px);
+    padding: 16px;
+    font-size: 11px;
+    overflow: hidden;
+  }
+
+  /* ── Bar Chart ── */
+  .bar-chart { display: flex; align-items: flex-end; gap: 12px; height: 200px; margin-top: 20px; }
+  .bar { flex: 1; border-radius: 8px 8px 0 0; position: relative; transition: height 0.3s; }
+  .bar-label { position: absolute; bottom: -24px; left: 50%; transform: translateX(-50%); font-size: 10px; color: var(--muted); white-space: nowrap; }
+  .bar-value { position: absolute; top: -20px; left: 50%; transform: translateX(-50%); font-size: 12px; font-weight: 700; }
+
+  /* ── Print ── */
+  @media print {
+    .slide { page-break-after: always; min-height: 100vh; }
+    body { background: white; color: #1a1a1a; }
+    .card { border: 1px solid #ddd; background: #fafafa; }
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 900px) {
+    .slide { padding: 40px 24px; }
+    h1 { font-size: 32px; }
+    h2 { font-size: 24px; }
+    .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+    .flow { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- SLIDE 1: TITLE -->
+<!-- ═══════════════════════════════════════════════ -->
+<section class="slide" style="justify-content: center; align-items: center; text-align: center;">
+  <div style="max-width: 800px;">
+    <div style="font-size: 14px; font-weight: 700; color: var(--accent); letter-spacing: 4px; text-transform: uppercase; margin-bottom: 24px;">
+      FC Auggen e.V. • Saison 2026/27
+    </div>
+    <h1 style="font-size: 72px; letter-spacing: -3px;">
+      <span class="highlight">Co</span>Coach
+    </h1>
+    <p class="subtitle" style="font-size: 22px; margin-bottom: 48px;">
+      KI-gestütztes Fußball-Management für den modernen Verein
+    </p>
+    <div class="grid-3" style="max-width: 600px; margin: 0 auto;">
+      <div class="stat">
+        <div class="stat-number highlight">35</div>
+        <div class="stat-label">Module</div>
+      </div>
+      <div class="stat">
+        <div class="stat-number green">10</div>
+        <div class="stat-label">KI-Features</div>
+      </div>
+      <div class="stat">
+        <div class="stat-number blue">∞</div>
+        <div class="stat-label">Clubs</div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">1 / 12</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- SLIDE 2: PROBLEM -->
+<!-- ═══════════════════════════════════════════════ -->
+<section class="slide">
+  <h2>🔴 Das <span class="highlight">Problem</span></h2>
+  <p class="subtitle">Was Trainer und Vereine täglich erleben</p>
+
+  <div class="grid-2" style="max-width: 900px;">
+    <div class="card" style="border-color: var(--red);">
+      <div style="font-size: 32px; margin-bottom: 12px;">😤</div>
+      <h3>Manuelle Erfassung</h3>
+      <p class="card-desc">Spielberichte werden handschriftlich ausgefüllt, Zeiterfassung über Excel, Trainingsplanung auf Papier. Stundenlang.</p>
+    </div>
+    <div class="card" style="border-color: var(--red);">
+      <div style="font-size: 32px; margin-bottom: 12px;">📊</div>
+      <h3>Datenverlust</h3>
+      <p class="card-desc">Wichtige Infos gehen bei Trainerwechsel verloren. Kein Gedächtnis für den Verein. Alles beginnt bei null.</p>
+    </div>
+    <div class="card" style="border-color: var(--red);">
+      <div style="font-size: 32px; margin-bottom: 12px;">🎬</div>
+      <h3>Videoanalyse = Luxury</h3>
+      <p class="card-desc">Nur Profi-Vereine haben Videoanalyse. Amateurvereine schauen sich das Video gar nicht erst an.</p>
+    </div>
+    <div class="card" style="border-color: var(--red);">
+      <div style="font-size: 32px; margin-bottom: 12px;">🧩</div>
+      <h3>10 verschiedene Tools</h3>
+      <p class="card-desc">Ein Tool für Anwesenheit, eins für Taktik, eins für Kommunikation. Nirgends ist alles zusammen.</p>
+    </div>
+  </div>
+
+  <div class="slide-number">2 / 12</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- SLIDE 3: SOLUTION -->
+<!-- ═══════════════════════════════════════════════ -->
+<section class="slide">
+  <h2>🟢 Die <span class="highlight">Lösung</span></h2>
+  <p class="subtitle">Alles in einer Plattform. KI-gestützt. Für jeden Verein.</p>
+
+  <div class="flow" style="max-width: 1000px;">
+    <div class="flow-step">
+      <div class="emoji">📱</div>
+      <div class="label">Alles in einer App</div>
+      <p style="font-size: 11px; color: var(--muted); margin-top: 4px;">35 Module, eine Plattform</p>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="emoji">🤖</div>
+      <div class="label">KI-Integration</div>
+      <p style="font-size: 11px; color: var(--muted); margin-top: 4px;">Automatische Analyse & Vorschläge</p>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="emoji">☁️</div>
+      <div class="label">Cloud-basiert</div>
+      <p style="font-size: 11px; color: var(--muted); margin-top: 4px;">Echtzeit-Sync, immer aktuell</p>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step">
+      <div class="emoji">💰</div>
+      <div class="label">SaaS-Modell</div>
+      <p style="font-size: 11px; color: var(--muted); margin-top: 4px;">Jeder Verein kann starten</p>
+    </div>
+  </div>
+
+  <div class="grid-3" style="margin-top: 40px; max-width: 1000px;">
+    <div class="card card-accent">
+      <div class="card-icon" style="background: rgba(245,158,11,0.15);">🎯</div>
+      <h3 class="card-title">Taktische KI</h3>
+      <p class="card-desc">Formationen erkennen, Laufwege analysieren, taktische Vorschläge generieren — automatisch aus Video.</p>
+    </div>
+    <div class="card card-green">
+      <div class="card-icon" style="background: rgba(16,185,129,0.15);">🎙️</div>
+      <h3 class="card-title">Live-Spracherkennung</h3>
+      <p class="card-desc">Während des Spiels Notizen per Spracheingabe erfassen. KI kategorisiert automatisch.</p>
+    </div>
+    <div class="card card-blue">
+      <div class="card-icon" style="background: rgba(59,130,246,0.15);">🛡️</div>
+      <h3 class="card-title">Qualitätsfilter</h3>
+      <p class="card-desc">KI-Halluzinationen werden erkannt und markiert. Nur geprüfte Inhalte werden angezeigt.</p>
+    </div>
+  </div>
+
+  <div class="slide-number">3 / 12</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- SLIDE 4: FEATURES OVERVIEW -->
+<!-- ═══════════════════════════════════════════════ -->
+<section class="slide">
+  <h2>📋 Die <span class="highlight">35 Module</span></h2>
+  <p class="subtitle">Vom Dashboard bis zur KI-Analyse</p>
+
+  <div class="grid-3" style="max-width: 1100px;">
+    <div>
+      <h3 style="color: var(--accent); font-size: 13px; letter-spacing: 1px; margin-bottom: 12px;">⚽ KERN-MODULE</h3>
+      <ul class="feature-list">
+        <li><span class="icon" style="background: rgba(245,158,11,0.15);">📊</span> Dashboard mit KPIs</li>
+        <li><span class="icon" style="background: rgba(245,158,11,0.15);">👥</span> Kader & Personal</li>
+        <li><span class="icon" style="background: rgba(245,158,11,0.15);">📋</span> Teamliste</li>
+        <li><span class="icon" style="background: rgba(245,158,11,0.15);">✅</span> Anwesenheit</li>
+        <li><span class="icon" style="background: rgba(245,158,11,0.15);">💬</span> Trainer-Chat</li>
+      </ul>
+    </div>
+    <div>
+      <h3 style="color: var(--green); font-size: 13px; letter-spacing: 1px; margin-bottom: 12px;">🎬 SPIEL & TRAINING</h3>
+      <ul class="feature-list">
+        <li><span class="icon" style="background: rgba(16,185,129,0.15);">📹</span> Videoanalyse (KI)</li>
+        <li><span class="icon" style="background: rgba(16,185,129,0.15);">📊</span> Spielanalyse+ (xG)</li>
+        <li><span class="icon" style="background: rgba(16,185,129,0.15);">📝</span> Spielbericht</li>
+        <li><span class="icon" style="background: rgba(16,185,129,0.15);">🗓️</span> Trainingsplanung</li>
+        <li><span class="icon" style="background: rgba(16,185,129,0.15);">🎙️</span> Live-Kommentar</li>
+      </ul>
+    </div>
+    <div>
+      <h3 style="color: var(--blue); font-size: 13px; letter-spacing: 1px; margin-bottom: 12px;">🤖 KI & ANALYSE</h3>
+      <ul class="feature-list">
+        <li><span class="icon" style="background: rgba(59,130,246,0.15);">🤖</span> Naomi AI Chat</li>
+        <li><span class="icon" style="background: rgba(59,130,246,0.15);">👁️</span> Vision-Analyse</li>
+        <li><span class="icon" style="background: rgba(59,130,246,0.15);">🛡️</span> Qualitätsfilter</li>
+        <li><span class="icon" style="background: rgba(59,130,246,0.15);">📐</span> 3D-Taktiktafel</li>
+        <li><span class="icon" style="background: rgba(59,130,246,0.15);">⏱️</span> Fokus-Timer</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="slide-number">4 / 12</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- SLIDE 5: KI FEATURES DEEP DIVE -->
+<!-- ═══════════════════════════════════════════════ -->
+<section class="slide">
+  <h2>🤖 KI-Features <span class="highlight">Deep Dive</span></h2>
+  <p class="subtitle">Was unsere KI wirklich kann</p>
+
+  <div class="grid-2" style="max-width: 1000px;">
+    <div class="card card-accent">
+      <h3>👁️ Vision-Analyse (Bilderkennung)</h3>
+      <div class="flow" style="margin: 16px 0;">
+        <div class="flow-step" style="padding: 10px 16px;">
+          <div style="font-size: 20px;">📸</div>
+          <div style="font-size: 10px;">Screenshot</div>
+        </div>
+        <div class="flow-arrow" style="font-size: 16px;">→</div>
+        <div class="flow-step" style="padding: 10px 16px;">
+          <div style="font-size: 20px;">🧠</div>
+          <div style="font-size: 10px;">Gemini 3.6</div>
+        </div>
+        <div class="flow-arrow" style="font-size: 16px;">→</div>
+        <div class="flow-step" style="padding: 10px 16px;">
+          <div style="font-size: 20px;">📋</div>
+          <div style="font-size: 10px;">Formation</div>
+        </div>
+      </div>
+      <ul class="feature-list" style="margin-top: 12px;">
+        <li><span class="icon green" style="font-size: 10px;">✓</span> Erkennt Trikotnummern</li>
+        <li><span class="icon green" style="font-size: 10px;">✓</span> Erkennt Formationen (4-4-2, etc.)</li>
+        <li><span class="icon green" style="font-size: 10px;">✓</span> Ballposition auf dem Feld</li>
+        <li><span class="icon green" style="font-size: 10px;">✓</span> Spielphase (Angriff/Verteidigung)</li>
+      </ul>
+    </div>
+
+    <div class="card card-green">
+      <h3>🎙️ Spracherkennung</h3>
+      <div style="background: #0F172A; border-radius: 12px; padding: 16px; margin: 16px 0;">
+        <div style="font-size: 11px; color: var(--accent); font-weight: 600; margin-bottom: 4px;">🎤 Co-Trainer sagt:</div>
+        <div style="font-size: 13px; color: var(--text);">"Nummer 7 Ballverlust im Zentrum"</div>
+        <div style="margin: 8px 0; color: var(--muted); font-size: 10px;">↓ automatische Verarbeitung</div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <span class="tag tag-red">⚠️ Foul</span>
+          <span class="tag tag-blue">📐 Zentrum</span>
+          <span class="tag tag-yellow">👤 #7</span>
+        </div>
+      </div>
+      <p class="card-desc">Web Speech API • Deutsch • Echtzeit • Kategorisierung per KI</p>
+    </div>
+
+    <div class="card card-blue">
+      <h3>🛡️ AI-Qualitätsfilter</h3>
+      <div style="background: #0F172A; border-radius: 12px; padding: 12px; margin: 12px 0;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+          <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--green);"></div>
+          <span style="font-size: 11px; font-weight: 600;">Score: 85%</span>
+          <span class="tag tag-green" style="font-size: 9px;">Ausgezeichnet</span>
+        </div>
+        <div style="font-size: 10px; color: var(--muted);">4 Prüfungen: Halluzinationen • Qualität • Bias • Sprache</div>
+      </div>
+      <p class="card-desc">Erkennt wenn KI Daten erfindet. Verhindert falsche Entscheidungen.</p>
+    </div>
+
+    <div class="card card-purple">
+      <h3>📊 Strukturierte Ausgabe</h3>
+      <div style="background: #0F172A; border-radius: 12px; padding: 12px; margin: 12px 0; font-family: monospace; font-size: 10px; color: var(--green);">
+        {<br>
+        &nbsp;&nbsp;"formation": "4-4-2",<br>
+        &nbsp;&nbsp;"players": [<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;{"{"} "nr": 7, "pos": "RA" {"}"}<br>
+        &nbsp;&nbsp;]<br>
+        }
+      </div>
+      <p class="card-desc">KI-Antworten werden automatisch in JSON umgewandelt → direkt in Tabellen, Charts, Berichte.</p>
+    </div>
+  </div>
+
+  <div class="slide-number">5 / 12</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- SLIDE 6: TECH STACK -->
+<!-- ═══════════════════════════════════════════════ -->
+<section class="slide">
+  <h2>⚙️ <span class="highlight">Tech Stack</span></h2>
+  <p class="subtitle">Moderne Technologien für maximale Performance</p>
+
+  <div class="grid-4" style="max-width: 1000px;">
+    <div class="card" style="text-align: center;">
+      <div style="font-size: 32px; margin-bottom: 8px;">⚛️</div>
+      <h3 class="card-title">React 19</h3>
+      <p class="card-desc">Modernstes UI-Framework</p>
+    </div>
+    <div class="card" style="text-align: center;">
+      <div style="font-size: 32px; margin-bottom: 8px;">🔥</div>
+      <h3 class="card-title">Firebase</h3>
+      <p class="card-desc">Echtzeit-DB + Auth + Hosting</p>
+    </div>
+    <div class="card" style="text-align: center;">
+      <div style="font-size: 32px; margin-bottom: 8px;">🧠</div>
+      <h3 class="card-title">Gemini 3.6</h3>
+      <p class="card-desc">Google KI für Vision + Text</p>
+    </div>
+    <div class="card" style="text-align: center;">
+      <div style="font-size: 32px; margin-bottom: 8px;">🎨</div>
+      <h3 class="card-title">Tailwind CSS</h3>
+      <p class="card-desc">Dark-Design-System</p>
+    </div>
+  </div>
+
+  <div class="grid-2" style="margin-top: 24px; max-width: 1000px;">
+    <div class="card">
+      <h3 style="margin-bottom: 12px;">🔗 Integrationen</h3>
+      <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+        <span class="tag tag-green">Google Calendar</span>
+        <span class="tag tag-blue">Google Drive</span>
+        <span class="tag tag-yellow">Google Sheets</span>
+        <span class="tag tag-purple">Gmail</span>
+        <span class="tag tag-green">Firebase Auth</span>
+        <span class="tag tag-blue">Firestore</span>
+        <span class="tag tag-yellow">Gemini AI</span>
+        <span class="tag tag-purple">Web Speech API</span>
+      </div>
+    </div>
+    <div class="card">
+      <h3 style="margin-bottom: 12px;">📦 Zusätzliche Libraries</h3>
+      <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+        <span class="tag tag-yellow">Konva (Canvas)</span>
+        <span class="tag tag-green">Recharts (Charts)</span>
+        <span class="tag tag-blue">jsPDF (Export)</span>
+        <span class="tag tag-purple">Framer Motion</span>
+        <span class="tag tag-red">JSZip (Archive)</span>
+        <span class="tag tag-green">docx (Word)</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide-number">6 / 12</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- SLIDE 7: ARCHITECTURE -->
+<!-- ═══════════════════════════════════════════════ -->
+<section class="slide">
+  <h2>🏗️ <span class="highlight">Architektur</span></h2>
+  <p class="subtitle">Multi-Club SaaS mit isolierten Datenbanksätzen</p>
+
+  <div style="max-width: 900px; margin: 0 auto;">
+    <div class="flow">
+      <div class="flow-step" style="border-color: var(--accent);">
+        <div class="emoji">🏟️</div>
+        <div class="label">FC Auggen</div>
+        <p style="font-size: 10px; color: var(--green); margin-top: 4px;">Demo (READ-ONLY)</p>
+      </div>
+      <div class="flow-step" style="border-color: var(--green);">
+        <div class="emoji">⚽</div>
+        <div class="label">SC Sand</div>
+        <p style="font-size: 10px; color: var(--muted); margin-top: 4px;">Voller Zugriff</p>
+      </div>
+      <div class="flow-step" style="border-color: var(--blue);">
+        <div class="emoji">🔵</div>
+        <div class="label">Dein Verein</div>
+        <p style="font-size: 10px; color: var(--muted); margin-top: 4px;">Leere Datenbank</p>
+      </div>
+      <div class="flow-step" style="border-color: var(--purple);">
+        <div class="emoji">➕</div>
+        <div class="label">Weitere Clubs</div>
+        <p style="font-size: 10px; color: var(--muted); margin-top: 4px;">Naomi auto-scraped</p>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top: 32px;">
+      <h3 style="margin-bottom: 16px;">🔒 Datensicherheit</h3>
+      <div class="grid-2">
+        <div>
+          <ul class="feature-list">
+            <li><span class="icon green" style="font-size: 10px;">✓</span> Jeder Club eigene Firestore-Sammlung</li>
+            <li><span class="icon green" style="font-size: 10px;">✓</span> FC Auggen = Demo (READ-ONLY)</li>
+            <li><span class="icon green" style="font-size: 10px;">✓</span> Automatische Daten-Isolierung</li>
+          </ul>
+        </div>
+        <div>
+          <ul class="feature-list">
+            <li><span class="icon green" style="font-size: 10px;">✓</span> Kein Club sieht Daten anderer Clubs</li>
+            <li><span class="icon green" style="font-size: 10px;">✓</span> Firebase Auth mit Google-Login</li>
+            <li><span class="icon green" style="font-size: 10px;">✓</span> Offline-Support mit localStorage</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide-number">7 / 12</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- SLIDE 8: DEMO WALKTHROUGH -->
+<!-- ═══════════════════════════════════════════════ -->
+<section class="slide">
+  <h2>🎬 <span class="highlight">Demo</span>-Walkthrough</h2>
+  <p class="subtitle">So funktioniert CoCoach im Alltag</p>
+
+  <div class="grid-2" style="max-width: 1000px;">
+    <div class="card card-accent">
+      <h3>📍 Schritt 1: Matchvorbereitung</h3>
+      <ul class="feature-list" style="margin-top: 12px;">
+        <li><span class="icon" style="background: rgba(245,158,11,0.15);">1</span> <span>Spielbericht öffnen → Kader auswählen</span></li>
+        <li><span class="icon" style="background: rgba(245,158,11,0.15);">2</span> <span>Naomi fragt: "Welche Taktik gegen den Gegner?"</span></li>
+        <li><span class="icon" style="background: rgba(245,158,11,0.15);">3</span> <span>Taktiktafel: Formation + Laufwege zeichnen</span></li>
+        <li><span class="icon" style="background: rgba(245,158,11,0.15);">4</span> <span>Fokus-Timer starten (45/10 Rhythmus)</span></li>
+      </ul>
+    </div>
+
+    <div class="card card-green">
+      <h3>📍 Schritt 2: Am Spieltag</h3>
+      <ul class="feature-list" style="margin-top: 12px;">
+        <li><span class="icon" style="background: rgba(16,185,129,0.15);">1</span> <span>Live-Kommentar: Spracherkennung aktivieren</span></li>
+        <li><span class="icon" style="background: rgba(16,185,129,0.15);">2</span> <span>Notizen per Sprache: "Tor 34. Minute #9"</span></li>
+        <li><span class="icon" style="background: rgba(16,185,129,0.15);">3</span> <span>Halbzeit: KI-Vorschläge für 2. Halbzeit</span></li>
+        <li><span class="icon" style="background: rgba(16,185,129,0.15);">4</span> <span>Spielbericht automatisch ausfüllen</span></li>
+      </ul>
+    </div>
+
+    <div class="card card-blue">
+      <h3>📍 Schritt 3: Nach dem Spiel</h3>
+      <ul class="feature-list" style="margin-top: 12px;">
+        <li><span class="icon" style="background: rgba(59,130,246,0.15);">1</span> <span>Video hochladen → Vision-Analyse startet</span></li>
+        <li><span class="icon" style="background: rgba(59,130,246,0.15);">2</span> <span>KI erkennt: Formation, Ballbesitz, Chancen</span></li>
+        <li><span class="icon" style="background: rgba(59,130,246,0.15);">3</span> <span>Strukturierte Daten → Tabellen + Charts</span></li>
+        <li><span class="icon" style="background: rgba(59,130,246,0.15);">4</span> <span>PDF-Bericht exportieren & an Verein senden</span></li>
+      </ul>
+    </div>
+
+    <div class="card card-purple">
+      <h3>📍 Schritt 4: Trainingswoche</h3>
+      <ul class="feature-list" style="margin-top: 12px;">
+        <li><span class="icon" style="background: rgba(139,92,246,0.15);">1</span> <span>KI generiert Trainingsplan aus Analysedaten</span></li>
+        <li><span class="icon" style="background: rgba(139,92,246,0.15);">2</span> <span>Individuelle Steuerung pro Spieler</span></li>
+        <li><span class="icon" style="background: rgba(139,92,246,0.15);">3</span> <span>GPS-Daten auswerten (ACWR, Belastung)</span></li>
+        <li><span class="icon" style="background: rgba(139,92,246,0.15);">4</span> <span>Naomi: "Wer braucht Erholung?"</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="slide-number">8 / 12</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- SLIDE 9: PRICING -->
+<!-- ═══════════════════════════════════════════════ -->
+<section class="slide">
+  <h2>💰 <span class="highlight">Preismodell</span></h2>
+  <p class="subtitle">SaaS-Lizenzierung für jeden Verein</p>
+
+  <div class="grid-3" style="max-width: 1000px;">
+    <div class="card">
+      <div style="font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;">Basic</div>
+      <div style="font-size: 48px; font-weight: 900; color: var(--text);">€29<span style="font-size: 16px; color: var(--muted); font-weight: 500;">/Monat</span></div>
+      <ul class="feature-list" style="margin-top: 20px;">
+        <li><span class="icon green" style="font-size: 10px;">✓</span> Kader-Verwaltung</li>
+        <li><span class="icon green" style="font-size: 10px;">✓</span> Trainingsplanung</li>
+        <li><span class="icon green" style="font-size: 10px;">✓</span> Spielberichte</li>
+        <li><span class="icon green" style="font-size: 10px;">✓</span> Anwesenheit</li>
+        <li><span class="icon" style="font-size: 10px; color: var(--muted);">—</span> <span style="color: var(--muted);">Keine KI-Features</span></li>
+      </ul>
+    </div>
+
+    <div class="card card-accent" style="transform: scale(1.03);">
+      <div style="font-size: 13px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;">⭐ Pro (Beliebteste)</div>
+      <div style="font-size: 48px; font-weight: 900; color: var(--accent);">€79<span style="font-size: 16px; color: var(--muted); font-weight: 500;">/Monat</span></div>
+      <ul class="feature-list" style="margin-top: 20px;">
+        <li><span class="icon green" style="font-size: 10px;">✓</span> Alles aus Basic</li>
+        <li><span class="icon green" style="font-size: 10px;">✓</span> KI-Videoanalyse</li>
+        <li><span class="icon green" style="font-size: 10px;">✓</span> Naomi AI Chat</li>
+        <li><span class="icon green" style="font-size: 10px;">✓</span> Vision-Analyse</li>
+        <li><span class="icon green" style="font-size: 10px;">✓</span> Live-Kommentar</li>
+      </ul>
+    </div>
+
+    <div class="card card-purple">
+      <div style="font-size: 13px; font-weight: 700; color: var(--purple); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;">Enterprise</div>
+      <div style="font-size: 48px; font-weight: 900; color: var(--purple);">€149<span style="font-size: 16px; color: var(--muted); font-weight: 500;">/Monat</span></div>
+      <ul class="feature-list" style="margin-top: 20px;">
+        <li><span class="icon green" style="font-size: 10px;">✓</span> Alles aus Pro</li>
+        <li><span class="icon green" style="font-size: 10px;">✓</span> 5 KI-Agents</li>
+        <li><span class="icon green" style="font-size: 10px;">✓</span> Multi-Club (5 Vereine)</li>
+        <li><span class="icon green" style="font-size: 10px;">✓</span> API-Zugang</li>
+        <li><span class="icon green" style="font-size: 10px;">✓</span> Priorisierter Support</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="slide-number">9 / 12</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- SLIDE 10: WHATS NEXT -->
+<!-- ═══════════════════════════════════════════════ -->
+<section class="slide">
+  <h2>🗺️ <span class="highlight">Roadmap</span></h2>
+  <p class="subtitle">Was als Nächstes kommt</p>
+
+  <div class="grid-2" style="max-width: 1000px;">
+    <div>
+      <h3 style="color: var(--green); font-size: 13px; letter-spacing: 1px; margin-bottom: 16px;">✅ BEREITS FERTIG</h3>
+      <div class="card card-green">
+        <ul class="feature-list">
+          <li><span class="icon green" style="font-size: 10px;">✓</span> 35 Module voll funktional</li>
+          <li><span class="icon green" style="font-size: 10px;">✓</span> KI-Integration (Gemini 3.6)</li>
+          <li><span class="icon green" style="font-size: 10px;">✓</span> Multi-Club Support</li>
+          <li><span class="icon green" style="font-size: 10px;">✓</span> Live-Spracherkennung</li>
+          <li><span class="icon green" style="font-size: 10px;">✓</span> Vision-Analyse</li>
+          <li><span class="icon green" style="font-size: 10px;">✓</span> AI-Qualitätsfilter</li>
+          <li><span class="icon green" style="font-size: 10px;">✓</span> Lizenzierungssystem</li>
+          <li><span class="icon green" style="font-size: 10px;">✓</span> SC Sand Demo mit Seed-Daten</li>
+        </ul>
+      </div>
+    </div>
+
+    <div>
+      <h3 style="color: var(--accent); font-size: 13px; letter-spacing: 1px; margin-bottom: 16px;">🔨 NÄCHSTE SCHRITTE</h3>
+      <div class="card card-accent">
+        <ul class="feature-list">
+          <li><span class="icon" style="background: rgba(245,158,11,0.15);">1</span> Vision-Analyse in Videoanalyse einbinden</li>
+          <li><span class="icon" style="background: rgba(245,158,11,0.15);">2</span> Agent-System mit echter Logik füllen</li>
+          <li><span class="icon" style="background: rgba(245,158,11,0.15);">3</span> PWA Offline-Modus</li>
+          <li><span class="icon" style="background: rgba(245,158,11,0.15);">4</span> Push-Benachrichtigungen</li>
+          <li><span class="icon" style="background: rgba(245,158,11,0.15);">5</span> Automatisches Reporting</li>
+          <li><span class="icon" style="background: rgba(245,158,11,0.15);">6</span> Live-Zusammenarbeit (mehrere Trainer)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide-number">10 / 12</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- SLIDE 11: MARKET -->
+<!-- ═══════════════════════════════════════════════ -->
+<section class="slide">
+  <h2>📈 <span class="highlight">Markt</span>analyse</h2>
+  <p class="subtitle">Warum CoCoach den Markt verändern wird</p>
+
+  <div class="grid-2" style="max-width: 1000px;">
+    <div class="card">
+      <h3>🏆 Konkurrenz</h3>
+      <table class="price-table">
+        <thead>
+          <tr><th>Feature</th><th>CoCoach</th><th>Wyscout</th><th>InStat</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Kader-Verwaltung</td><td class="green">✓</td><td>—</td><td>—</td></tr>
+          <tr><td>KI-Videoanalyse</td><td class="green">✓</td><td>✓</td><td>✓</td></tr>
+          <tr><td>Trainingsplanung</td><td class="green">✓</td><td>—</td><td>—</td></tr>
+          <tr><td>Spracherkennung</td><td class="green">✓</td><td>—</td><td>—</td></tr>
+          <tr><td>Multi-Club</td><td class="green">✓</td><td>—</td><td>—</td></tr>
+          <tr class="price-highlight"><td><strong>Preis/Monat</strong></td><td><strong class="green">€79</strong></td><td>€300+</td><td>€500+</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3>🎯 Zielgruppe</h3>
+      <div style="margin-top: 16px;">
+        <div class="card" style="padding: 12px; margin-bottom: 8px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <div style="font-size: 13px; font-weight: 700;">Amateurvereine (A-B=C-Klasse)</div>
+              <div style="font-size: 11px; color: var(--muted);">~12.000 Vereine in Deutschland</div>
+            </div>
+            <span class="tag tag-green">Primär</span>
+          </div>
+        </div>
+        <div class="card" style="padding: 12px; margin-bottom: 8px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <div style="font-size: 13px; font-weight: 700;">Halbprofi-Vereine (Regionalliga+)</div>
+              <div style="font-size: 11px; color: var(--muted);">~800 Vereine</div>
+            </div>
+            <span class="tag tag-blue">Sekundär</span>
+          </div>
+        </div>
+        <div class="card" style="padding: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <div style="font-size: 13px; font-weight: 700;">Nachwuchsleistungszentren</div>
+              <div style="font-size: 11px; color: var(--muted);">~360 Zentren</div>
+            </div>
+            <span class="tag tag-purple">Premium</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide-number">11 / 12</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- SLIDE 12: CLOSING -->
+<!-- ═══════════════════════════════════════════════ -->
+<section class="slide" style="justify-content: center; align-items: center; text-align: center;">
+  <div style="max-width: 700px;">
+    <div style="font-size: 14px; font-weight: 700; color: var(--accent); letter-spacing: 4px; text-transform: uppercase; margin-bottom: 24px;">
+      Zusammenfassung
+    </div>
+    <h1 style="font-size: 56px; letter-spacing: -2px; margin-bottom: 24px;">
+      <span class="highlight">CoCoach</span> – Die Zukunft<br>des Vereinsmanagements
+    </h1>
+    <p class="subtitle" style="font-size: 18px; margin-bottom: 40px;">
+      KI-gestützt • Multi-Club • SaaS-ready<br>
+      35 Module • 10 KI-Features • 3 Preisstufen
+    </p>
+
+    <div class="grid-3" style="max-width: 600px; margin: 0 auto 40px;">
+      <div class="stat">
+        <div class="stat-number highlight" style="font-size: 36px;">€29-149</div>
+        <div class="stat-label">Pro Monat</div>
+      </div>
+      <div class="stat">
+        <div class="stat-number green" style="font-size: 36px;">12.000+</div>
+        <div class="stat-label">Pot. Vereine</div>
+      </div>
+      <div class="stat">
+        <div class="stat-number blue" style="font-size: 36px;">€8M+</div>
+        <div class="stat-label">Marktpotenzial</div>
+      </div>
+    </div>
+
+    <div style="padding: 24px; background: var(--card); border: 1px solid var(--border); border-radius: 16px;">
+      <p style="font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 8px;">
+        Bereit für den nächsten Schritt?
+      </p>
+      <p style="font-size: 13px; color: var(--muted);">
+        FC Auggen e.V. • CoCoach Platform • 2026
+      </p>
+    </div>
+  </div>
+  <div class="slide-number">12 / 12</div>
+</section>
+
+</body>
+</html>

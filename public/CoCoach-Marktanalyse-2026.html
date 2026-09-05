@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CoCoach — Marktanalyse & Preisstrategie 2026</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    @page { size: A4; margin: 20mm 15mm; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', -apple-system, sans-serif; color: #1a1a2e; background: #fff; line-height: 1.6; font-size: 11px; }
+
+    .cover { page-break-after: always; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; background: linear-gradient(135deg, #0A0E17 0%, #1a2332 50%, #0f1923 100%); color: #fff; text-align: center; padding: 60px 40px; }
+    .cover .logo { font-size: 48px; font-weight: 900; letter-spacing: -2px; margin-bottom: 8px; }
+    .cover .logo span { color: #10B981; }
+    .cover .subtitle { font-size: 18px; color: #94A3B8; margin-bottom: 40px; font-weight: 300; }
+    .cover .title { font-size: 32px; font-weight: 800; margin-bottom: 12px; line-height: 1.2; }
+    .cover .date { font-size: 14px; color: #64748B; margin-top: 30px; }
+    .cover .badge { display: inline-block; background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3); color: #10B981; padding: 8px 24px; border-radius: 100px; font-size: 13px; font-weight: 600; margin-top: 20px; }
+
+    .page { page-break-before: always; padding: 30px 40px; }
+    .page:first-of-type { page-break-before: auto; }
+
+    h1 { font-size: 26px; font-weight: 800; color: #0A0E17; margin-bottom: 20px; border-bottom: 3px solid #10B981; padding-bottom: 10px; }
+    h2 { font-size: 18px; font-weight: 700; color: #0A0E17; margin: 24px 0 12px; }
+    h3 { font-size: 14px; font-weight: 700; color: #334155; margin: 16px 0 8px; }
+    p { margin-bottom: 10px; color: #374151; font-size: 11px; }
+    .lead { font-size: 13px; color: #475569; font-weight: 400; margin-bottom: 16px; }
+
+    table { width: 100%; border-collapse: collapse; margin: 12px 0 20px; font-size: 10.5px; }
+    th { background: #0A0E17; color: #fff; padding: 8px 10px; text-align: left; font-weight: 600; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+    td { padding: 7px 10px; border-bottom: 1px solid #E2E8F0; }
+    tr:nth-child(even) td { background: #F8FAFC; }
+    tr:hover td { background: #F1F5F9; }
+    .highlight-row td { background: #ECFDF5 !important; font-weight: 600; }
+
+    .card { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 16px 20px; margin: 12px 0; }
+    .card-green { background: #ECFDF5; border-color: #A7F3D0; }
+    .card-blue { background: #EFF6FF; border-color: #BFDBFE; }
+    .card-amber { background: #FFFBEB; border-color: #FDE68A; }
+    .card-red { background: #FEF2F2; border-color: #FECACA; }
+
+    .badge-green { display: inline-block; background: #10B981; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 9px; font-weight: 700; }
+    .badge-blue { display: inline-block; background: #3B82F6; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 9px; font-weight: 700; }
+    .badge-amber { display: inline-block; background: #F59E0B; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 9px; font-weight: 700; }
+    .badge-red { display: inline-block; background: #EF4444; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 9px; font-weight: 700; }
+
+    .check { color: #10B981; font-weight: 700; }
+    .cross { color: #EF4444; font-weight: 700; }
+    .partial { color: #F59E0B; font-weight: 700; }
+
+    .stat-row { display: flex; gap: 12px; margin: 16px 0; }
+    .stat-box { flex: 1; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 14px; text-align: center; }
+    .stat-box .number { font-size: 24px; font-weight: 800; color: #10B981; }
+    .stat-box .label { font-size: 9px; color: #64748B; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+
+    .two-col { display: flex; gap: 16px; }
+    .two-col > div { flex: 1; }
+
+    ul { margin: 6px 0 12px 18px; }
+    li { margin-bottom: 4px; color: #374151; }
+
+    .footer { text-align: center; color: #94A3B8; font-size: 9px; margin-top: 40px; padding-top: 16px; border-top: 1px solid #E2E8F0; }
+    .page-num { float: right; color: #94A3B8; font-size: 9px; }
+
+    @media print {
+      .cover { min-height: auto; height: 100vh; }
+      .page { page-break-before: always; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- COVER PAGE -->
+<div class="cover">
+  <div class="logo">Co<span>Coach</span></div>
+  <div class="subtitle">Fußball-Management — KI-gestützt & Made in Germany</div>
+  <div class="title">Marktanalyse &<br>Preisstrategie 2026</div>
+  <div class="badge">VERTRAULICH</div>
+  <div class="date">August 2026 | Version 1.0</div>
+</div>
+
+<!-- PAGE 1: ZUSAMMENFASSUNG -->
+<div class="page">
+  <h1>1. Zusammenfassung</h1>
+  <p class="lead">CoCoach ist eine KI-gestützte Fußball-Management-Plattform für Vereine von der Jugend bis zur 1. Mannschaft. Die Analyse zeigt: Im Markt existieren über 20 Anbieter — aber keiner kombiniert <strong>automatische Datenbeschaffung (KI-Agent)</strong>, <strong>3D-Taktiktafel</strong>, <strong>Performance-Analytics</strong> und <strong>Trainingsplanung</strong> in einer einzigen, deutschsprachigen Plattform.</p>
+
+  <div class="stat-row">
+    <div class="stat-box">
+      <div class="number">20+</div>
+      <div class="label">Wettbewerber weltweit</div>
+    </div>
+    <div class="stat-box">
+      <div class="number">0</div>
+      <div class="label">mit KI-Datenautomatisierung</div>
+    </div>
+    <div class="stat-box">
+      <div class="number">3</div>
+      <div class="label">Unique Selling Points</div>
+    </div>
+    <div class="stat-box">
+      <div class="number">€99</div>
+      <div class="label">Empf. Hauptpreis/Monat</div>
+    </div>
+  </div>
+
+  <h2>Kernbefunde</h2>
+  <div class="two-col">
+    <div class="card card-green">
+      <h3><span class="badge-green">STÄRKE</span> Marktlücke</h3>
+      <p>Kein Anbieter auf dem Markt bietet eine KI, die automatisch Spielerdaten, Spielpläne und Ergebnisse von fussball.de und kicker.de lädt und in die App füllt. CoCoach füllt diese Lücke mit dem Agenten „Naomi".</p>
+    </div>
+    <div class="card card-green">
+      <h3><span class="badge-green">STÄRKE</span> Sprachvorteil</h3>
+      <p>Alle führenden Plattformen (TeamSnap, 360Player, SportsEngine) sind englischsprachig. Deutsche Vereine haben keine hochwertige Alternative für Training + Performance + Taktik.</p>
+    </div>
+  </div>
+
+  <h2>Zielmarkt</h2>
+  <table>
+    <tr><th>Segment</th><th>Vereinsgröße</th><th>Marktpotenzial (DE/AT/CH)</th><th>Priorität</th></tr>
+    <tr><td>Grassroots / Jugend</td><td>1–3 Teams</td><td>~25.000 Vereine</td><td><span class="badge-amber">HOCH</span></td></tr>
+    <tr><td>Amateur / semi-pro</td><td>3–10 Teams</td><td>~8.000 Vereine</td><td><span class="badge-green">KERN</span></td></tr>
+    <tr><td>Elite / Profi</td><td>10+ Teams</td><td>~500 Vereine</td><td><span class="badge-blue">PREMIUM</span></td></tr>
+    <tr><td>Verbände / Ligen</td><td>50+ Vereine</td><td>~30 Organisationen</td><td><span class="badge-red">ENTERPRISE</span></td></tr>
+  </table>
+</div>
+
+<!-- PAGE 2: WETTBEWERB ANALYSE -->
+<div class="page">
+  <h1>2. Wettbewerbsanalyse</h1>
+
+  <h2>A) Admin- & Kommunikationsplattformen</h2>
+  <p>Diese Anbieter konzentrieren sich auf Kommunikation, Anwesenheit und Beitragsverwaltung. <strong>Kein Performance-Feature.</strong></p>
+  <table>
+    <tr><th>Plattform</th><th>Hauptsitz</th><th>Preis</th><th>Sprache</th><th>Performance</th><th>KI-Features</th></tr>
+    <tr><td><strong>Spond</strong></td><td>Norwegen</td><td>Kostenlos</td><td>DE/EN</td><td class="cross">Nein</td><td class="cross">Nein</td></tr>
+    <tr><td><strong>TeamSnap</strong></td><td>USA</td><td>$0–$22/Team/Mo</td><td>EN</td><td class="cross">Nein</td><td class="cross">Nein</td></tr>
+    <tr><td><strong>Coacha</strong></td><td>UK</td><td>~£10–30/Mo</td><td>EN</td><td class="cross">Nein</td><td class="cross">Nein</td></tr>
+    <tr><td><strong>Pitchero</strong></td><td>UK</td><td>Variabel</td><td>EN</td><td class="cross">Nein</td><td class="cross">Nein</td></tr>
+    <tr><td><strong>FirstWhistle</strong></td><td>UK</td><td>Free Option</td><td>EN</td><td class="partial">Basis</td><td class="cross">Nein</td></tr>
+    <tr><td><strong>Mingle Sport</strong></td><td>NL</td><td>Variabel</td><td>EN</td><td class="partial">Basis</td><td class="cross">Nein</td></tr>
+  </table>
+
+  <h2>B) Performance- & Analytics-Plattformen (Premium)</h2>
+  <p>Höherpreisige Anbieter mit Training, Video und Spielerentwicklung — aber ohne KI-Automatisierung.</p>
+  <table>
+    <tr><th>Plattform</th><th>Hauptsitz</th><th>Preis</th><th>Sprache</th><th>Video</th><th>Taktik</th><th>KI</th></tr>
+    <tr><td><strong>360Player</strong></td><td>Schweden</td><td>Ab $49/Mo (Custom)</td><td>DE/EN</td><td class="check">Ja</td><td class="cross">Nein</td><td class="cross">Nein</td></tr>
+    <tr><td><strong>PlayMetrics</strong></td><td>USA</td><td>Ab ~$99/Mo</td><td>EN</td><td class="check">Ja</td><td class="cross">Nein</td><td class="cross">Nein</td></tr>
+    <tr><td><strong>SportsEngine</strong></td><td>USA (NBC)</td><td>Ab ~$99/Mo + Gebühren</td><td>EN</td><td class="check">Ja</td><td class="cross">Nein</td><td class="cross">Nein</td></tr>
+    <tr><td><strong>The Futures App</strong></td><td>USA</td><td>Ab ~$200/Mo</td><td>EN</td><td class="check">Ja</td><td class="partial">Basis</td><td class="cross">Nein</td></tr>
+    <tr><td><strong>TeamStats</strong></td><td>UK</td><td>Variabel</td><td>EN</td><td class="partial">Basis</td><td class="cross">Nein</td><td class="cross">Nein</td></tr>
+  </table>
+
+  <h2>C) Deutsche Vereinsverwaltung</h2>
+  <p>Generische Vereinssoftware — kein足球-spezifisches Feature.</p>
+  <table>
+    <tr><th>Plattform</th><th>Preis</th><th>Fokus</th><th>Fußball-spezifisch</th></tr>
+    <tr><td><strong>fussball.de / DFBnet</strong></td><td>Kostenlos (DFB)</td><td>Spielbetrieb, Lizenz</td><td class="partial">Nur Verwaltung</td></tr>
+    <tr><td><strong>ClubDesk</strong></td><td>Ab €0/Mo</td><td>Website, Buchhaltung</td><td class="cross">Nein</td></tr>
+    <tr><td><strong>easyVerein</strong></td><td>Variabel</td><td>Mitgliederverwaltung</td><td class="cross">Nein</td></tr>
+    <tr><td><strong>KURABU</strong></td><td>Ab €35/Mo</td><td>Events, App</td><td class="cross">Nein</td></tr>
+    <tr><td><strong>Vereinsplaner</strong></td><td>Variabel</td><td>Chat, Kalender</td><td class="cross">Nein</td></tr>
+  </table>
+</div>
+
+<!-- PAGE 3: COACH USPs -->
+<div class="page">
+  <h1>3. CoCoach — Unique Selling Points</h1>
+  <p class="lead">CoCoach ist das einzige Produkt auf dem Markt, das alle folgenden Features in einer Plattform vereint. Dieser Abschnitt beschreibt die technologischen Alleinstellungsmerkmale im Detail.</p>
+
+  <h2>Vergleichstabelle: CoCoach vs. Wettbewerb</h2>
+  <table>
+    <tr><th>Feature</th><th>CoCoach</th><th>360Player</th><th>TeamSnap</th><th>Spond</th><th>fussball.de</th></tr>
+    <tr class="highlight-row"><td><strong>KI-Agent (automatisches Daten-Scraping)</strong></td><td class="check">✅ Naomi</td><td class="cross">❌</td><td class="cross">❌</td><td class="cross">❌</td><td class="cross">❌</td></tr>
+    <tr><td>3D/2D Taktiktafel (animiert)</td><td class="check">✅</td><td class="cross">❌</td><td class="cross">❌</td><td class="cross">❌</td><td class="cross">❌</td></tr>
+    <tr><td>Trainingsplanung (Einheiten, Videos, Gruppen)</td><td class="check">✅</td><td class="check">✅</td><td class="cross">❌</td><td class="cross">❌</td><td class="cross">❌</td></tr>
+    <tr><td>GPS/Tracker-Analyse</td><td class="check">✅</td><td class="cross">❌</td><td class="cross">❌</td><td class="cross">❌</td><td class="cross">❌</td></tr>
+    <tr><td>Videoanalyse mit Szenen-Cuts</td><td class="check">✅</td><td class="partial">Basis</td><td class="cross">❌</td><td class="cross">❌</td><td class="cross">❌</td></tr>
+    <tr><td>Scouting (fussball.de-Integration)</td><td class="check">✅</td><td class="cross">❌</td><td class="cross">❌</td><td class="cross">❌</td><td class="partial">Basis</td></tr>
+    <tr><td>Performance-Academy (5 Domänen)</td><td class="check">✅</td><td class="partial">Basis</td><td class="cross">❌</td><td class="cross">❌</td><td class="cross">❌</td></tr>
+    <tr><td>Multi-Club Licensing</td><td class="check">✅</td><td class="cross">❌</td><td class="partial">Clubs</td><td class="cross">❌</td><td class="cross">❌</td></tr>
+    <tr><td>Komplett Deutsch</td><td class="check">✅</td><td class="partial">Teilweise</td><td class="cross">❌</td><td class="check">✅</td><td class="check">✅</td></tr>
+    <tr><td>Spielvorbereitung (Match Report)</td><td class="check">✅</td><td class="cross">❌</td><td class="cross">❌</td><td class="cross">❌</td><td class="cross">❌</td></tr>
+    <tr><td>Physio & Individualsteuerung</td><td class="check">✅</td><td class="cross">❌</td><td class="cross">❌</td><td class="cross">❌</td><td class="cross">❌</td></tr>
+    <tr><td>Champions Cup (Wettbewerbe)</td><td class="check">✅</td><td class="cross">❌</td><td class="cross">❌</td><td class="cross">❌</td><td class="cross">❌</td></tr>
+  </table>
+
+  <h2>USP #1: KI-Agent „Naomi"</h2>
+  <div class="card card-green">
+    <p>Naomi ist ein KI-gestützter Agent, der automatisch Spielerdaten, Spielpläne, Ergebnisse und Tabellen von fussball.de, kicker.de und Vereinswebsites scrapet und direkt in die CoCoach-Datenbank überführt. <strong>Das spart dem Trainer 2–4 Stunden pro Woche an manueller Dateneingabe.</strong></p>
+    <p><strong>Technologie:</strong> Google Gemini AI, Express.js Server, Firestore-Synchronisation. Der Scraping-Prozess läuft in 5 Phasen: Eingabe → Scraping → Merge → Review → Speichern. Ergebnisse können vor dem Speichern überprüft und bearbeitet werden.</p>
+  </div>
+
+  <h2>USP #2: 3D/2D Taktiktafel</h2>
+  <div class="card card-blue">
+    <p>Professionelle Taktiktafel mit <strong>animierten 3D-Laufwegen</strong>, farbcodierter Intensität (Blau = Offensiv, Rot = Defensiv, Gelb = Umschalten), Positionsspezifischen Laufmodellen (ST, RA/LA, ZM/DM/OM, RV/LV, IV, TW) und Heatmap-Overlays.</p>
+    <p><strong>Marktvergleich:</strong> Kein anderer Anbieter bietet animierte 3D-Laufwege. 360Player hat nur statische Bilder. TeamSnap und Spond haben keine Taktiktafel.</p>
+  </div>
+
+  <h2>USP #3: Komplett Deutsch mit fussball.de-Integration</h2>
+  <div class="card card-amber">
+    <p>Alle Registerkarten, Menüs, Datenfelder und Berichte sind vollständig auf Deutsch. Die direkte Integration mit fussball.de (DFB-Netzwerk) ermöglicht automatische Importe von Spielplänen, Ergebnissen und Tabellen — ein Feature, das kein internationaler Anbieter bietet.</p>
+  </div>
+</div>
+
+<!-- PAGE 4: PREISSTRATEGIE -->
+<div class="page">
+  <h1>4. Preisstrategie & Empfehlung</h1>
+
+  <h2>Empfohlenes Pricing-Modell</h2>
+  <table>
+    <tr><th>Tier</th><th>Preis/Monat</th><th>Preis/Jahr</th><th>Zielgruppe</th><th>Features</th></tr>
+    <tr><td><strong>Starter</strong> <span class="badge-blue">FREE</span></td><td>€0</td><td>€0</td><td>Einzelne 1. Mannschaft</td><td>Kader, Anwesenheit, 1 Spieltag</td></tr>
+    <tr class="highlight-row"><td><strong>Basic</strong> <span class="badge-green">EMPFOHLEN</span></td><td>€39</td><td>€390</td><td>Kleine Vereine (1–2 Teams)</td><td>+ Training, Spiele, Jahresplan, Finanzen</td></tr>
+    <tr class="highlight-row"><td><strong>Pro</strong> <span class="badge-green">EMPFOHLEN</span></td><td>€99</td><td>€990</td><td>Mittelgroß (3–8 Teams)</td><td>+ Taktiktafel, Scouting, Analytics, Physio, Naomi</td></tr>
+    <tr><td><strong>Enterprise</strong> <span class="badge-amber">PREMIUM</span></td><td>€199</td><td>€1.990</td><td>Große Vereine / Verbände</td><td>+ Video, API, Multi-Club, Premium-Support</td></tr>
+    <tr><td><strong>White-Label</strong> <span class="badge-red">EXKLUSIV</span></td><td>€399+</td><td>Auf Anfrage</td><td>Verbände / Franchises</td><td>Eigene Branding, unbegrenzte Clubs</td></tr>
+  </table>
+
+  <h2>Preisvergleich mit Wettbewerbern</h2>
+  <table>
+    <tr><th>Anbieter</th><th>Monatlich</th><th>Jährlich</th><th>Pro Team?</th><th>CoCoach Equivalent</th></tr>
+    <tr><td>TeamSnap Premium</td><td>$16/Team</td><td>$120/Team</td><td>Ja</td><td>CoCoach Basic ist günstiger + mehr Features</td></tr>
+    <tr><td>360Player Basic</td><td>$49</td><td>~$588</td><td>Pauschal</td><td>CoCoach Pro ist günstiger + KI + Taktik</td></tr>
+    <tr><td>PlayMetrics</td><td>~$99+</td><td>~$1.188+</td><td>Pauschal</td><td>CoCoach Enterprise ähnlich, aber günstiger</td></tr>
+    <tr><td>SportsEngine</td><td>~$99+</td><td>~$1.188+</td><td>+ Gebühren</td><td>CoCoach: keine versteckten Gebühren</td></tr>
+    <tr><td>KURABU (DE)</td><td>€35</td><td>~€420</td><td>Pauschal</td><td>CoCoach Basic: mehr Features, ähnlicher Preis</td></tr>
+  </table>
+
+  <h2>Umsatzprojektion (konservativ)</h2>
+  <div class="two-col">
+    <div>
+      <table>
+        <tr><th>Vereine</th><th>Tier</th><th>Monatlich</th><th>Jährlich</th></tr>
+        <tr><td>10</td><td>Basic (€39)</td><td>€390</td><td>€4.680</td></tr>
+        <tr><td>5</td><td>Pro (€99)</td><td>€495</td><td>€5.940</td></tr>
+        <tr><td>2</td><td>Enterprise (€199)</td><td>€398</td><td>€4.776</td></tr>
+        <tr class="highlight-row"><td><strong>17 Gesamt</strong></td><td></td><td><strong>€1.283</strong></td><td><strong>€15.396</strong></td></tr>
+      </table>
+    </div>
+    <div>
+      <div class="card card-green">
+        <h3>Skalierungsziel (Jahr 1–2)</h3>
+        <p><strong>50 Vereine</strong> × Ø €80/Mo = <strong>€4.000/Mo = €48.000/Jahr</strong></p>
+        <p><strong>100 Vereine</strong> × Ø €80/Mo = <strong>€8.000/Mo = €96.000/Jahr</strong></p>
+        <p><strong>200 Vereine</strong> × Ø €90/Mo = <strong>€18.000/Mo = €216.000/Jahr</strong></p>
+      </div>
+    </div>
+  </div>
+
+  <h2>Strategische Empfehlungen</h2>
+  <div class="card card-amber">
+    <ol style="margin-left: 18px;">
+      <li style="margin-bottom: 6px;"><strong>Kostenloser „Starter" als Lockvogel:</strong> Vereine können gratis starten, sehen den Wert, und upgraden nach 2–4 Wochen eigenständig.</li>
+      <li style="margin-bottom: 6px;"><strong>14-Tage Free Trial für Pro/Enterprise:</strong> Professioneller als dauerhaftes Free Tier.zeigt Engagement.</li>
+      <li style="margin-bottom: 6px;"><strong>Jahresrabatt (2 Monate gratis):</strong> Sichert Cashflow, reduziert Churn-Rate.</li>
+      <li style="margin-bottom: 6px;"><strong>DFB/fussball.de-Partnership:</strong> Offizielle Datenintegration als Verkaufsargument nutzen. Pressemitteilung mit DFB.</li>
+      <li style="margin-bottom: 6px;"><strong>Referenzkunden-Pilotprojekt:</strong> FC Auggen als Fallstudie nutzen (mit Einverständnis). 3 weitere Vereine als Beta-Tester gewinnen.</li>
+      <li style="margin-bottom: 6px;"><strong>Vertriebskanäle:</strong> Direktvertrieb via Website, Partnerschaften mit Landesverbänden, Messepräsenz (e.g. Fussball-LIVE Messe).</li>
+      <li><strong>White-Label für Verbände:</strong> GRASPH, BFV, WDFV könnten CoCoach als Standard-Tool für ihre Vereine einführen.</li>
+    </ol>
+  </div>
+</div>
+
+<!-- PAGE 5: FAZIT -->
+<div class="page">
+  <h1>5. Fazit & nächste Schritte</h1>
+
+  <div class="card card-green" style="margin-bottom: 20px;">
+    <h2 style="margin-top: 0; border: none; padding: 0;">Kernbotschaft</h2>
+    <p style="font-size: 13px; font-weight: 500;">CoCoach besetzt eine <strong>eindeutige Marktnische</strong>: KI-gestützte Fußball-Management-Plattform auf Deutsch. Kein anderer Anbieter bietet automatische Datenbeschaffung, 3D-Taktiktafel und Performance-Analytics in einer einzigen Plattform. Die Preisgestaltung von €0–199/Mo ist <strong>unterhalb der Konkurrenz</strong> bei gleichzeitig <strong>höherem Funktionsumfang</strong>.</p>
+  </div>
+
+  <h2>Nächste Schritte (Priorität)</h2>
+  <table>
+    <tr><th>#</th><th>Aktion</th><th>Zeitraum</th><th>Aufwand</th></tr>
+    <tr><td>1</td><td>Lizenzsystem produktionsreif machen (Server-Persistenz via Firestore)</td><td>1 Woche</td><td>Mittel</td></tr>
+    <tr><td>2</td><td>3 Beta-Test-Vereine gewinnen (eigene Kontakte, lokale Vereine)</td><td>2 Wochen</td><td>Niedrig</td></tr>
+    <tr><td>3</td><td>Onboarding-Flow für neue Vereine (Registrierung → Naomi → erster Nutzung)</td><td>1 Woche</td><td>Mittel</td></tr>
+    <tr><td>4</td><td>Landing Page / Marketing-Website erstellen</td><td>1 Woche</td><td>Mittel</td></tr>
+    <tr><td>5</td><td>DFB/Verband-Kontakt für Partnerschaft aufnehmen</td><td>Laufend</td><td>Niedrig</td></tr>
+    <tr><td>6</td><td>MVP App-Store-Eintrag (PWA via Vercel installierbar)</td><td>1 Tag</td><td>Niedrig</td></tr>
+    <tr><td>7</td><td>Stripe-Integration für Zahlungen</td><td>1 Woche</td><td>Hoch</td></tr>
+  </table>
+
+  <h2>Risiken</h2>
+  <div class="two-col">
+    <div class="card card-red">
+      <h3>Technische Risiken</h3>
+      <ul>
+        <li>fussball.de könnte API-Änderungen vornehmen → Scraping-Blockade</li>
+        <li>Firebase-Hosting-Kosten bei Skalierung (aktuell ~$25/Mo)</li>
+        <li>Gemini-API-Kosten pro Scraping-Vorgang (~$0.01–0.05)</li>
+      </ul>
+    </div>
+    <div class="card card-red">
+      <h3>Markt-Risiken</h3>
+      <ul>
+        <li>360Player oder TeamSnap könnte Deutsch-Support hinzufügen</li>
+        <li>fussball.de könnte eigene Management-App launchen</li>
+        <li>Vereine zögern bei neuen Software-Lösungen (Vertrauensaufbau nötig)</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>Zusammenfassung der Preispositionierung</h2>
+  <div class="card card-blue">
+    <p style="font-size: 12px; text-align: center; margin: 0;">
+      <strong>CoCoach</strong> ist positioniert zwischen den <strong>kostenlosen Admin-Tools</strong> (Spond, fussball.de) und den <strong>teuren Enterprise-Lösungen</strong> (PlayMetrics, SportsEngine).<br>
+      Mit <strong>€99/Mo für Pro</strong> bietet CoCoach das <strong>beste Preis-Leistungs-Verhältnis</strong> im gesamten Markt — inklusive Features, für die Konkurrenten das Doppelte verlangen.
+    </p>
+  </div>
+
+  <div class="footer">
+    <p>CoCoach Marktanalyse & Preisstrategie 2026 | Vertraulich | Erstellt am 23.08.2026</p>
+    <p>Kontakt: samerkhaleel720@gmail.com | https://cocoach.vercel.app</p>
+  </div>
+</div>
+
+</body>
+</html>
