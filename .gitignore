@@ -37,6 +37,7 @@ bun.lockb
 
 .vercel
 .env*
+!.env.example
 
 # Demo-/Build-Artefakte (neu generierbar via scripts/)
 caps/
