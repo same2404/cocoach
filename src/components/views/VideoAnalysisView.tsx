@@ -42,7 +42,7 @@ import { VideoReelPlayerModal } from '../video/VideoReelPlayerModal';
 import { CategoryTrainerNoteCard, CategoryTrainerNote } from '../video/CategoryTrainerNoteCard';
 import { ACTICODE_TASKS } from '../../constants/teamConfig';
 import { VisionAnalysisPanel } from '../video/VisionAnalysisPanel';
-import { apiFetch } from '../../lib/apiClient';
+import { apiFetch, apiFetchFormData } from '../../lib/apiClient';
 
 export const VIDEO_CATEGORIES = [
   'Tore',
@@ -153,6 +153,50 @@ Empfehlung für den Zuschnitt: Beginne 3–5 Sekunden vor dem eigentlichen Ballv
   }
 };
 
+// Automatische Schnitt-Vorschläge & Sub-Tags je Kategorie
+// (Sekunden relativ zum "Kernmoment" der Szene)
+export const CATEGORY_CUT_RULES: Record<VideoCategory, {
+  startBefore: number;   // wie viele Sek. VOR dem Kernmoment beginnen
+  endAfter: number;      // wie viele Sek. NACH dem Kernmoment enden
+  subTags: string[];
+}> = {
+  'Tore': {
+    startBefore: 5,
+    endAfter: 4,
+    subTags: ['Kopfball', 'Fuß', 'Distanz', 'Abstauber', 'Elfmeter', 'Eigentor', 'Umschalten', 'Aufbau', 'Standard', 'Konter'],
+  },
+  'Gegentore': {
+    startBefore: 6,
+    endAfter: 2,
+    subTags: ['Stellungsfehler', 'Zuordnungsfehler', 'Timing', 'individuell', 'kollektiv', 'Umschalten', 'Aufbau', 'Standard'],
+  },
+  'Spielaufbau': {
+    startBefore: 0,
+    endAfter: 3,
+    subTags: ['kurz', 'lang', 'über TW', 'Doppel-6', 'zurückfallender 10er', 'erfolgreich', 'nicht erfolgreich'],
+  },
+  'Pressing MIT Ball': {
+    startBefore: 1,
+    endAfter: 3,
+    subTags: ['Lösung erfolgreich', 'Lösung nicht erfolgreich', 'Kurzpass', 'Ablage', 'Dribbling', 'langer Ball', 'Foul provoziert'],
+  },
+  'Pressing GEGEN den Ball': {
+    startBefore: 2,
+    endAfter: 2,
+    subTags: ['hoch', 'mittel', 'tief', 'links', 'rechts', 'Zentrum', 'Ballgewinn', 'Befreiung', 'Foul'],
+  },
+  'Standards': {
+    startBefore: 2,
+    endAfter: 4,
+    subTags: ['Ecke', 'Freistoß-Tor', 'Freistoß-Halbfeld', 'Einwurf', 'Elfmeter', 'Schweden', 'Lukas', 'Apache', 'Pluto', 'Torchance entstanden'],
+  },
+  'Ballverlust': {
+    startBefore: 3,
+    endAfter: 3,
+    subTags: ['unnötiges Dribbling', 'falsche Ballannahme', 'schlechter Pass', 'fehlende Absicherung', 'Fremdeinwirkung', 'eigenes Drittel', 'Mittelfeld', 'gegnerisches Drittel', 'Gegentor', 'Gegentorchance', 'keine Konsequenz'],
+  },
+};
+
 export interface TacticalVideoClip {
   id: string;
   category: VideoCategory;
@@ -169,6 +213,7 @@ export interface TacticalVideoClip {
   label?: string;
   assignedPlayerId?: string;
   assignedPlayerName?: string;
+  cutFileName?: string;
 }
 
 interface VideoAnalysisViewProps {
@@ -238,6 +283,11 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
   const [videoDuration, setVideoDuration] = useState<number>(0);
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  // Original hochgeladene Video-Datei (Blob/File), für echtes ffmpeg-Schneiden
+  const videoFileRef = useRef<Blob | File | null>(null);
+  // Schnitt-Ausführungsstatus
+  const [isCutting, setIsCutting] = useState<boolean>(false);
+  const [cutError, setCutError] = useState<string>('');
   
   // Veo / external URL state
   const [veoInputUrl, setVeoInputUrl] = useState<string>('');
@@ -258,6 +308,8 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
   const [cutStart, setCutStart] = useState<number>(0);
   const [cutEnd, setCutEnd] = useState<number>(10);
   const [selectedCategory, setSelectedCategory] = useState<VideoCategory>('Spielaufbau');
+  // In der Schnitt-UI gewählte Sub-Tags (werden in die taktische Notiz übernommen)
+  const [selectedSubTags, setSelectedSubTags] = useState<string[]>([]);
   const [assignedPlayerId, setAssignedPlayerId] = useState<string>('');
   const [clipNoteDraft, setClipNoteDraft] = useState<string>('');
   const [clipColorDraft, setClipColorDraft] = useState<'green' | 'red' | 'none'>('none');
@@ -481,6 +533,9 @@ videoUrl: videoSource ?? '',
       const objUrl = URL.createObjectURL(file);
       setVideoSource(objUrl);
       setVideoFileName(file.name);
+      // Datei für echtes ffmpeg-Schneiden merken
+      videoFileRef.current = file;
+      setCutError('');
       setIsPlaying(false);
       setIsPreviewingCut(false);
       setSaveSuccessMsg(null);
@@ -495,6 +550,9 @@ videoUrl: videoSource ?? '',
     const sampleUrl = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4';
     setVideoSource(sampleUrl);
     setVideoFileName('FC_Auggen_Spielanalyse_Matchday.mp4');
+    // Test-Video kommt von einer remote-URL -> kein lokaler File-Schnitt möglich
+    videoFileRef.current = null;
+    setCutError('Beispielvideo: echtes Schneiden nur nach lokalem Upload möglich.');
     setIsPlaying(false);
     setIsPreviewingCut(false);
     setSaveSuccessMsg(null);
@@ -594,6 +652,9 @@ videoUrl: videoSource ?? '',
         const objectUrl = URL.createObjectURL(blob);
         setVideoSource(objectUrl);
         setVideoFileName(fileName);
+        // heruntergeladene Datei für echtes ffmpeg-Schneiden merken
+        videoFileRef.current = blob;
+        setCutError('');
 
         setDownloadProgress(100);
         setDownloadStatus('success');
@@ -698,68 +759,155 @@ videoUrl: videoSource ?? '',
     return '';
   };
 
+  // Echten .mp4-Clip per Server-ffmpeg schneiden & herunterladen
+  const cutToMp4 = async (startSec: number, endSec: number, baseName: string): Promise<Blob | null> => {
+    const fileData = videoFileRef.current;
+    if (!fileData) return null;
+
+    const form = new FormData();
+    form.append('file', fileData, videoFileName || 'video.mp4');
+    form.append('start', String(startSec));
+    form.append('end', String(endSec));
+    form.append('name', baseName);
+
+    const res = await apiFetchFormData('/api/video/cut', form);
+    if (!res.ok) {
+      let msg = `Schneiden fehlgeschlagen (HTTP ${res.status})`;
+      try {
+        const j = await res.json();
+        if (j?.error) msg = j.error;
+      } catch {}
+      throw new Error(msg);
+    }
+    return await res.blob();
+  };
+
+  const triggerDownload = (blob: Blob, filename: string) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 3000);
+  };
+
+  // Automatischen Schnitt-Vorschlag nach Kategorie-Regel anwenden (relativ zur aktuellen Position)
+  const applyCutRuleSuggestion = () => {
+    const rule = CATEGORY_CUT_RULES[selectedCategory];
+    if (!rule || !mainVideoRef.current || !videoDuration) return;
+    const moment = mainVideoRef.current.currentTime;
+    const suggestedStart = Math.max(0, moment - rule.startBefore);
+    const suggestedEnd = Math.min(videoDuration, moment + rule.endAfter);
+    if (suggestedEnd > suggestedStart) {
+      setCutStart(suggestedStart);
+      setCutEnd(suggestedEnd);
+    }
+  };
+
+  const handleCategoryChange = (cat: VideoCategory) => {
+    setSelectedCategory(cat);
+    // Sub-Tags wechseln: Auswahl zurücksetzen
+    setSelectedSubTags([]);
+  };
+
+  const toggleSubTag = (tag: string) => {
+    setSelectedSubTags(prev =>
+      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+    );
+  };
+
   // Save cut clip
   const handleSaveClip = async () => {
     if (!videoSource) return;
 
-    const thumb = captureThumbnail();
-    const clipDuration = Math.max(1, Math.round((cutEnd - cutStart) * 10) / 10);
-    const newId = `clip_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    setIsCutting(true);
+    setCutError('');
+    try {
+      const thumb = captureThumbnail();
+      const clipDuration = Math.max(1, Math.round((cutEnd - cutStart) * 10) / 10);
+      const newId = `clip_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
-    // Resolve assigned player name if selected
-    const assignedPlayer = players.find(p => p.id === assignedPlayerId);
-    const assignedPlayerName = assignedPlayer 
-      ? ('firstName' in assignedPlayer ? `${assignedPlayer.firstName} ${assignedPlayer.lastName}` : (assignedPlayer as any).name)
-      : undefined;
-
-    const newClip: TacticalVideoClip = {
-      id: newId,
-      category: selectedCategory,
-      videoUrl: videoSource,
-      videoName: videoFileName || 'Spielvideo',
-      startTime: cutStart,
-      endTime: cutEnd,
-      duration: clipDuration,
-      thumbnailUrl: thumb,
-      tacticalNote: clipNoteDraft.trim(),
-      colorMarking: clipColorDraft,
-      createdAt: new Date().toISOString(),
-      title: `${selectedCategory} (${formatTime(cutStart)} - ${formatTime(cutEnd)})`,
-      assignedPlayerId: assignedPlayerId || undefined,
-      assignedPlayerName: assignedPlayerName || undefined
-    };
-
-    await saveClip(newClip);
-
-    // 1. Ensure the assigned category accordion is open
-    setOpenCategories(prev => ({ ...prev, [selectedCategory]: true }));
-    setHighlightedClipId(newId);
-
-    // 2. Show friendly confirmation banner
-    setSaveSuccessMsg(`Szene (${formatTime(cutStart)} - ${formatTime(cutEnd)}) erfolgreich in „${selectedCategory}" gespeichert!`);
-
-    // 3. Scroll smoothly directly to the assigned category & newly saved clip
-    setTimeout(() => {
-      const clipElement = document.getElementById(`clip-${newId}`);
-      const categoryElement = document.getElementById(`category-section-${selectedCategory}`);
-      const targetElement = clipElement || categoryElement;
-      if (targetElement) {
-        targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Echtes ffmpeg-Schneiden, sobald eine lokale Datei vorliegt
+      let cutFileName: string | undefined;
+      if (videoFileRef.current) {
+        try {
+          const baseName = `${selectedCategory.replace(/\s+/g, '_')}_${Math.round(cutStart)}-${Math.round(cutEnd)}`;
+          const clipBlob = await cutToMp4(cutStart, cutEnd, baseName);
+          if (clipBlob) {
+            cutFileName = `${baseName}.mp4`;
+            triggerDownload(clipBlob, cutFileName);
+          }
+        } catch (err: any) {
+          setCutError(err?.message || 'Echtes Schneiden fehlgeschlagen. Szene wurde trotzdem als Zeitmarke gespeichert.');
+        }
       }
-    }, 180);
 
-    // Reset notes for next cut but KEEP VIDEO OPEN
-    setClipNoteDraft('');
-    setClipColorDraft('none');
-    setAssignedPlayerId('');
+      // Resolve assigned player name if selected
+      const assignedPlayer = players.find(p => p.id === assignedPlayerId);
+      const assignedPlayerName = assignedPlayer 
+        ? ('firstName' in assignedPlayer ? `${assignedPlayer.firstName} ${assignedPlayer.lastName}` : (assignedPlayer as any).name)
+        : undefined;
 
-    // Advance cut markers by standard interval for convenience
-    const nextStart = cutEnd;
-    const nextEnd = Math.min(videoDuration, nextStart + 10);
-    setCutStart(nextStart);
-    setCutEnd(nextEnd);
-    if (mainVideoRef.current) {
-      mainVideoRef.current.currentTime = nextStart;
+      const tagsText = selectedSubTags.length
+        ? `\nSub-Tags: ${selectedSubTags.join(', ')}`
+        : '';
+      const noteText = clipNoteDraft.trim() + tagsText;
+
+      const newClip: TacticalVideoClip = {
+        id: newId,
+        category: selectedCategory,
+        videoUrl: videoSource,
+        videoName: videoFileName || 'Spielvideo',
+        startTime: cutStart,
+        endTime: cutEnd,
+        duration: clipDuration,
+        thumbnailUrl: thumb,
+        tacticalNote: noteText,
+        colorMarking: clipColorDraft,
+        createdAt: new Date().toISOString(),
+        title: `${selectedCategory} (${formatTime(cutStart)} - ${formatTime(cutEnd)})`,
+        assignedPlayerId: assignedPlayerId || undefined,
+        assignedPlayerName: assignedPlayerName || undefined,
+        ...(cutFileName ? { cutFileName } : {}),
+      };
+
+      await saveClip(newClip);
+
+      // 1. Ensure the assigned category accordion is open
+      setOpenCategories(prev => ({ ...prev, [selectedCategory]: true }));
+      setHighlightedClipId(newId);
+
+      // 2. Show friendly confirmation banner
+      setSaveSuccessMsg(`Szene (${formatTime(cutStart)} - ${formatTime(cutEnd)}) erfolgreich in „${selectedCategory}" gespeichert!${cutFileName ? ' Clip-Download gestartet.' : ''}`);
+
+      // 3. Scroll smoothly directly to the assigned category & newly saved clip
+      setTimeout(() => {
+        const clipElement = document.getElementById(`clip-${newId}`);
+        const categoryElement = document.getElementById(`category-section-${selectedCategory}`);
+        const targetElement = clipElement || categoryElement;
+        if (targetElement) {
+          targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 180);
+
+      // Reset notes for next cut but KEEP VIDEO OPEN
+      setClipNoteDraft('');
+      setClipColorDraft('none');
+      setAssignedPlayerId('');
+      setSelectedSubTags([]);
+
+      // Advance cut markers by standard interval for convenience
+      const nextStart = cutEnd;
+      const nextEnd = Math.min(videoDuration, nextStart + 10);
+      setCutStart(nextStart);
+      setCutEnd(nextEnd);
+      if (mainVideoRef.current) {
+        mainVideoRef.current.currentTime = nextStart;
+      }
+    } finally {
+      setIsCutting(false);
     }
   };
 
@@ -774,6 +922,8 @@ videoUrl: videoSource ?? '',
     }
     setVideoSource(null);
     setVideoFileName('');
+    videoFileRef.current = null;
+    setCutError('');
     setIsPlaying(false);
     setIsPreviewingCut(false);
     setSaveSuccessMsg(null);
@@ -1788,13 +1938,50 @@ videoUrl: videoSource ?? '',
                   </div>
                 </div>
 
+                {/* Schnitt-Regel-Helfer: automatischer Vorschlag nach Kategorie */}
+                <div className="mt-2 pt-2 border-t border-[#1E293B] grid grid-cols-1 md:grid-cols-2 gap-2 items-start">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={applyCutRuleSuggestion}
+                      className="px-3 py-1.5 bg-[#6366F1] hover:bg-[#4F46E5] text-white font-bold text-[11px] rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Scissors size={12} /> Automatischer Schnitt-Vorschlag
+                    </button>
+                    {(() => {
+                      const rule = CATEGORY_CUT_RULES[selectedCategory];
+                      return rule ? (
+                        <span className="text-[#94A3B8] text-[11px]">
+                          Regel: <b className="text-white">{rule.startBefore}s vor</b> – <b className="text-white">{rule.endAfter}s nach</b> dem Kernmoment
+                        </span>
+                      ) : null;
+                    })()}
+                  </div>
+                  <div className="flex items-center gap-1 flex-wrap">
+                    {CATEGORY_CUT_RULES[selectedCategory]?.subTags.map(tag => (
+                      <button
+                        type="button"
+                        key={tag}
+                        onClick={() => toggleSubTag(tag)}
+                        className={`px-2 py-1 rounded-md text-[10px] font-bold border transition-all cursor-pointer ${
+                          selectedSubTags.includes(tag)
+                            ? 'bg-emerald-950 text-emerald-300 border-emerald-500'
+                            : 'bg-[#111722] text-[#94A3B8] border-[#242F42] hover:border-emerald-700/60'
+                        }`}
+                      >
+                        {tag}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 {/* Category selector, Player selector & Save Button */}
                 <div className="flex items-center gap-2 flex-wrap ml-auto">
                   <div>
                     <span className="text-[#64748B] uppercase font-bold text-[10px] block">Kategorie</span>
                     <select
                       value={selectedCategory}
-                      onChange={(e) => setSelectedCategory(e.target.value as VideoCategory)}
+                      onChange={(e) => handleCategoryChange(e.target.value as VideoCategory)}
                       className="p-2 bg-[#1E293B] border border-[#334155] rounded-lg text-xs font-bold text-white uppercase focus:outline-none focus:border-[#10B981]"
                     >
                       {VIDEO_CATEGORIES.map(cat => (
@@ -1825,12 +2012,25 @@ videoUrl: videoSource ?? '',
                   <div className="self-end">
                     <button
                       onClick={handleSaveClip}
-                      className="px-5 py-2 bg-[#10B981] hover:bg-[#059669] text-[#0A0E17] font-black text-xs uppercase tracking-wider rounded-lg transition-all shadow-lg flex items-center gap-1.5 cursor-pointer active:scale-95"
+                      disabled={isCutting}
+                      className="px-5 py-2 bg-[#10B981] hover:bg-[#059669] disabled:opacity-50 disabled:cursor-not-allowed text-[#0A0E17] font-black text-xs uppercase tracking-wider rounded-lg transition-all shadow-lg flex items-center gap-1.5 cursor-pointer active:scale-95"
                     >
-                      <Plus size={16} /> <span>Clip speichern</span>
+                      {isCutting ? (
+                        <>
+                          <span className="inline-block w-3.5 h-3.5 border-2 border-[#0A0E17] border-t-transparent rounded-full animate-spin" />
+                          <span>Wird geschnitten…</span>
+                        </>
+                      ) : (
+                        <>
+                          <Plus size={16} /> <span>Clip speichern {videoFileRef.current ? '& schneiden' : ''}</span>
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>
+                {cutError && (
+                  <div className="pt-2 text-[11px] font-semibold text-amber-300">{cutError}</div>
+                )}
               </div>
 
               {/* Optional Note & Color marking right at cutting time */}

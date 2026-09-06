@@ -6,6 +6,12 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import fs from "fs";
+import { execFile } from "child_process";
+import ffmpegPath from "ffmpeg-static";
+import multer from "multer";
+import { promisify } from "util";
+
+const execFileAsync = promisify(execFile);
 
 // Minimaler .env-Loader (ohne dotenv-Paket): lädt GEMINI_API_KEY & Co. aus der .env-Datei,
 // damit der Server auch ohne explizit gesetzte Umgebungsvariablen funktioniert.
@@ -1703,6 +1709,80 @@ Jeder Block soll fachlich präzise, sofort nutzbar und im Deutschen sein. Antwor
     } catch (err: any) {
       console.error('[Training Plan Error]', err.message);
       res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // ============================================
+  // VIDEO-SCHNEIDEN (ffmpeg): echten .mp4-Clip erzeugen
+  // ============================================
+  const clipsDir = path.join(process.cwd(), 'clips');
+  if (!fs.existsSync(clipsDir)) fs.mkdirSync(clipsDir, { recursive: true });
+
+  const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 2 * 1024 * 1024 * 1024 },
+  });
+
+  app.post("/api/video/cut", upload.single("file"), async (req: any, res: any) => {
+    const sanitize = (s: string) => s.replace(/[^a-zA-Z0-9_-]/g, '_');
+    let inputPath = "";
+    let outputPath = "";
+    try {
+      const file = req.file;
+      const start = parseFloat(req.body?.start ?? '');
+      const end = parseFloat(req.body?.end ?? '');
+      const baseName = sanitize(String(req.body?.name || 'clip'));
+
+      if (!file || !file.buffer) {
+        return res.status(400).json({ error: "Video-Datei (FormData-Feld 'file') fehlt." });
+      }
+      if (!isFinite(start) || !isFinite(end) || start < 0 || end <= start) {
+        return res.status(400).json({ error: `Ungültige Zeitangaben: start=${start}, end=${end}` });
+      }
+
+      const ext = (file.originalname?.match(/\.([a-zA-Z0-9]+)$/) || [])[1] || 'mp4';
+      const outId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      inputPath = path.join(clipsDir, `in_${outId}.${ext}`);
+      outputPath = path.join(clipsDir, `${baseName}_${outId}.mp4`);
+
+      fs.writeFileSync(inputPath, file.buffer);
+
+      const ffmpeg = ffmpegPath as unknown as string;
+      const durationSec = end - start;
+      const args = [
+        "-y",
+        "-ss", String(start),
+        "-i", inputPath,
+        "-t", String(durationSec),
+        "-c:v", "libx264",
+        "-preset", "veryfast",
+        "-crf", "18",
+        "-c:a", "aac",
+        "-movflags", "+faststart",
+        "-avoid_negative_ts", "make_zero",
+        outputPath,
+      ];
+
+      const { stderr } = await execFileAsync(ffmpeg, args);
+      if (!fs.existsSync(outputPath)) {
+        return res.status(500).json({ error: "ffmpeg erzeugte keine Ausgabedatei.", detail: String(stderr).slice(0, 1000) });
+      }
+
+      res.setHeader("Content-Type", "video/mp4");
+      res.setHeader("Content-Disposition", `attachment; filename="${path.basename(outputPath)}"`);
+      const stream = fs.createReadStream(outputPath);
+      stream.pipe(res);
+      stream.on("close", () => {
+        setTimeout(() => {
+          try { fs.unlinkSync(inputPath); } catch {}
+          try { fs.unlinkSync(outputPath); } catch {}
+        }, 1000);
+      });
+    } catch (err: any) {
+      console.error("Fehler in /api/video/cut:", err?.message || err);
+      if (fs.existsSync(inputPath)) { try { fs.unlinkSync(inputPath); } catch {} }
+      if (fs.existsSync(outputPath)) { try { fs.unlinkSync(outputPath); } catch {} }
+      res.status(500).json({ error: err?.message || "Interner Fehler beim Schneiden." });
     }
   });
 
