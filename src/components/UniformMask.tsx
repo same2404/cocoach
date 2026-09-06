@@ -47,8 +47,8 @@ export const UniformMask: React.FC<UniformMaskProps> = ({
     <div ref={maskRef} className="relative flex flex-col h-full bg-[#0A0E17] text-[#F8FAFC] border border-[#334155]/60 rounded-xl shadow-2xl overflow-hidden print:border-0 print:shadow-none print:h-auto print:overflow-visible">
 
       {/* Header Mask Banner */}
-      <header className="bg-gradient-to-r from-[#121824] via-[#1E293B] to-[#121824] text-[#F8FAFC] px-3 sm:px-5 py-2 border-b border-[#334155]/80 flex items-center justify-between gap-3 shrink-0 print:hidden shadow-md z-30 min-h-[48px] overflow-visible relative">
-        <div className="flex items-center gap-2.5 shrink-0">
+      <header className="bg-gradient-to-r from-[#121824] via-[#1E293B] to-[#121824] text-[#F8FAFC] px-3 sm:px-5 py-2 border-b border-[#334155]/80 flex flex-wrap items-center justify-between gap-2 sm:gap-3 shrink-0 print:hidden shadow-md z-30 min-h-[48px] overflow-visible relative">
+        <div className="flex items-center gap-2.5 shrink-0 min-w-0">
           <span className="w-2.5 h-2.5 rounded-full bg-[#F59E0B] inline-block shadow-[0_0_8px_rgba(245,158,11,0.8)] border border-[#FBBF24]" />
           <h2 className="text-xs sm:text-sm font-extrabold tracking-wide text-[#F8FAFC] leading-none whitespace-nowrap flex items-center gap-2">
             <span>{title}</span>
@@ -59,7 +59,7 @@ export const UniformMask: React.FC<UniformMaskProps> = ({
         </div>
 
         {/* Top Header Actions */}
-        <div className="flex items-center gap-1.5 sm:gap-2 justify-end py-0.5 shrink-0 max-w-full overflow-visible">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 justify-end py-0.5 shrink-0 max-w-full overflow-visible">
           {onEdit && (
             <button 
               onClick={onEdit}

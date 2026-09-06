@@ -387,7 +387,7 @@ export const TrainingPlanModernView: React.FC<TrainingPlanModernViewProps> = ({ 
   const setContentField = useCallback((blockKey: string, value: string) => {
     if (!selected) return;
     const content = { ...(selected.content || {}) };
-    content[blockKey] = value;
+    (content as any)[blockKey] = value;
     saveField(selected.id, 'content', content);
   }, [selected, saveField]);
 

@@ -442,7 +442,7 @@ export function PanelPassnetzwerk({ player, insights }: PanelProps) {
       <div className="relative aspect-[105/60] bg-[#052e16] rounded-lg overflow-hidden border border-green-900">
         <svg viewBox="0 0 105 60" className="absolute inset-0 w-full h-full">
           {edges.map((e, i) => (
-            <line key={i} x1={nodes[e[0]].x} y1={nodes[e[0]].y} x2={nodes[e[1]].x} y2={nodes[e[1]].y} stroke={e[3] as string} strokeWidth={e[2] as number} opacity={0.7} strokeLinecap="round" />
+            <line key={i} x1={nodes[e[0] as number].x} y1={nodes[e[0] as number].y} x2={nodes[e[1] as number].x} y2={nodes[e[1] as number].y} stroke={e[3] as string} strokeWidth={e[2] as number} opacity={0.7} strokeLinecap="round" />
           ))}
           {nodes.map((n, i) => (
             <g key={i}>

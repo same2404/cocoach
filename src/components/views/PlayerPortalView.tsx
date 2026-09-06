@@ -555,8 +555,11 @@ export const PlayerPortalView: React.FC<PlayerPortalViewProps> = ({
         matchedName = `${foundPlayer.firstName} ${foundPlayer.lastName}`.trim();
       } else if (targetPlayer || selectedPlayer) {
         const activeP = targetPlayer || selectedPlayer;
-        matchedPlayerId = activeP.id;
-        matchedName = `${activeP.firstName} ${activeP.lastName}`.trim();
+        if (!activeP) { /* unreachable */ }
+        else {
+          matchedPlayerId = activeP.id;
+          matchedName = `${activeP.firstName} ${activeP.lastName}`.trim();
+        }
       } else {
         // Hash filename to assign different players deterministically for batch session files (e.g. session_k5spD-*.bin)
         let fileHash = 0;
@@ -735,7 +738,7 @@ export const PlayerPortalView: React.FC<PlayerPortalViewProps> = ({
         }
 
         setLastDecodedTracker(decoded);
-        newDecodedIds.push(decoded.id);
+        if (decoded?.id) newDecodedIds.push(decoded.id);
       }
 
       // IMPORTANT: Always switch the view to the player the session(s) were
@@ -2016,7 +2019,7 @@ export const PlayerPortalView: React.FC<PlayerPortalViewProps> = ({
       const a = (Math.PI * 2 * i) / n - Math.PI / 2;
       return [cx + Math.cos(a) * R * (v / 100), cy + Math.sin(a) * R * (v / 100)];
     };
-    const outer = pts => pts.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+    const outer = (pts: number[][]) => pts.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
     const outerIdx = Array.from({ length: n }, (_, i) => pt(i, 100));
     const dataPts = radarAxes.map((a, i) => pt(i, a.value));
     const gridLevels = [25, 50, 75, 100];
@@ -4201,7 +4204,7 @@ export const PlayerPortalView: React.FC<PlayerPortalViewProps> = ({
                         let sprintCount = 0;
                         let defensiveCount = 0;
 
-                        pointsInMinute.forEach(p => {
+                        pointsInMinute.forEach((p: any) => {
                           actionCount++;
                           if (p.actionType === 'sprint') { intensity += 40; sprintCount++; }
                           else if (p.actionType === 'run') { intensity += 25; }
@@ -4211,7 +4214,7 @@ export const PlayerPortalView: React.FC<PlayerPortalViewProps> = ({
                         });
 
                         const nearbyPoints = chartPoints.filter((p: any) => Math.abs(p.minute - minute) <= 2 && p.minute !== minute);
-                        nearbyPoints.forEach(p => {
+                        nearbyPoints.forEach((p: any) => {
                           if (p.actionType === 'sprint') intensity += 5;
                           else if (p.actionType === 'run') intensity += 3;
                         });
@@ -4353,7 +4356,7 @@ export const PlayerPortalView: React.FC<PlayerPortalViewProps> = ({
                                     fontWeight: 'bold',
                                     color: '#F8FAFC',
                                   }}
-                                  formatter={(value: any, name: string, props: any) => {
+                                  formatter={(value: any, name: any, props: any) => {
                                     const d = props.payload;
                                     return [
                                       <div key="tip" className="space-y-1">
@@ -4719,10 +4722,10 @@ export const PlayerPortalView: React.FC<PlayerPortalViewProps> = ({
                   </span>
                 </div>
                 <h2 className="text-2xl md:text-3xl font-black uppercase tracking-wider text-[#F8FAFC]">
-                  {selectedPlayer.lastName || selectedPlayer.name || 'Spieler'} (#{selectedPlayer.number || ''})
+                  {selectedPlayer?.lastName || selectedPlayer?.name || 'Spieler'} (#{selectedPlayer?.number || ''})
                 </h2>
                 <p className="text-xs text-[#94A3B8] font-bold mt-1">
-                  Position: <span className="text-[#F8FAFC] underline">{selectedPlayer.position || 'Feldspieler'}</span> • Status: <span className="text-[#10B981]">Aktiv im Kader</span>
+                  Position: <span className="text-[#F8FAFC] underline">{selectedPlayer?.position || 'Feldspieler'}</span> • Status: <span className="text-[#10B981]">Aktiv im Kader</span>
                 </p>
 
                 {/* Prominent Session Recorded Date Badge */}
@@ -5014,7 +5017,7 @@ export const PlayerPortalView: React.FC<PlayerPortalViewProps> = ({
                 <Cpu size={20} /> WG Tracker Import & Ordner-Synchronisation
               </h3>
               <p className="text-xs text-gray-300 font-medium">
-                Sende neue Tracking-Rohdaten, GPS-Exporte oder MagentaCLOUD Links direkt in den Ordner von {selectedPlayer.lastName || selectedPlayer.name || 'dem Spieler'}.
+                Sende neue Tracking-Rohdaten, GPS-Exporte oder MagentaCLOUD Links direkt in den Ordner von {selectedPlayer?.lastName || selectedPlayer?.name || 'dem Spieler'}.
               </p>
             </div>
 
@@ -5100,7 +5103,7 @@ export const PlayerPortalView: React.FC<PlayerPortalViewProps> = ({
                 <FolderCheck size={20} className="text-blue-900" /> HISTORIE DER SESSiON- & SPIELANALYSEN IM ORDNER
               </h3>
               <div className="flex items-center gap-3">
-                {(selectedPlayer.trackerHistory?.length || 0) > 1 && (
+                {(selectedPlayer?.trackerHistory?.length || 0) > 1 && (
                   <button
                     type="button"
                     onClick={() => {
@@ -5115,7 +5118,7 @@ export const PlayerPortalView: React.FC<PlayerPortalViewProps> = ({
                   </button>
                 )}
                 <span className="text-xs font-bold text-[#94A3B8]">
-                  {(selectedPlayer.trackerHistory?.length || 0) + (selectedPlayer?.trackerAnalysis ? 1 : 0)} Eintrags-Analysen hinterlegt
+                  {(selectedPlayer?.trackerHistory?.length || 0) + (selectedPlayer?.trackerAnalysis ? 1 : 0)} Eintrags-Analysen hinterlegt
                 </span>
               </div>
             </div>
@@ -5158,7 +5161,7 @@ export const PlayerPortalView: React.FC<PlayerPortalViewProps> = ({
                           <span className="text-[10px] font-black uppercase bg-emerald-200 text-emerald-900 px-2 py-0.5 border border-black">Aktiv</span>
                           <button
                             type="button"
-                            onClick={() => handleDeleteTrackerEntry(selectedPlayer.id, 'active')}
+                            onClick={() => handleDeleteTrackerEntry(selectedPlayer?.id ?? '', 'active')}
                             title="Aktive Session löschen"
                             className="p-1.5 bg-red-100 hover:bg-red-200 text-red-700 border border-black shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all shrink-0 cursor-pointer"
                           >
@@ -5169,7 +5172,7 @@ export const PlayerPortalView: React.FC<PlayerPortalViewProps> = ({
                     </tr>
                   )}
 
-                  {(selectedPlayer.trackerHistory || []).map((item: any, idx) => {
+                  {(selectedPlayer?.trackerHistory || []).map((item: any, idx) => {
                     const rowDate = formatSessionDate(extractSessionDate(item)) || '-';
                     const rowTime = extractSessionTime(item);
                     return (
@@ -5193,7 +5196,7 @@ export const PlayerPortalView: React.FC<PlayerPortalViewProps> = ({
                             <span className="text-[10px] font-black uppercase bg-[#1E293B] text-[#CBD5E1] px-1.5 py-0.5 border border-black">Archiv</span>
                             <button
                               type="button"
-                              onClick={() => handleDeleteTrackerEntry(item.spielerId || selectedPlayer.id, item.id)}
+                              onClick={() => handleDeleteTrackerEntry(item.spielerId || selectedPlayer?.id || '', item.id)}
                               title="Eintrag löschen"
                               className="p-1.5 bg-red-100 hover:bg-red-200 text-red-700 border border-black shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all shrink-0"
                             >
@@ -5939,7 +5942,7 @@ export const PlayerPortalView: React.FC<PlayerPortalViewProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#334155]">
-                    {normalizedTrackerHistory.map((item) => {
+                    {normalizedTrackerHistory.map((item: any) => {
                       const isSelected = selectedForComparison.includes(item.id);
                       return (
                         <tr key={item.id} className={`hover:bg-[#334155]/40 transition-colors font-medium ${isSelected ? 'bg-[#F59E0B]/10 border-l-4 border-l-[#F59E0B]' : 'bg-[#1E293B]'}`}>
@@ -6051,7 +6054,7 @@ export const PlayerPortalView: React.FC<PlayerPortalViewProps> = ({
               <p className="text-xs font-bold italic text-[#94A3B8]">Keine Einheiten vorhanden. Bitte zuerst eine BIN-Datei hochladen.</p>
             ) : (
               <div className="flex flex-wrap gap-3">
-                {normalizedTrackerHistory.map((item) => {
+                {normalizedTrackerHistory.map((item: any) => {
                   const isChecked = selectedForComparison.includes(item.id);
                   return (
                     <div
@@ -6100,7 +6103,7 @@ export const PlayerPortalView: React.FC<PlayerPortalViewProps> = ({
 
           {/* Comparison Content */}
           {(() => {
-            const itemsToCompare = normalizedTrackerHistory.filter(i => selectedForComparison.includes(i.id));
+            const itemsToCompare = normalizedTrackerHistory.filter((i: any) => selectedForComparison.includes(i.id));
 
             if (itemsToCompare.length === 0) {
               return (
@@ -6143,7 +6146,7 @@ export const PlayerPortalView: React.FC<PlayerPortalViewProps> = ({
                       <thead>
                         <tr className="bg-[#121824] text-[#94A3B8] font-bold uppercase text-[10px]">
                           <th className="p-3 border-r border-[#334155]">Metrik / Kennzahl</th>
-                          {itemsToCompare.map((item, idx) => (
+                          {itemsToCompare.map((item: any, idx) => (
                             <th key={item.id} className="p-3 border-r border-[#334155] text-center bg-[#0F172A]">
                               <div className="flex flex-col items-center gap-1">
                                 <span className="text-[#818CF8]">Einheit #{idx + 1}</span>
@@ -6530,7 +6533,7 @@ export const PlayerPortalView: React.FC<PlayerPortalViewProps> = ({
                     const vals = onlyPlayers.map((p: any) => (p.trackerAnalysis?.[field] || 0)).filter((v: number) => v > 0);
                     return vals.length ? vals.reduce((a: number, b: number) => a + b, 0) / vals.length : 0;
                   };
-                  const playerVal = (field: string) => selectedPlayer.trackerAnalysis?.[field] || 0;
+                  const playerVal = (field: string) => (selectedPlayer?.trackerAnalysis as any)?.[field] || 0;
                   const metrics = [
                     { label: 'Distanz (km)', field: 'totalDistanceKm', max: 14 },
                     { label: 'Max Speed (km/h)', field: 'maxSpeedKmh', max: 35 },
@@ -6628,7 +6631,7 @@ export const PlayerPortalView: React.FC<PlayerPortalViewProps> = ({
               <div className="bg-gray-900 text-white p-4 border-2 border-black space-y-2 font-mono">
                 <span className="font-black uppercase text-xs text-emerald-400 block">Sprints ({detailsModalRecord.sprints?.length || 0}) & GPS Punkte ({detailsModalRecord.gpsPunkte?.length || 0})</span>
                 <div className="text-[11px] text-gray-300">
-                  {detailsModalRecord.sprints?.map((s, idx) => (
+                  {detailsModalRecord.sprints?.map((s: any, idx: number) => (
                     <div key={idx} className="py-0.5 border-b border-gray-800">
                       Sprint #{idx + 1}: Start bei {s.startSekunde}s • Dauer {s.dauerSekunden}s • Max Speed {s.maxGeschwindigkeitKmh} km/h
                     </div>
@@ -6641,7 +6644,7 @@ export const PlayerPortalView: React.FC<PlayerPortalViewProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  handleDeleteTrackerEntry(detailsModalRecord.spielerId, detailsModalRecord.id);
+                  handleDeleteTrackerEntry(detailsModalRecord.spielerId ?? '', detailsModalRecord.id ?? '');
                 }}
                 className="py-2.5 px-4 bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] flex items-center gap-2 transition-all"
               >

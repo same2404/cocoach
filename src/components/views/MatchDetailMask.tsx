@@ -137,7 +137,7 @@ export const MatchDetailMask: React.FC<MatchDetailMaskProps> = ({
   // Filter players who have minutes in this match
   const matchPlayers = players.map(player => {
     const record = data.find(r => r.playerId === player.id);
-    const minutes = record?.matchMinutes?.[match.id] || record?.[`matchMinutes.${match.id}`] || 0;
+    const minutes = (record?.matchMinutes as any)?.[match.id] || (record as any)?.[`matchMinutes.${match.id}`] || 0;
     return { ...player, minutes };
   }).filter(p => p.minutes > 0 || isEditing);
 

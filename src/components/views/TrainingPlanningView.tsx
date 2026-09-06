@@ -4415,7 +4415,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
                                                     }
 
                                                     if (blobData) {
-                                                        const fileUrl = URL.createObjectURL(new Blob([blobData], { type: gDoc.mimeType || 'application/octet-stream' }));
+                                                        const fileUrl = URL.createObjectURL(new Blob([blobData as unknown as BlobPart], { type: gDoc.mimeType || 'application/octet-stream' }));
                                                         window.open(fileUrl, '_blank');
                                                         setTimeout(() => URL.revokeObjectURL(fileUrl), 5000);
                                                         setNotification(null);
@@ -4544,7 +4544,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
                                                     }
 
                                                     if (blobData) {
-                                                        const fileUrl = URL.createObjectURL(new Blob([blobData], { type: activeDoc.mimeType || 'application/octet-stream' }));
+                                                        const fileUrl = URL.createObjectURL(new Blob([blobData as unknown as BlobPart], { type: activeDoc.mimeType || 'application/octet-stream' }));
                                                         const a = document.createElement('a');
                                                         a.href = fileUrl;
                                                         a.download = activeDoc.name;
@@ -4575,7 +4575,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
                                                     }
                                                     
                                                     if (blobData) {
-                                                        const fileUrl = URL.createObjectURL(new Blob([blobData], { type: activeDoc.mimeType || 'application/octet-stream' }));
+                                                        const fileUrl = URL.createObjectURL(new Blob([blobData as unknown as BlobPart], { type: activeDoc.mimeType || 'application/octet-stream' }));
                                                         window.open(fileUrl, '_blank');
                                                         setTimeout(() => URL.revokeObjectURL(fileUrl), 5000);
                                                         setNotification(null);

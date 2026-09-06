@@ -1,4 +1,4 @@
-# Copyright (c) 2026 FC Auggen Manager. All rights reserved. Copying or duplication is prohibited.
+﻿# Copyright (c) 2026 FC Auggen Manager. All rights reserved. Copying or duplication is prohibited.
 Add-Type -AssemblyName System.Drawing
 
 $W = 1920; $H = 1080
@@ -67,11 +67,13 @@ $white = [System.Drawing.Color]::White
 
 New-ChipCaption -Path (Join-Path $dir 'cap_01.png') -Title 'Modernes Design. Klare Struktur.' -Sub 'Startseite  ·  CoCoach' -SubColor $blue
 New-ChipCaption -Path (Join-Path $dir 'cap_02.png') -Title 'Taktik & Formation – live anpassbar' -Sub '100 % manuell  ·  frei gezeichnet' -SubColor $green
-New-ChipCaption -Path (Join-Path $dir 'cap_03.png') -Title 'Training perfekt organisiert' -Sub 'Kalender  ·  Inhalte  ·  Spielerübernahme' -SubColor $cyan
-New-ChipCaption -Path (Join-Path $dir 'cap_04.png') -Title 'Kader modern verwalten' -Sub 'Spielerprofile & Rollen-Zuordnung' -SubColor $blue
-New-ChipCaption -Path (Join-Path $dir 'cap_05.png') -Title 'Finanzen klar im Blick' -Sub 'Einnahmen / Ausgaben im Überblick' -SubColor $amber
-New-ChipCaption -Path (Join-Path $dir 'cap_06.png') -Title 'Analyse & Feedback in Echtzeit' -Sub 'Spielerbericht nach Tracker-Daten' -SubColor $green
-New-ChipCaption -Path (Join-Path $dir 'cap_07.png') -Title 'Spielanalyse & xG' -Sub 'GPS-Daten & moderne Analysen' -SubColor $cyan
+New-ChipCaption -Path (Join-Path $dir 'cap_03.png') -Title 'Startelf-Präsentation' -Sub 'Grundordnung & Positionen' -SubColor $amber
+New-ChipCaption -Path (Join-Path $dir 'cap_04.png') -Title 'Training perfekt organisiert' -Sub 'Kalender  ·  Inhalte  ·  Spielerübernahme' -SubColor $cyan
+New-ChipCaption -Path (Join-Path $dir 'cap_05.png') -Title 'Kader modern verwalten' -Sub 'Spielerprofile & Rollen-Zuordnung' -SubColor $blue
+New-ChipCaption -Path (Join-Path $dir 'cap_06.png') -Title 'Spielerbericht – alle Diagramme' -Sub 'Leistung  ·  Belastung  ·  Form' -SubColor $green
+New-ChipCaption -Path (Join-Path $dir 'cap_07.png') -Title 'Spielerbericht Pro' -Sub 'Analyse & Feedback in Echtzeit' -SubColor $cyan
+New-ChipCaption -Path (Join-Path $dir 'cap_08.png') -Title 'Finanzen klar im Blick' -Sub 'Einnahmen / Ausgaben im Überblick' -SubColor $amber
+New-ChipCaption -Path (Join-Path $dir 'cap_09.png') -Title 'Spielanalyse & xG' -Sub 'GPS-Daten & moderne Analysen' -SubColor $blue
 
 New-CenterCaption -Path (Join-Path $dir 'cap_intro.png') -Main 'CoCoach' -Sub 'Die moderne Fußball-App' -Border 'red'
 New-CenterCaption -Path (Join-Path $dir 'cap_outro.png') -Main 'CoCoach' -Sub 'Die Zukunft des Fußballmanagements' -Border 'red'

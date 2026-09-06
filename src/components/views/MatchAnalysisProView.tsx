@@ -659,8 +659,8 @@ export const MatchAnalysisProView: React.FC<MatchAnalysisProProps> = ({ matchAna
               {selectedMatchData && (<div className="flex items-center gap-2 mt-1"><span className="text-[9px] text-slate-400 font-semibold">{selectedMatchData.competition}</span><span className="text-slate-600">\u2022</span><span className="text-[9px] text-slate-400 font-semibold">{selectedMatchData.date}</span></div>)}
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <select value={selectedMatchId || matchOptions[0]?.id || ''} onChange={(e) => setSelectedMatchId(e.target.value)} className="bg-[#0d1320] border border-slate-700/60 text-white font-bold text-xs p-3 pr-8 rounded-xl focus:outline-none focus:border-emerald-500 focus:shadow-[0_0_12px_rgba(16,185,129,0.2)] cursor-pointer appearance-none transition-all">
+          <div className="flex items-center gap-3 min-w-0 max-w-full">
+            <select value={selectedMatchId || matchOptions[0]?.id || ''} onChange={(e) => setSelectedMatchId(e.target.value)} className="w-full min-w-0 max-w-full bg-[#0d1320] border border-slate-700/60 text-white font-bold text-xs p-3 pr-8 rounded-xl focus:outline-none focus:border-emerald-500 focus:shadow-[0_0_12px_rgba(16,185,129,0.2)] cursor-pointer appearance-none transition-all">
               {matchOptions.map(m => (<option key={m.id} value={m.id}>{m.date} — {activeClub.name} vs. {m.opponent} ({m.result})</option>))}
             </select>
           </div>

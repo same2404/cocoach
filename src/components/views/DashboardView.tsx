@@ -824,7 +824,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-5 shadow-lg flex flex-col justify-between relative overflow-hidden group hover:border-slate-700 transition-all">
             <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl pointer-events-none" />
             <div>
-              <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-800 mb-4">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
                     <Calendar size={18} />
@@ -834,7 +834,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{nextMatch.competition}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <button
                     onClick={handleToggleEditNextMatch}
                     className="bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 font-bold text-[10px] uppercase px-2.5 py-1 rounded-md transition-all flex items-center gap-1 shadow"
@@ -1046,7 +1046,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-5 shadow-lg flex flex-col justify-between relative overflow-hidden group hover:border-slate-700 transition-all">
             <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none" />
             <div>
-              <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-800 mb-4">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
                     <Trophy size={18} />
@@ -1056,7 +1056,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{lastTestMatch.competition} • {lastTestMatch.fullDateTime}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <button
                     onClick={handleToggleEditLastMatch}
                     className="bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 font-bold text-[10px] uppercase px-2.5 py-1 rounded-md transition-all flex items-center gap-1 shadow"

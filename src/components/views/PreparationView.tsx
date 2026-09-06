@@ -454,7 +454,7 @@ export const PreparationView: React.FC<PreparationViewProps> = ({
     <div className="flex flex-col h-full bg-[#0A0E17] text-[#F8FAFC] p-2 sm:p-4 rounded-2xl border border-[#334155] overflow-hidden print:bg-[#1E293B] print:text-black">
       {/* Header */}
       <div className="p-4 border-b border-[#334155] bg-[#121824] flex flex-col gap-3 shrink-0 rounded-2xl shadow-lg">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-wrap justify-between items-center gap-2">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-xl bg-[#10B981] flex items-center justify-center text-white shadow-md">
               {icon}
@@ -464,7 +464,7 @@ export const PreparationView: React.FC<PreparationViewProps> = ({
               <p className="text-[10px] font-bold uppercase tracking-widest text-[#94A3B8] mt-0.5">{subtitle}</p>
             </div>
           </div>
-          <div className="flex gap-2 items-center print:hidden">
+          <div className="flex flex-wrap gap-2 items-center print:hidden">
             {feedback && (
               <div className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg animate-pulse border ${feedback.includes('Fehler') ? 'bg-rose-950 text-rose-300 border-rose-800' : 'bg-emerald-950 text-emerald-300 border-emerald-800'}`}>
                 {feedback}

@@ -1306,7 +1306,7 @@ export const MatchReportView: React.FC<MatchReportViewProps> = ({
                         <EditableArea 
                           className="w-full border border-slate-700 p-3 text-sm font-semibold uppercase min-h-[90px] leading-relaxed focus:outline-none focus:border-amber-400 bg-slate-900 text-slate-100 rounded-lg placeholder-slate-500"
                           placeholder="ZEIT | NAME..."
-                          value={currentAnalysis.goalsOwn}
+                          value={currentAnalysis.goalsOwn ?? ''}
                           onSave={(val) => handleUpdate('goalsOwn', val)}
                         />
                       </div>
@@ -1315,7 +1315,7 @@ export const MatchReportView: React.FC<MatchReportViewProps> = ({
                         <EditableArea 
                           className="w-full border border-slate-700 p-3 text-sm font-semibold uppercase min-h-[90px] leading-relaxed focus:outline-none focus:border-amber-400 bg-slate-900 text-slate-100 rounded-lg placeholder-slate-500"
                           placeholder="ZEIT | NAME..."
-                          value={currentAnalysis.goalsOpponent}
+                          value={currentAnalysis.goalsOpponent ?? ''}
                           onSave={(val) => handleUpdate('goalsOpponent', val)}
                         />
                       </div>
@@ -1327,7 +1327,7 @@ export const MatchReportView: React.FC<MatchReportViewProps> = ({
                         <EditableArea 
                           className="w-full border border-slate-700 p-3 text-sm font-semibold uppercase min-h-[110px] leading-relaxed focus:outline-none focus:border-amber-400 bg-slate-900 text-slate-100 rounded-lg placeholder-slate-500"
                           placeholder="GEGLÜCKTE AKTIONEN..."
-                          value={currentAnalysis.goodActions}
+                          value={currentAnalysis.goodActions ?? ''}
                           onSave={(val) => handleUpdate('goodActions', val)}
                         />
                       </div>
@@ -1336,7 +1336,7 @@ export const MatchReportView: React.FC<MatchReportViewProps> = ({
                         <EditableArea 
                           className="w-full border border-slate-700 p-3 text-sm font-semibold uppercase min-h-[110px] leading-relaxed focus:outline-none focus:border-amber-400 bg-slate-900 text-slate-100 rounded-lg placeholder-slate-500"
                           placeholder="FEHLER, LÜCKEN..."
-                          value={currentAnalysis.badActions}
+                          value={currentAnalysis.badActions ?? ''}
                           onSave={(val) => handleUpdate('badActions', val)}
                         />
                       </div>

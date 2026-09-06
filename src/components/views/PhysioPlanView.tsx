@@ -175,7 +175,7 @@ export const PhysioPlanView: React.FC<PhysioPlanViewProps> = ({
   return (
     <div className="flex flex-col h-full bg-slate-950 text-slate-100 overflow-hidden watermark-bg">
       {/* Top Header Bar */}
-      <div className="px-3 py-2 bg-slate-950 border-b border-slate-800 flex justify-between items-center shrink-0">
+      <div className="px-3 py-2 bg-slate-950 border-b border-slate-800 flex flex-wrap justify-between items-center gap-x-3 gap-y-2 shrink-0">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-amber-500/10 text-amber-400 rounded-lg border border-amber-500/30 shadow-xs">
             <HeartPulse size={18} className="animate-pulse text-amber-400" />
@@ -298,7 +298,7 @@ export const PhysioPlanView: React.FC<PhysioPlanViewProps> = ({
             </div>
 
             {/* Filter controls */}
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <div className="relative">
                 <Search size={11} className="absolute left-2 top-2 text-slate-500" />
                 <input 

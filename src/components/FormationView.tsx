@@ -356,7 +356,7 @@ export const FormationView: React.FC<FormationViewProps> = ({ players, scoutingC
       }}
     >
       {/* Header */}
-      <div className="bg-slate-900 border border-slate-800 p-2.5 rounded-xl shadow-xl flex justify-between items-center shrink-0 backdrop-blur-md">
+      <div className="bg-slate-900 border border-slate-800 p-2.5 rounded-xl shadow-xl flex flex-wrap justify-between items-center gap-2 shrink-0 backdrop-blur-md">
         <div className="flex items-center gap-2.5">
           <Shield size={16} className="text-emerald-400" />
           <div className="flex items-center gap-2">
@@ -406,7 +406,7 @@ export const FormationView: React.FC<FormationViewProps> = ({ players, scoutingC
           </select>
         </div>
       </div>
-      <div className="flex-1 flex gap-2 overflow-hidden" onClick={e => e.stopPropagation()}>
+      <div className="flex-1 flex gap-2 overflow-x-auto overflow-y-hidden" onClick={e => e.stopPropagation()}>
         {/* Sidebars Container Left */}
         <div className="flex gap-2 shrink-0">
           {/* Transition Players & Talents Sidebar (w-56) */}

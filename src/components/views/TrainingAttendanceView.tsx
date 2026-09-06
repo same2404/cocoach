@@ -241,7 +241,7 @@ export const TrainingAttendanceView: React.FC<TrainingAttendanceViewProps> = ({
                 </td>
               )}
               {sessions.map(num => {
-                const status = (record?.sessions && record.sessions[num]) || record?.[`sessions.${num}`] || '';
+                const status = (record?.sessions && record.sessions[num]) || (record as any)?.[`sessions.${num}`] || '';
                 const isPopoverActive = activePopover?.playerId === player.id && activePopover?.sessionNum === num;
 
                 return (
@@ -338,7 +338,7 @@ export const TrainingAttendanceView: React.FC<TrainingAttendanceViewProps> = ({
       let countInjured = 0;
 
       for (let s = startSession; s <= endSession; s++) {
-        const status = (record?.sessions && record.sessions[s]) || record?.[`sessions.${s}`] || '';
+        const status = (record?.sessions && record.sessions[s]) || (record as any)?.[`sessions.${s}`] || '';
         
         if (status === 'x') {
           totalLoad += 100;
@@ -421,10 +421,10 @@ export const TrainingAttendanceView: React.FC<TrainingAttendanceViewProps> = ({
   }, [chartData, startSession, endSession]);
 
   return (
-    <div className="flex flex-col h-full bg-[#0A0E17] text-[#F8FAFC] p-2 sm:p-4 rounded-2xl border border-[#334155] shadow-xl overflow-hidden min-h-screen">
-      <div className="p-4 border border-[#334155] bg-[#121824] text-[#F8FAFC] rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center mb-3 shadow-md gap-3">
-        <div className="flex items-center gap-6 flex-wrap">
-          <div className="flex items-center gap-3">
+    <div className="flex flex-col h-full w-full max-w-full bg-[#0A0E17] text-[#F8FAFC] p-2 sm:p-4 rounded-2xl border border-[#334155] shadow-xl overflow-hidden min-h-screen">
+      <div className="p-4 border border-[#334155] bg-[#121824] text-[#F8FAFC] rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center mb-3 shadow-md gap-3 w-full max-w-full">
+        <div className="flex items-center gap-6 flex-wrap w-full max-w-full">
+          <div className="flex items-center gap-3 flex-wrap">
             <h3 className="font-black uppercase text-sm sm:text-base tracking-wider text-[#F8FAFC]">Trainingsbeteiligung</h3>
             
             {/* View Mode Switcher */}

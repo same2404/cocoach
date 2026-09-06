@@ -715,7 +715,7 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ players, onEditPlayer, on
                           <div className="text-[7px] font-bold text-[#64748B] uppercase">GPS</div>
                           <div className="text-[9px] font-black text-[#22D3EE]">
                             {(selectedPerson.trackerAnalysis?.totalDistanceKm || 0) > 0
-                              ? `${selectedPerson.trackerAnalysis.totalDistanceKm}km / ${selectedPerson.trackerAnalysis.sprintCount || 0} Sprints`
+                              ? `${selectedPerson.trackerAnalysis?.totalDistanceKm ?? 0}km / ${selectedPerson.trackerAnalysis?.sprintCount || 0} Sprints`
                               : 'Keine Daten'}
                           </div>
                         </div>

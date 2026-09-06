@@ -2154,7 +2154,7 @@ const App: React.FC = () => {
                     [field]: value
                   }
                 };
-                saveSpieler(updatedPlayer);
+saveSpieler(updatedPlayer as Spieler);
               }
             }}
             currentMonth={currentMonth}
@@ -2816,8 +2816,19 @@ onNavigateToTacticBoard={() => {
           </div>
         )}
 
-        {/* LEFT VERTICAL SIDEBAR */}
-        <aside className="w-64 sidebar-glass flex flex-col shrink-0 z-40 print:hidden shadow-2xl relative"
+        {/* MOBILE/Tablet Drawer Backdrop (<768px) */}
+        <div
+          onClick={() => setIsMobileMenuOpen(false)}
+          className={`fixed inset-0 z-40 bg-black/70 backdrop-blur-sm md:hidden print:hidden transition-opacity duration-300 ${isMobileMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        />
+
+        {/* LEFT VERTICAL SIDEBAR: mobile => drawer, tablet => slim, desktop => full */}
+        <aside className={`sidebar-glass flex flex-col shrink-0 print:hidden shadow-2xl
+          fixed md:static top-0 left-0 bottom-0 z-50 md:z-40
+          w-64 md:w-60 xl:w-64
+          transition-transform duration-300 ease-in-out
+          ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0
+          max-md:overflow-y-auto max-md:pb-6`}
           style={{ boxShadow: '4px 0 30px rgba(0,212,255,0.05)' }}
         >
           {/* Header Branding in Sidebar */}
@@ -2916,36 +2927,36 @@ onNavigateToTacticBoard={() => {
             const daysUntilMatch = upcomingMatch ? Math.ceil((new Date(upcomingMatch.date).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : null;
 
             return (
-              <div className="mx-3 mb-2 p-2.5 rounded-xl bg-[#0F172A]/80 border border-[#334155]/40">
+              <div className="mx-3 mb-2 p-2.5 rounded-xl" style={{
+                background: 'rgba(0,212,255,0.04)',
+                border: '1px solid rgba(0,212,255,0.1)',
+              }}>
                 <div className="grid grid-cols-3 gap-1.5">
-                  {/* Kader */}
                   <div className="text-center">
-                    <div className="text-[14px] font-black text-[#10B981] leading-none">{totalPlayers}</div>
-                    <div className="text-[7px] font-bold text-[#64748B] uppercase tracking-wider mt-0.5">Kader</div>
+                    <div className="text-[15px] font-black leading-none text-gradient-cyan">{totalPlayers}</div>
+                    <div className="text-[7px] font-bold uppercase tracking-wider mt-0.5" style={{ color: '#7E9BB5' }}>Kader</div>
                   </div>
-                  {/* Verletzte */}
                   <div className="text-center">
-                    <div className={`text-[14px] font-black leading-none ${injuredPlayers > 0 ? 'text-[#EF4444]' : 'text-[#10B981]'}`}>{injuredPlayers}</div>
-                    <div className="text-[7px] font-bold text-[#64748B] uppercase tracking-wider mt-0.5">Verletzt</div>
+                    <div className="text-[15px] font-black leading-none" style={{ color: injuredPlayers > 0 ? '#FF3366' : '#00FFAA' }}>{injuredPlayers}</div>
+                    <div className="text-[7px] font-bold uppercase tracking-wider mt-0.5" style={{ color: '#7E9BB5' }}>Verletzt</div>
                   </div>
-                  {/* Nächstes Spiel */}
                   <div className="text-center">
-                    <div className={`text-[14px] font-black leading-none ${daysUntilMatch !== null && daysUntilMatch <= 3 ? 'text-[#F59E0B]' : 'text-[#3B82F6]'}`}>{daysUntilMatch !== null ? `${daysUntilMatch}d` : '—'}</div>
-                    <div className="text-[7px] font-bold text-[#64748B] uppercase tracking-wider mt-0.5">Spiel</div>
+                    <div className="text-[15px] font-black leading-none" style={{ color: daysUntilMatch !== null && daysUntilMatch <= 3 ? '#FF5E3A' : '#00D4FF' }}>
+                      {daysUntilMatch !== null ? `${daysUntilMatch}d` : '—'}
+                    </div>
+                    <div className="text-[7px] font-bold uppercase tracking-wider mt-0.5" style={{ color: '#7E9BB5' }}>Spiel</div>
                   </div>
                 </div>
-                {/* Verletzte Details */}
                 {injuredPlayers > 0 && (
-                  <div className="mt-1.5 pt-1.5 border-t border-[#334155]/30">
-                    <div className="text-[7px] font-bold text-[#EF4444]/70 truncate">
+                  <div className="mt-1.5 pt-1.5" style={{ borderTop: '1px solid rgba(255,51,102,0.15)' }}>
+                    <div className="text-[7px] font-bold truncate" style={{ color: 'rgba(255,51,102,0.8)' }}>
                       ⚠ {injuredNames.join(', ')}{injuredPlayers > 3 ? ` +${injuredPlayers - 3}` : ''}
                     </div>
                   </div>
                 )}
-                {/* Nächstes Spiel Details */}
                 {upcomingMatch && (
-                  <div className="mt-1 pt-1 border-t border-[#334155]/30">
-                    <div className="text-[7px] font-bold text-[#3B82F6]/70 truncate">
+                  <div className="mt-1 pt-1" style={{ borderTop: '1px solid rgba(0,212,255,0.1)' }}>
+                    <div className="text-[7px] font-bold truncate" style={{ color: 'rgba(0,212,255,0.7)' }}>
                       ⚽ {upcomingMatch.opponent || 'TBD'} — {new Date(upcomingMatch.date).toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'short' })}
                     </div>
                   </div>
@@ -2954,8 +2965,9 @@ onNavigateToTacticBoard={() => {
             );
           })()}
 
+
           {/* Navigation Categories List */}
-          <div className="flex-1 p-3 space-y-1.5 overflow-y-auto custom-scrollbar">
+          <div className="flex-1 p-3 space-y-1 overflow-y-auto custom-scrollbar">
             {[
               { id: 'ubersicht', label: 'Übersicht', icon: LayoutDashboard, defaultTab: 'dashboard' as TabId, tabIds: isOwner ? ['dashboard', 'developer_tasks'] : ['dashboard'] },
               { id: 'kader', label: 'Kader & Spieler', icon: User, defaultTab: 'personnel' as TabId, tabIds: ['personnel', 'team_list', 'player_portal', 'scouting'] },
@@ -2975,69 +2987,80 @@ onNavigateToTacticBoard={() => {
                       handleTabClick(cat.defaultTab);
                     }
                   }}
-                  className={`w-full px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-3 cursor-pointer text-left ${
-                    isCatActive
-                      ? 'bg-[#F59E0B]/15 text-[#F59E0B] border border-[#F59E0B]/40 font-bold shadow-[0_0_12px_rgba(245,158,11,0.15)]'
-                      : 'text-[#94A3B8] hover:text-[#F8FAFC] hover:bg-[#1E293B]/60 border border-transparent'
-                  }`}
+                  className="w-full px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-3 cursor-pointer text-left"
+                  style={isCatActive ? {
+                    background: 'rgba(0,212,255,0.1)',
+                    border: '1px solid rgba(0,212,255,0.3)',
+                    color: '#00D4FF',
+                    boxShadow: '0 0 15px rgba(0,212,255,0.12), inset 0 0 15px rgba(0,212,255,0.04)',
+                    fontWeight: 700,
+                  } : {
+                    border: '1px solid transparent',
+                    color: '#7E9BB5',
+                  }}
+                  onMouseEnter={e => { if (!isCatActive) { (e.currentTarget as HTMLButtonElement).style.color = '#F0F6FF'; (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.04)'; } }}
+                  onMouseLeave={e => { if (!isCatActive) { (e.currentTarget as HTMLButtonElement).style.color = '#7E9BB5'; (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; } }}
                 >
-                  <Icon size={16} className={isCatActive ? 'text-[#F59E0B]' : 'text-[#64748B]'} />
+                  <Icon size={16} style={{ color: isCatActive ? '#00D4FF' : '#4A6080' }} />
                   <span>{cat.label}</span>
+                  {isCatActive && <span className="ml-auto w-1.5 h-1.5 rounded-full" style={{ background: '#00D4FF', boxShadow: '0 0 6px rgba(0,212,255,0.8)' }} />}
                 </button>
               );
             })}
           </div>
 
+
           {/* Theme Mode & Fullscreen & Cloud Drive Toggle Footer */}
-          <div className="p-3 border-t border-[#334155]/40 flex flex-col gap-2">
+          <div className="p-3 flex flex-col gap-2" style={{ borderTop: '1px solid rgba(0,212,255,0.08)' }}>
             {isOwner && (
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center gap-1.5">
                   <button
                     onClick={() => setShowGoogleCalendarModal(true)}
-                    className="flex-1 px-2 py-1.5 text-[11px] font-bold rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 flex items-center justify-center gap-1 transition-all cursor-pointer shadow-2xs"
+                    className="flex-1 px-2 py-1.5 text-[11px] font-bold rounded-lg flex items-center justify-center gap-1 transition-all cursor-pointer"
+                    style={{ background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.25)', color: '#FCD34D' }}
                     title="Google Kalender Synchronisation"
                   >
-                    <CalendarIcon size={12} className="text-amber-400 shrink-0" />
+                    <CalendarIcon size={12} className="shrink-0" />
                     <span>Kalender</span>
                   </button>
-
                   <button
                     onClick={() => setShowGoogleDriveModal(true)}
-                    className="flex-1 px-2 py-1.5 text-[11px] font-bold rounded-lg bg-teal-600/20 hover:bg-teal-600/30 text-teal-300 border border-teal-500/40 flex items-center justify-center gap-1 transition-all cursor-pointer shadow-2xs"
+                    className="flex-1 px-2 py-1.5 text-[11px] font-bold rounded-lg flex items-center justify-center gap-1 transition-all cursor-pointer"
+                    style={{ background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.2)', color: '#00D4FF' }}
                     title="Google Drive Cloud Speicherung & Backups"
                   >
-                    <HardDrive size={12} className="text-teal-400 shrink-0" />
+                    <HardDrive size={12} className="shrink-0" />
                     <span>Drive</span>
                   </button>
                 </div>
-
                 <div className="flex items-center gap-1.5">
                   <button
                     onClick={() => setShowGoogleSheetsModal(true)}
-                    className="flex-1 px-2 py-1.5 text-[11px] font-bold rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 flex items-center justify-center gap-1 transition-all cursor-pointer shadow-2xs"
+                    className="flex-1 px-2 py-1.5 text-[11px] font-bold rounded-lg flex items-center justify-center gap-1 transition-all cursor-pointer"
+                    style={{ background: 'rgba(0,255,170,0.08)', border: '1px solid rgba(0,255,170,0.2)', color: '#00FFAA' }}
                     title="Google Sheets Tabellen Export"
                   >
-                    <FileSpreadsheet size={12} className="text-emerald-400 shrink-0" />
+                    <FileSpreadsheet size={12} className="shrink-0" />
                     <span>Sheets</span>
                   </button>
-
                   <button
                     onClick={() => setShowGoogleGmailModal(true)}
-                    className="flex-1 px-2 py-1.5 text-[11px] font-bold rounded-lg bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/40 flex items-center justify-center gap-1 transition-all cursor-pointer shadow-2xs"
+                    className="flex-1 px-2 py-1.5 text-[11px] font-bold rounded-lg flex items-center justify-center gap-1 transition-all cursor-pointer"
+                    style={{ background: 'rgba(255,51,102,0.08)', border: '1px solid rgba(255,51,102,0.2)', color: '#FF6B8A' }}
                     title="Gmail Kommunikation Center"
                   >
-                    <Mail size={12} className="text-rose-400 shrink-0" />
+                    <Mail size={12} className="shrink-0" />
                     <span>Gmail</span>
                   </button>
                 </div>
-
                 <button
                   onClick={handleDownloadLocalBackup}
-                  className="w-full px-2.5 py-1.5 text-xs font-bold rounded-lg bg-[#334155]/60 hover:bg-[#334155] text-slate-200 border border-slate-600 flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
-                  title="Gesamten Datensatz / Backup als .json herunterladen (Entwickler / Owner)"
+                  className="w-full px-2.5 py-1.5 text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: '#7E9BB5' }}
+                  title="Gesamten Datensatz / Backup als .json herunterladen"
                 >
-                  <Download size={13} className="text-amber-400" />
+                  <Download size={13} style={{ color: '#FCD34D' }} />
                   <span>System-Backup herunterladen</span>
                 </button>
               </div>
@@ -3046,19 +3069,27 @@ onNavigateToTacticBoard={() => {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setThemeMode(prev => prev === 'dark' ? 'light' : 'dark')}
-                className="flex-1 px-2.5 py-2 text-xs font-medium rounded-lg bg-[#1E293B] hover:bg-[#334155] text-[#F8FAFC] border border-[#334155] flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                className="flex-1 px-2.5 py-2 text-xs font-medium rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#7E9BB5' }}
                 title={themeMode === 'dark' ? 'Zu Light Mode wechseln' : 'Zu Dark Mode wechseln'}
               >
-                {themeMode === 'dark' ? <Sun size={14} className="text-[#F59E0B]" /> : <Moon size={14} className="text-[#10B981]" />}
-                <span>{themeMode === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
+                {themeMode === 'dark' ? <Sun size={14} style={{ color: '#FCD34D' }} /> : <Moon size={14} style={{ color: '#00D4FF' }} />}
+                <span>{themeMode === 'dark' ? 'Light' : 'Dark'}</span>
               </button>
               <button
                 onClick={toggleBrowserFullscreen}
-                className={`px-3 py-2 text-xs font-medium rounded-lg border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                  isFullscreen 
-                    ? 'bg-[#10B981] text-[#0A0E17] border-[#10B981] font-bold shadow-[0_0_10px_rgba(16,185,129,0.5)]' 
-                    : 'bg-[#1E293B] hover:bg-[#334155] text-[#F8FAFC] border-[#334155]'
-                }`}
+                className="px-3 py-2 text-xs font-medium rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                style={isFullscreen ? {
+                  background: 'linear-gradient(135deg, #00D4FF, #00FFAA)',
+                  border: '1px solid transparent',
+                  color: '#060912',
+                  fontWeight: 700,
+                  boxShadow: '0 0 12px rgba(0,212,255,0.4)',
+                } : {
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  color: '#7E9BB5',
+                }}
                 title="Browser Vollbild Modus (F11)"
               >
                 {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
@@ -3068,10 +3099,19 @@ onNavigateToTacticBoard={() => {
           </div>
         </aside>
 
+
         {/* RIGHT MAIN CONTAINER */}
         <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#0A0E17]">
           {/* TAB-NAVI BAR (OPEN TEXT TABS WITH DECENT ORANGE UNDERLINE) */}
-          <nav className="bg-[#121824]/90 border-b border-[#334155]/80 px-4 py-2.5 flex items-center gap-6 overflow-x-auto no-scrollbar shrink-0 z-30">
+          <nav className="bg-[#121824]/90 border-b border-[#334155]/80 px-3 sm:px-4 py-2.5 flex items-center gap-3 sm:gap-5 overflow-x-auto no-scrollbar shrink-0 z-30">
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="md:hidden p-1.5 rounded-lg text-[#F5F5F5] hover:bg-[#1E293B] border border-[#334155]/60 shrink-0 cursor-pointer transition-colors"
+              aria-label="Menü öffnen oder schließen"
+              title="Menü"
+            >
+              <Menu size={18} />
+            </button>
             {TABS.filter(tab => {
               if (tab.id === 'access_control' && !isOwner) return false;
               if (tab.id === 'developer_tasks' && !isOwner) return false;
@@ -3106,31 +3146,40 @@ onNavigateToTacticBoard={() => {
                 <button
                   key={tab.id}
                   onClick={() => handleTabClick(tab.id)}
-                  className={`py-1.5 text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer relative ${
-                    isActive 
-                      ? 'text-[#F59E0B] font-bold border-b-2 border-[#F59E0B] -mb-2.5 pb-2' 
-                      : 'text-[#94A3B8] hover:text-[#F8FAFC]'
-                  }`}
+                  className="py-1.5 text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer relative"
+                  style={isActive ? {
+                    color: '#00D4FF',
+                    fontWeight: 700,
+                    borderBottom: '2px solid #00D4FF',
+                    marginBottom: '-0.5rem',
+                    paddingBottom: '0.5rem',
+                    textShadow: '0 0 12px rgba(0,212,255,0.6)',
+                  } : {
+                    color: '#7E9BB5',
+                  }}
                 >
                   <span>{displayLabel}</span>
                   {isCup && (
-                    <span className="text-[9px] bg-[#F59E0B]/20 text-[#F59E0B] px-1.5 py-0.5 rounded font-mono font-bold border border-[#F59E0B]/40">
+                    <span className="text-[9px] px-1.5 py-0.5 rounded font-mono font-bold"
+                      style={{ background: 'rgba(0,212,255,0.12)', color: '#00D4FF', border: '1px solid rgba(0,212,255,0.3)' }}>
                       Pro
                     </span>
                   )}
                   {isVideo && (
-                    <span className="text-[9px] bg-[#06B6D4]/20 text-[#06B6D4] px-1.5 py-0.5 rounded font-mono font-bold border border-[#06B6D4]/40">
+                    <span className="text-[9px] px-1.5 py-0.5 rounded font-mono font-bold"
+                      style={{ background: 'rgba(255,94,58,0.12)', color: '#FF5E3A', border: '1px solid rgba(255,94,58,0.3)' }}>
                       Beta
                     </span>
                   )}
-                  {isAcademy && <span className="w-2 h-2 rounded-full bg-[#06B6D4] animate-pulse shadow-[0_0_6px_rgba(6,182,212,0.8)]" />}
+                  {isAcademy && <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#00D4FF', boxShadow: '0 0 8px rgba(0,212,255,0.8)' }} />}
                 </button>
               );
             })}
           </nav>
 
           {/* Main Content View Canvas */}
-          <main className="flex-1 p-3 sm:p-5 overflow-hidden bg-[#0A0E17] text-[#F5F5F5] print:p-0 print:bg-white print:overflow-visible">
+          <main className="flex-1 p-3 sm:p-5 overflow-hidden text-[#F0F6FF] print:p-0 print:bg-white print:overflow-visible" style={{ background: 'transparent' }}>
+
             <UniformMask 
               title={TABS.find(t => t.id === activeTab)?.label || ''}
               onOpenKaderAgent={(activeTab === 'trainer_view' || activeTab === 'tacticboard') ? ((preset) => {
@@ -3203,23 +3252,23 @@ onNavigateToTacticBoard={() => {
       </main>
 
       {/* Footer */}
-      <footer className="bg-black text-white text-[9px] px-6 py-2 flex justify-between items-center uppercase tracking-widest font-bold border-t-2 border-black print:hidden">
-        <div className="flex items-center gap-4">
+      <footer className="bg-black text-white text-[9px] px-3 sm:px-6 py-2 flex flex-wrap justify-center sm:justify-between items-center gap-x-4 gap-y-1 uppercase tracking-widest font-bold border-t-2 border-black print:hidden">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
           <span className="text-[#C00000] font-black">FC AUGGEN 1921 e.V.</span>
           <span className="opacity-30">|</span>
           <span className="opacity-60">Team Management System 2026/2027</span>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
           {lastError && (
             <span className="text-red-500 text-[10px] font-black animate-pulse px-2.5 py-1 border border-red-500 bg-red-950/50 rounded mr-2 uppercase">
               ⚠️ {lastError}
             </span>
           )}
-          <div className="flex items-center gap-4 opacity-75">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 opacity-75">
             <span>Status: <span className={isOnline ? "text-green-500" : "text-red-500"}>{isOnline ? 'Online' : 'Offline'}</span></span>
             <span className="opacity-30">|</span>
             {authUser ? (
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <span>
                   User: <span className="text-amber-400 font-extrabold">{authUser.displayName || authUser.email}</span>
                   {isOwner && (
@@ -3236,7 +3285,7 @@ onNavigateToTacticBoard={() => {
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <span>
                   User: <span className="text-amber-400 font-extrabold hover:underline cursor-pointer" onClick={() => setShowLocalProfileModal(true)}>{localName}</span>
                   {isOwner && (

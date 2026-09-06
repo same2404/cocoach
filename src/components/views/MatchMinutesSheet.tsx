@@ -247,7 +247,7 @@ export const MatchMinutesSheet: React.FC<MatchMinutesSheetProps> = ({
                             <input 
                               type="number"
                               className={`w-full h-full p-2 text-center bg-transparent font-black focus:bg-white focus:border-[#4C6FFF] focus:outline-none text-xs ${!isEditing ? 'opacity-70 cursor-not-allowed' : ''}`}
-                              value={record?.matchMinutes?.[match.id] || record?.[`matchMinutes.${match.id}`] || ''}
+                              value={(record?.matchMinutes as any)?.[match.id] || (record as any)?.[`matchMinutes.${match.id}`] || ''}
                               onChange={(e) => onUpdateMinutes(type, player.id, match.id, parseInt(e.target.value) || 0)}
                               placeholder={isEditing ? "0" : ""}
                               disabled={!isEditing || (typeof match.id === 'number' && match.id < 0)}

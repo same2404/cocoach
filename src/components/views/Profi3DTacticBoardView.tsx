@@ -67,6 +67,8 @@ import {
   FOLIEN_DIAGRAMME,
   ALL_SCENARIOS,
   TacticScenario,
+  ScenarioZone,
+  ScenarioPlayer,
   SCENARIO_GROUP_ORDER,
 } from '../../lib/tacticScenarios';
 import { TacticScenarioView } from '../tactic/TacticScenarioView';
@@ -640,11 +642,25 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
     return result;
   }, [players, activeClub.id]);
 
-  // Aktuelle Startelf (editierbar über Bank-Wechsel) — Board als Quelle beim Start, danach User-Wechsel
-  const [presentationLineup, setPresentationLineup] = useState<Array<any>>([]);
-  const [lineupSwapTarget, setLineupSwapTarget] = useState<number | null>(null);
+  // Aktuelle Startelf (editierbar über Bank-Wechsel) — Board als Quelle beim Start, danach User-Wechsel.
+  // Persistiert in localStorage, damit Wechsel/Positionen nicht beim erneuten Laden "zurückspringen".
   // Trackt welche Positionen vom User manuell getauscht wurden (Index → true)
   const swappedPositionsRef = useRef<Set<number>>(new Set());
+  const [presentationLineup, setPresentationLineup] = useState<Array<any>>(() => {
+    try {
+      const saved = localStorage.getItem('fca_presentationLineup');
+      if (saved) {
+        const arr = JSON.parse(saved);
+        if (Array.isArray(arr) && arr.length > 0) {
+          // Gespeicherte Startelf komplett vor Auto-Sync schützen
+          arr.forEach((_: any, i: number) => swappedPositionsRef.current.add(i));
+          return arr;
+        }
+      }
+    } catch { /* ignore */ }
+    return [];
+  });
+  const [lineupSwapTarget, setLineupSwapTarget] = useState<number | null>(null);
 
   // Sync-Funktion: Board-Aufstellung in Präsentation übernehmen (mit Bildern)
   const syncLineupFromBoard = useCallback(() => {
@@ -660,6 +676,13 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
     setPresentationLineup(withImages);
     swappedPositionsRef.current = new Set();
   }, [liveFormations, players]);
+
+  // Startelf persistieren (Wechsel, Positionen) → kein Zurückspringen nach Reload
+  useEffect(() => {
+    if (presentationLineup.length > 0) {
+      try { localStorage.setItem('fca_presentationLineup', JSON.stringify(presentationLineup)); } catch { /* ignore */ }
+    }
+  }, [presentationLineup]);
 
   // Automatisch sync: Board-Aufstellung spiegeln, aber User-Wechsel respektieren
   useEffect(() => {
@@ -712,6 +735,16 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
     }
     const sub = presentationSubstitutes[subIdx];
     const starter = presentationLineup[targetIdx];
+    // TW-Guard: exakt 1 Torwart in der Startelf — TW auswechseln nur gegen TW/ETW
+    const twOf = (pos: string) => String(pos || '').toUpperCase().includes('TW');
+    if (twOf(starter.position) && !twOf(sub.pos)) {
+      notify('Der Torwart bleibt in der Startelf – es darf nur ein Torwart im Spiel sein!');
+      return;
+    }
+    if (twOf(sub.pos) && !twOf(starter.position)) {
+      notify('Der Ersatztorwart bleibt auf der Bank – in der Startelf steht bereits ein Torwart.');
+      return;
+    }
     const subPlayer = players.find((p: any) => {
       const fullName = `${p.firstName || ''} ${p.lastName || p.name || ''}`.trim().toLowerCase();
       return fullName.includes(sub.name.toLowerCase()) || sub.name.toLowerCase().includes((p.lastName || p.name || '').toLowerCase());
@@ -767,6 +800,7 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
     setPresentationSlideIndex(1);
     swappedPositionsRef.current = new Set();
     localStorage.removeItem('fca_presentationSubstitutes');
+    localStorage.removeItem('fca_presentationLineup');
     notify('Aufstellung zurückgesetzt: System 4-2-3-1, Startelf & Bank wie zuvor');
   }, [liveFormations, players]);
 
@@ -1107,6 +1141,79 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
   const [slideEditingActive, setSlideEditingActive] = useState<boolean>(false);
   const [pitchEditMode, setPitchEditMode] = useState(false);
   const [swapFirstPlayer, setSwapFirstPlayer] = useState<string | null>(null);
+
+  // Persistierte Szenario-Edits je Slide/Diagramm (Zonen + Spieler frei bearbeitbar)
+  const [scenarioEdits, setScenarioEdits] = useState<Record<string, { zones: ScenarioZone[]; players: ScenarioPlayer[] }>>(() => {
+    try {
+      const s = localStorage.getItem('fca_presentation_scenarioEdits');
+      if (s) return JSON.parse(s);
+    } catch { /* ignore */ }
+    return {};
+  });
+  useEffect(() => {
+    try { localStorage.setItem('fca_presentation_scenarioEdits', JSON.stringify(scenarioEdits)); } catch { /* ignore */ }
+  }, [scenarioEdits]);
+  const setEditsForScenario = useCallback((scenarioId: string, zones: ScenarioZone[], players: ScenarioPlayer[]) => {
+    setScenarioEdits((prev) => ({ ...prev, [scenarioId]: { zones, players } }));
+  }, []);
+
+  // Slide 0: editierbarer Titel (persistiert)
+  const [presentationTitleOverride, setPresentationTitleOverride] = useState<string>(() => {
+    try { return localStorage.getItem('fca_presentationTitleOverride') || ''; } catch { return ''; }
+  });
+  const setPresentationTitle = (v: string) => {
+    setPresentationTitleOverride(v);
+    try { if (v) localStorage.setItem('fca_presentationTitleOverride', v); else localStorage.removeItem('fca_presentationTitleOverride'); } catch { /* ignore */ }
+  };
+
+  // Slide 8: eigene Spieler-Chips (Name + Bild) frei bewegbar auf dem Gegner-Diagramm (persistiert)
+  const [ownTop3Chips, setOwnTop3Chips] = useState<Array<{ name: string; number: string; image?: string; x: number; y: number }>>(() => {
+    try {
+      const s = localStorage.getItem('fca_presentation_top3_chips');
+      if (s) return JSON.parse(s);
+    } catch { /* ignore */ }
+    return [];
+  });
+  const [dragChipIndex, setDragChipIndex] = useState<number | null>(null);
+  const top3PitchRef = useRef<HTMLDivElement | null>(null);
+  const setChips = (next: Array<{ name: string; number: string; image?: string; x: number; y: number }>) => {
+    setOwnTop3Chips(next);
+    try { localStorage.setItem('fca_presentation_top3_chips', JSON.stringify(next)); } catch { /* ignore */ }
+  };
+  useEffect(() => {
+    // Beim ersten Öffnen: Startelf-Chips initial verteilen (falls noch nicht gesetzt)
+    if (ownTop3Chips.length === 0 && presentationLineup.length >= 11) {
+      const positions = [
+        { x: 14, y: 14 }, { x: 32, y: 10 }, { x: 50, y: 10 }, { x: 68, y: 10 }, { x: 86, y: 14 },
+        { x: 20, y: 40 }, { x: 50, y: 34 }, { x: 80, y: 40 },
+        { x: 30, y: 62 }, { x: 70, y: 62 },
+        { x: 50, y: 88 },
+      ];
+      const seeded = presentationLineup.slice(0, 11).map((p: any, i: number) => ({
+        name: p.name || 'Spieler',
+        number: String(p.number || i + 1),
+        image: p.image,
+        x: positions[i].x,
+        y: positions[i].y,
+      }));
+      setChips(seeded);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ownTop3Chips.length, presentationLineup]);
+
+  const handleChipMouseDown = (e: React.MouseEvent, i: number) => {
+    e.stopPropagation();
+    setDragChipIndex(i);
+  };
+  const handleChipMouseMove = (e: React.MouseEvent) => {
+    if (dragChipIndex === null || !top3PitchRef.current) return;
+    const rect = top3PitchRef.current.getBoundingClientRect();
+    const x = Math.max(3, Math.min(97, ((e.clientX - rect.left) / rect.width) * 100));
+    const y = Math.max(3, Math.min(97, ((e.clientY - rect.top) / rect.height) * 100));
+    const next = ownTop3Chips.map((c, i) => (i === dragChipIndex ? { ...c, x, y } : c));
+    setChips(next);
+  };
+  const handleChipMouseUp = () => setDragChipIndex(null);
   
   // Slide 0: Titel & Match
   const [matchNotes, setMatchNotes] = useState({
@@ -1134,6 +1241,19 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
       localStorage.setItem('fca_presentationSubstitutes', JSON.stringify(presentationSubstitutes));
     }
   }, [presentationSubstitutes]);
+
+  // Dedup: Start-11 darf nie auf der Bank erscheinen (auch nach Wechseln nicht)
+  useEffect(() => {
+    if (presentationLineup.length === 0) return;
+    const lineupNames = presentationLineup.map((l: any) => String(l.name || '').toLowerCase());
+    setPresentationSubstitutes((prev) => {
+      const dupFree = prev.filter((s: any) => {
+        const sn = String(s.name || '').toLowerCase();
+        return !lineupNames.some((ln: string) => ln === sn || ln.includes(sn) || sn.includes(ln));
+      });
+      return dupFree.length === prev.length ? prev : dupFree;
+    });
+  }, [presentationLineup]);
 
   // Slide 2: Formation
   const [formationNotes, setFormationNotes] = useState({
@@ -2417,6 +2537,8 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                       const idx1 = presentationLineup.findIndex((p: any) => p.name === swapFirstPlayer);
                       const idx2 = presentationLineup.findIndex((p: any) => p.name === n.name);
                       if (idx1 >= 0 && idx2 >= 0) {
+                        swappedPositionsRef.current.add(idx1);
+                        swappedPositionsRef.current.add(idx2);
                         setPresentationLineup((prev: any[]) => {
                           const next = [...prev];
                           [next[idx1], next[idx2]] = [next[idx2], next[idx1]];
@@ -2503,6 +2625,8 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                       const idx1 = presentationLineup.findIndex((p: any) => p.name === swapFirstPlayer);
                       const idx2 = presentationLineup.findIndex((p: any) => p.name === n.name);
                       if (idx1 >= 0 && idx2 >= 0) {
+                        swappedPositionsRef.current.add(idx1);
+                        swappedPositionsRef.current.add(idx2);
                         setPresentationLineup((prev: any[]) => {
                           const next = [...prev];
                           [next[idx1], next[idx2]] = [next[idx2], next[idx1]];
@@ -2559,6 +2683,8 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                       const idx1 = presentationLineup.findIndex((p: any) => p.name === swapFirstPlayer);
                       const idx2 = presentationLineup.findIndex((p: any) => p.name === n.name);
                       if (idx1 >= 0 && idx2 >= 0) {
+                        swappedPositionsRef.current.add(idx1);
+                        swappedPositionsRef.current.add(idx2);
                         setPresentationLineup((prev: any[]) => {
                           const next = [...prev];
                           [next[idx1], next[idx2]] = [next[idx2], next[idx1]];
@@ -2624,6 +2750,8 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                         const idx1 = presentationLineup.findIndex((p: any) => p.name === swapFirstPlayer);
                         const idx2 = presentationLineup.findIndex((p: any) => p.name === n.name);
                         if (idx1 >= 0 && idx2 >= 0) {
+                          swappedPositionsRef.current.add(idx1);
+                          swappedPositionsRef.current.add(idx2);
                           setPresentationLineup((prev: any[]) => {
                             const next = [...prev];
                             [next[idx1], next[idx2]] = [next[idx2], next[idx1]];
@@ -2680,6 +2808,8 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                       const idx1 = presentationLineup.findIndex((p: any) => p.name === swapFirstPlayer);
                       const idx2 = presentationLineup.findIndex((p: any) => p.name === n.name);
                       if (idx1 >= 0 && idx2 >= 0) {
+                        swappedPositionsRef.current.add(idx1);
+                        swappedPositionsRef.current.add(idx2);
                         setPresentationLineup((prev: any[]) => {
                           const next = [...prev];
                           [next[idx1], next[idx2]] = [next[idx2], next[idx1]];
@@ -2742,6 +2872,8 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                       const idx1 = presentationLineup.findIndex((p: any) => p.name === swapFirstPlayer);
                       const idx2 = presentationLineup.findIndex((p: any) => p.name === n.name);
                       if (idx1 >= 0 && idx2 >= 0) {
+                        swappedPositionsRef.current.add(idx1);
+                        swappedPositionsRef.current.add(idx2);
                         setPresentationLineup((prev: any[]) => {
                           const next = [...prev];
                           [next[idx1], next[idx2]] = [next[idx2], next[idx1]];
@@ -2806,6 +2938,8 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                         const idx1 = presentationLineup.findIndex((p: any) => p.name === swapFirstPlayer);
                         const idx2 = presentationLineup.findIndex((p: any) => p.name === n.name);
                         if (idx1 >= 0 && idx2 >= 0) {
+                          swappedPositionsRef.current.add(idx1);
+                          swappedPositionsRef.current.add(idx2);
                           setPresentationLineup((prev: any[]) => {
                             const next = [...prev];
                             [next[idx1], next[idx2]] = [next[idx2], next[idx1]];
@@ -2972,6 +3106,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
       setPresentationLineup((prev: any[]) => {
         const idx = prev.findIndex((n: any) => n.name === swapFirstPlayer);
         if (idx < 0) return prev;
+        swappedPositionsRef.current.add(idx);
         const next = [...prev];
         next[idx] = { ...next[idx], xPercent: Math.max(2, Math.min(98, x)), yPercent: Math.max(2, Math.min(98, y)) };
         return next;
@@ -3059,10 +3194,12 @@ Gib mir in 3 kurzen, klaren Bullet Points:
       return;
     }
 
-    setCustomPositionsMap(prev => ({
-      ...prev,
-      [draggingNodeId]: { xPercent: preciseX, yPercent: preciseY }
-    }));
+    if (draggingNodeId) {
+      setCustomPositionsMap(prev => ({
+        ...prev,
+        [draggingNodeId]: { xPercent: preciseX, yPercent: preciseY }
+      }));
+    }
   };
 
   const handlePitchMouseUp = () => {
@@ -6888,8 +7025,17 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                           <div className="relative z-10 p-8 flex flex-col items-center justify-center text-center min-h-[480px] gap-4">
                             <div className="flex items-center justify-center">{renderClubLogo(72, 'border-4 border-emerald-400/60', true)}</div>
                             <h1 className="text-2xl sm:text-4xl font-black text-white uppercase tracking-tight">
-                              {activeClub.shortName || 'FC AUGGEN'} vs. {selectedMatchObj.opponent.toUpperCase()}
+                              {presentationTitleOverride || `${activeClub.shortName || 'FC AUGGEN'} vs. ${selectedMatchObj.opponent.toUpperCase()}`}
                             </h1>
+                            {/* Titel frei bearbeitbar */}
+                            {slideEditingActive && (
+                              <input
+                                value={presentationTitleOverride}
+                                onChange={(e) => setPresentationTitle(e.target.value)}
+                                placeholder={`${activeClub.shortName || 'FC AUGGEN'} vs. ${selectedMatchObj.opponent.toUpperCase()}`}
+                                className="w-full max-w-md bg-slate-950/90 border border-emerald-500/50 text-white font-black text-lg uppercase px-4 py-2 rounded-xl focus:outline-none focus:border-emerald-400 text-center"
+                              />
+                            )}
                           </div>
                         </div>
                       </div>
@@ -6953,8 +7099,15 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                           </button>
                         </div>
                         <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4">
-                          <TacticScenarioView scenario={ALL_SCENARIOS.find((s) => s.id === 'sys-433')!} className="w-full max-h-[480px] aspect-square mx-auto" />
-                          <p className="text-[11px] text-slate-400 text-center mt-2 font-semibold">4-3-3 · Startelf · ohne Namen/Wappen</p>
+                          <TacticScenarioView
+                            scenario={ALL_SCENARIOS.find((s) => s.id === 'sys-433')!}
+                            className="w-full max-h-[480px] aspect-square mx-auto"
+                            editable
+                            draftZones={scenarioEdits['sys-433']?.zones}
+                            draftPlayers={scenarioEdits['sys-433']?.players}
+                            onDraftChange={(z, p) => setEditsForScenario('sys-433', z, p)}
+                          />
+                          <p className="text-[11px] text-slate-400 text-center mt-2 font-semibold">4-3-3 · Startelf · frei bearbeitbar (Zonen & Spieler ziehen)</p>
                         </div>
                       </div>
                       <div className="lg:w-[45%] space-y-4 overflow-y-auto max-h-[520px]">
@@ -7044,7 +7197,14 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                     <div className="flex flex-col lg:flex-row gap-6 min-h-[480px]">
                       <div className="lg:w-[55%] shrink-0">
                         <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 flex items-center justify-center h-full">
-                          <TacticScenarioView scenario={ALL_SCENARIOS.find((s) => s.id === 'sys-4231')!} className="w-full max-h-[480px] aspect-square mx-auto" />
+                          <TacticScenarioView
+                            scenario={ALL_SCENARIOS.find((s) => s.id === 'sys-4231')!}
+                            className="w-full max-h-[480px] aspect-square mx-auto"
+                            editable
+                            draftZones={scenarioEdits['sys-4231']?.zones}
+                            draftPlayers={scenarioEdits['sys-4231']?.players}
+                            onDraftChange={(z, p) => setEditsForScenario('sys-4231', z, p)}
+                          />
                         </div>
                       </div>
                       <div className="lg:w-[45%] space-y-4 overflow-y-auto max-h-[520px]">
@@ -7091,7 +7251,14 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                     <div className="flex flex-col lg:flex-row gap-6 min-h-[480px]">
                       <div className="lg:w-[55%] shrink-0">
                         <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 flex items-center justify-center h-full">
-                          {renderPitchForSlide(3)}
+                          <TacticScenarioView
+                            scenario={ALL_SCENARIOS.find((s) => s.id === 'f-mb')!}
+                            className="w-full max-h-[480px] aspect-square mx-auto"
+                            editable
+                            draftZones={scenarioEdits['f-mb']?.zones}
+                            draftPlayers={scenarioEdits['f-mb']?.players}
+                            onDraftChange={(z, p) => setEditsForScenario('f-mb', z, p)}
+                          />
                         </div>
                       </div>
                       <div className="lg:w-[45%] space-y-4 overflow-y-auto max-h-[520px]">
@@ -7122,14 +7289,28 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                     <div className="flex flex-col lg:flex-row gap-6 min-h-[480px]">
                       <div className="lg:w-[55%] shrink-0">
                         <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-3">
-                          <TacticScenarioView scenario={ALL_SCENARIOS.find((s) => s.id === 'f-r1')!} className="w-full max-h-[480px] aspect-square mx-auto" />
-                          <p className="text-[11px] text-slate-400 text-center mt-2 font-semibold">Bild 1 · aus Diagramm · ohne Namen/Wappen</p>
+                          <TacticScenarioView
+                            scenario={ALL_SCENARIOS.find((s) => s.id === 'f-r1')!}
+                            className="w-full max-h-[480px] aspect-square mx-auto"
+                            editable
+                            draftZones={scenarioEdits['f-r1']?.zones}
+                            draftPlayers={scenarioEdits['f-r1']?.players}
+                            onDraftChange={(z, p) => setEditsForScenario('f-r1', z, p)}
+                          />
+                          <p className="text-[11px] text-slate-400 text-center mt-2 font-semibold">Bild 1 · Rotation · Zonen & Spieler frei ziehen</p>
                         </div>
                       </div>
                       <div className="lg:w-[45%] space-y-4 overflow-y-auto max-h-[520px]">
                         <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-3">
-                          <TacticScenarioView scenario={ALL_SCENARIOS.find((s) => s.id === 'f-r2')!} className="w-full aspect-square mx-auto" />
-                          <p className="text-[11px] text-slate-400 text-center mt-2 font-semibold">Bild 2 · aus Diagramm · ohne Namen/Wappen</p>
+                          <TacticScenarioView
+                            scenario={ALL_SCENARIOS.find((s) => s.id === 'f-r2')!}
+                            className="w-full aspect-square mx-auto"
+                            editable
+                            draftZones={scenarioEdits['f-r2']?.zones}
+                            draftPlayers={scenarioEdits['f-r2']?.players}
+                            onDraftChange={(z, p) => setEditsForScenario('f-r2', z, p)}
+                          />
+                          <p className="text-[11px] text-slate-400 text-center mt-2 font-semibold">Bild 2 · Rotation · Zonen & Spieler frei ziehen</p>
                         </div>
                         <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4">
                           <h4 className="text-[10px] font-black text-sky-400 uppercase tracking-widest mb-2 flex items-center gap-2">
@@ -7154,14 +7335,28 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                     <div className="flex flex-col lg:flex-row gap-6 min-h-[480px]">
                       <div className="lg:w-[55%] shrink-0">
                         <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-3">
-                          <TacticScenarioView scenario={ALL_SCENARIOS.find((s) => s.id === 'f-d1')!} className="w-full max-h-[480px] aspect-square mx-auto" />
-                          <p className="text-[11px] text-slate-400 text-center mt-2 font-semibold">Bild 1 · aus Diagramm · ohne Namen/Wappen</p>
+                          <TacticScenarioView
+                            scenario={ALL_SCENARIOS.find((s) => s.id === 'f-d1')!}
+                            className="w-full max-h-[480px] aspect-square mx-auto"
+                            editable
+                            draftZones={scenarioEdits['f-d1']?.zones}
+                            draftPlayers={scenarioEdits['f-d1']?.players}
+                            onDraftChange={(z, p) => setEditsForScenario('f-d1', z, p)}
+                          />
+                          <p className="text-[11px] text-slate-400 text-center mt-2 font-semibold">Bild 1 · Dreiecks-Rotation · frei ziehen</p>
                         </div>
                       </div>
                       <div className="lg:w-[45%] space-y-4 overflow-y-auto max-h-[520px]">
                         <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-3">
-                          <TacticScenarioView scenario={ALL_SCENARIOS.find((s) => s.id === 'f-d2')!} className="w-full aspect-square mx-auto" />
-                          <p className="text-[11px] text-slate-400 text-center mt-2 font-semibold">Bild 2 · aus Diagramm · ohne Namen/Wappen</p>
+                          <TacticScenarioView
+                            scenario={ALL_SCENARIOS.find((s) => s.id === 'f-d2')!}
+                            className="w-full aspect-square mx-auto"
+                            editable
+                            draftZones={scenarioEdits['f-d2']?.zones}
+                            draftPlayers={scenarioEdits['f-d2']?.players}
+                            onDraftChange={(z, p) => setEditsForScenario('f-d2', z, p)}
+                          />
+                          <p className="text-[11px] text-slate-400 text-center mt-2 font-semibold">Bild 2 · Dreiecks-Rotation · frei ziehen</p>
                         </div>
                         <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4">
                           <h4 className="text-[10px] font-black text-violet-400 uppercase tracking-widest mb-2 flex items-center gap-2">
@@ -7178,7 +7373,14 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                     <div className="flex flex-col lg:flex-row gap-6 min-h-[480px]">
                       <div className="lg:w-[55%] shrink-0">
                         <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 flex items-center justify-center h-full">
-                          {renderPitchForSlide(6)}
+                          <TacticScenarioView
+                            scenario={ALL_SCENARIOS.find((s) => s.id === 'f-gb')!}
+                            className="w-full max-h-[480px] aspect-square mx-auto"
+                            editable
+                            draftZones={scenarioEdits['f-gb']?.zones}
+                            draftPlayers={scenarioEdits['f-gb']?.players}
+                            onDraftChange={(z, p) => setEditsForScenario('f-gb', z, p)}
+                          />
                         </div>
                       </div>
                       <div className="lg:w-[45%] space-y-4 overflow-y-auto max-h-[520px]">
@@ -7213,7 +7415,14 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                     <div className="flex flex-col lg:flex-row gap-6 min-h-[480px]">
                       <div className="lg:w-[55%] shrink-0">
                         <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 flex items-center justify-center h-full">
-                          <TacticScenarioView scenario={activeScenario} className="w-full max-h-[480px] aspect-square mx-auto" />
+                          <TacticScenarioView
+                            scenario={activeScenario}
+                            className="w-full max-h-[480px] aspect-square mx-auto"
+                            editable
+                            draftZones={scenarioEdits[activeScenario.id]?.zones}
+                            draftPlayers={scenarioEdits[activeScenario.id]?.players}
+                            onDraftChange={(z, p) => setEditsForScenario(activeScenario.id, z, p)}
+                          />
                         </div>
                       </div>
                       <div className="lg:w-[45%] space-y-4 overflow-y-auto max-h-[520px]">
@@ -7252,7 +7461,13 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                             {top3Saved ? <Check size={15} /> : <Save size={15} />} {top3Saved ? 'Gespeichert!' : 'Top 3 Speichern'}
                           </button>
                         </div>
-                        <div className="bg-emerald-950/60 border border-emerald-800/40 rounded-2xl p-4 relative min-h-[350px]">
+                        <div
+                            ref={top3PitchRef}
+                            className="bg-emerald-950/60 border border-emerald-800/40 rounded-2xl p-4 relative min-h-[350px] select-none touch-none"
+                            onMouseMove={handleChipMouseMove}
+                            onMouseUp={handleChipMouseUp}
+                            onMouseLeave={handleChipMouseUp}
+                          >
                           {[
                             { id: 'op1', num: '1', pos: 'TW', x: 50, y: 88 },
                             { id: 'op2', num: '2', pos: 'RV', x: 18, y: 74 },
@@ -7271,6 +7486,34 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                               <span className="text-[7px] font-black uppercase text-rose-300 bg-slate-950/80 px-1 rounded mt-0.5 whitespace-nowrap">{op.pos}</span>
                             </div>
                           ))}
+                          {/* EIGENE SPIELER — frei bewegliche Chips (Name + Bild) */}
+                          {ownTop3Chips.map((c, i) => (
+                            <div
+                              key={`ownchip_${i}`}
+                              style={{ left: `${c.x}%`, top: `${c.y}%` }}
+                              className={`absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center z-20 ${dragChipIndex === i ? 'cursor-grabbing' : 'cursor-grab'}`}
+                              onMouseDown={(e) => handleChipMouseDown(e, i)}
+                            >
+                              <span className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-emerald-500 text-slate-950 font-black text-[9px] flex items-center justify-center shadow-lg border border-white z-10">
+                                {c.number}
+                              </span>
+                              {c.image ? (
+                                <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-emerald-400 shadow-xl bg-slate-900">
+                                  <img src={c.image} alt={c.name} className="w-full h-full object-cover" draggable={false} />
+                                </div>
+                              ) : (
+                                <span className="w-9 h-9 rounded-full bg-emerald-500 text-slate-950 font-black text-[11px] flex items-center justify-center shadow-xl border-2 border-white">
+                                  {c.number}
+                                </span>
+                              )}
+                              <span className="text-[8px] font-black uppercase text-white bg-slate-950/90 px-1.5 rounded mt-1 whitespace-nowrap shadow border border-emerald-500/40">
+                                {c.name.split(' ').pop()}
+                              </span>
+                            </div>
+                          ))}
+                          <span className="absolute bottom-2 left-2 right-2 text-center text-[9px] font-bold text-emerald-400/80 bg-slate-950/70 rounded-lg px-2 py-1 z-30 pointer-events-none">
+                            Grün = eigene Spieler frei ziehen · Rot = Gegner (statisch)
+                          </span>
                         </div>
                       </div>
                       <div className="lg:w-[45%] space-y-4 overflow-y-auto max-h-[520px]">
@@ -7659,7 +7902,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                           {selectedMatchObj.competition.toUpperCase() + ' • SPIELTAGSPRÄSENTATION ' + (selectedMatchObj.date || '')}
                         </span>
                         <h1 className="text-3xl sm:text-4xl font-black text-white uppercase tracking-tight text-center">
-                          {activeClub.shortName || 'FC AUGGEN'} vs. {selectedMatchObj.opponent.toUpperCase()}
+                          {presentationTitleOverride || `${activeClub.shortName || 'FC AUGGEN'} vs. ${selectedMatchObj.opponent.toUpperCase()}`}
                         </h1>
                         <p className="text-sm text-slate-300 font-semibold flex items-center gap-2 flex-wrap justify-center">
                           <span>{selectedMatchObj.date ? new Date(selectedMatchObj.date).toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' }) : ''}, {selectedMatchObj.time || '15:30'} Uhr</span>
@@ -7673,7 +7916,11 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                     </div>
                   ) : presentationSlideIndex === 7 ? (
                     <div className="rounded-2xl overflow-hidden border-2 border-violet-500/40 aspect-square max-h-[540px] mx-auto w-full">
-                      <TacticScenarioView scenario={activeScenario} />
+                      <TacticScenarioView
+                        scenario={activeScenario}
+                        draftZones={scenarioEdits[activeScenario.id]?.zones}
+                        draftPlayers={scenarioEdits[activeScenario.id]?.players}
+                      />
                     </div>
                   ) : presentationSlideIndex === 8 ? (
                     <div className="grid grid-cols-3 gap-4">
@@ -7700,7 +7947,32 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                       ))}
                     </div>
                   ) : (
-                    renderPitchForSlide(presentationSlideIndex)
+                    (() => {
+                      if (presentationSlideIndex === 1) return renderPitchForSlide(1);
+                      const tvScenarioId =
+                        presentationSlideIndex === 2 ? 'sys-4231'
+                        : presentationSlideIndex === 3 ? 'f-mb'
+                        : presentationSlideIndex === 4 ? 'f-r1'
+                        : presentationSlideIndex === 5 ? 'f-d1'
+                        : presentationSlideIndex === 6 ? 'f-gb'
+                        : null;
+                      if (tvScenarioId) {
+                        const sc = ALL_SCENARIOS.find((s) => s.id === tvScenarioId);
+                        if (sc) {
+                          return (
+                            <div className="rounded-2xl overflow-hidden border-2 border-emerald-500/30 aspect-square max-h-[540px] mx-auto w-full">
+                              <TacticScenarioView
+                                scenario={sc}
+                                draftZones={scenarioEdits[tvScenarioId]?.zones}
+                                draftPlayers={scenarioEdits[tvScenarioId]?.players}
+                                highlightArrows={tvScenarioId !== 'sys-4231'}
+                              />
+                            </div>
+                          );
+                        }
+                      }
+                      return renderPitchForSlide(presentationSlideIndex);
+                    })()
                   )}
                 </div>
               </div>

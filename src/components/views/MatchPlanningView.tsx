@@ -583,8 +583,10 @@ export const MatchPlanningView: React.FC<MatchPlanningViewProps> = ({
                 const dateISO = m.date.includes('.') ? m.date.split('.').reverse().join('-') : m.date;
                 return dateISO >= now;
               }).sort((a,b) => {
-                const dateA = (a.date || '').includes('.') ? a.date.split('.').reverse().join('-') : (a.date || '');
-                const dateB = (b.date || '').includes('.') ? b.date.split('.').reverse().join('-') : (b.date || '');
+                const rawA = a.date || '';
+                const rawB = b.date || '';
+                const dateA = rawA.includes('.') ? rawA.split('.').reverse().join('-') : rawA;
+                const dateB = rawB.includes('.') ? rawB.split('.').reverse().join('-') : rawB;
                 return dateA.localeCompare(dateB);
               });
               const nextMatch = upcoming[0];

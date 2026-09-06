@@ -387,7 +387,7 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
           const newClip: TacticalVideoClip = {
             id: newId,
             category: mappedCategory,
-            videoUrl: videoSource,
+videoUrl: videoSource ?? '',
             videoName: videoFileName,
             startTime: clip.startTimeSeconds || 0,
             endTime: clip.endTimeSeconds || 10,
@@ -590,7 +590,7 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
           }
         }
 
-        const blob = new Blob(chunks, { type: contentType || 'video/mp4' });
+        const blob = new Blob(chunks as unknown as BlobPart[], { type: contentType || 'video/mp4' });
         const objectUrl = URL.createObjectURL(blob);
         setVideoSource(objectUrl);
         setVideoFileName(fileName);

@@ -971,7 +971,7 @@ Antworte STRENG im geforderten JSON-Format.
             }
           }
         });
-        resultText = response.text;
+resultText = response.text ?? null;
       } catch (geminiErr: any) {
         console.warn("Gemini model unavailable or errored out, invoking fallback video analysis engine:", geminiErr?.message || geminiErr);
       }

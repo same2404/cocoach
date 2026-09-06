@@ -121,7 +121,7 @@ export const TenDayPlanSection: React.FC<TenDayPlanSectionProps> = ({
         </div>
 
         {/* Progress & Quick Actions */}
-        <div className="flex flex-wrap items-center gap-3 shrink-0">
+        <div className="flex flex-wrap items-center gap-3 min-w-0">
           {/* Progress Bar */}
           <div className="bg-[#202020] border border-[#2A2A2A] rounded-xl p-2.5 px-3 min-w-[150px]">
             <div className="flex items-center justify-between gap-2 text-[10px] font-black uppercase text-[#F5F5F5] mb-1">

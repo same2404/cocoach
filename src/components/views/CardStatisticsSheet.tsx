@@ -133,7 +133,7 @@ export const CardStatisticsSheet: React.FC<CardStatisticsSheetProps> = ({
                           <td key={match.id} className="p-1 border-r border-black/10">
                             <select 
                               className={`w-full bg-transparent text-center font-black focus:bg-yellow-50 focus:outline-none uppercase ${!isEditing ? 'opacity-70 cursor-not-allowed' : ''}`}
-                              value={record?.cards?.[match.id] || record?.[`cards.${match.id}`] || ''}
+                              value={(record?.cards as any)?.[match.id] || (record as any)?.[`cards.${match.id}`] || ''}
                               onChange={(e) => handleUpdateCard(player.id, match.id, e.target.value as any)}
                               disabled={!isEditing}
                             >

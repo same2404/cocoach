@@ -41,7 +41,7 @@ export function normalizeDateToISO(value: string | Date): string | null {
 export function findSessionByDate<T extends { date?: string | Date }>(sessions: T[], dateValue: string | Date): T | undefined {
   const target = normalizeDateToISO(dateValue);
   if (!target || !sessions) return undefined;
-  return sessions.find((s) => normalizeDateToISO(s.date) === target);
+  return sessions.find((s) => (s.date !== undefined ? normalizeDateToISO(s.date) : undefined) === target);
 }
 
 export function hasSessionOnDate<T extends { date?: string | Date }>(sessions: T[], dateValue: string | Date): boolean {

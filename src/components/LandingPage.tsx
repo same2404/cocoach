@@ -174,7 +174,7 @@ export const LandingPage: React.FC = () => {
             {!videoFailed && (
               <video
                 className="absolute inset-0 w-full h-full object-contain"
-                src="/demo-video.mp4"
+                src="/demo-video-v3.mp4"
                 poster=""
                 preload="metadata"
                 playsInline
