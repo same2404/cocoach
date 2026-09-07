@@ -2682,7 +2682,7 @@ onNavigateToTacticBoard={() => {
           />
         );
       case 'video_analysis':
-        return <VideoAnalysisView players={sortedPlayers} clubName={activeClub.name} clubShortName={activeClub.shortName} />;
+        return <VideoAnalysisView players={sortedPlayers.filter(isPlayer)} clubName={activeClub.name} clubShortName={activeClub.shortName} />;
       case 'academy_analysis':
         return (
           <AcademyAnalysisView 

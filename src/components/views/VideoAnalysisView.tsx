@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Video, 
@@ -478,6 +478,20 @@ const parseTimeInput = (str: string): number => {
 };
 
 export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = [], clubName = 'FC Auggen', clubShortName = 'FCA' }) => {
+  // Nur echte Feldspieler des aktuellen Kaders (kein Staff/Trainer/Ärzte/Physios)
+  // werden an die KI übergeben, damit sie nur aktuelle Spieler benannte.
+  const squadPlayers = useMemo(() => players
+    .filter(p => {
+      const cat = String((p as any).category || 'player').toLowerCase();
+      return cat === 'player' || cat === 'spieler';
+    })
+    .map(p => ({
+      id: p.id,
+      lastName: ('lastName' in p) ? p.lastName : (p as any).name || '',
+      firstName: ('firstName' in p) ? (p as any).firstName || '' : '',
+      position: ('position' in p) ? (p as any).position || '' : '',
+      number: ('number' in p) ? (p as any).number : ('nummer' in p) ? (p as any).nummer : '',
+    })), [players]);
   // Sync clips with Firestore collection
   const { 
     data: savedClips, 
@@ -630,14 +644,6 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
         frames = await extractFrames(videoEl, 5);
       }
 
-      const squadPlayers = players.map(p => ({
-        id: p.id,
-        lastName: ('lastName' in p) ? p.lastName : (p as any).name || '',
-        firstName: ('firstName' in p) ? (p as any).firstName || '' : '',
-        position: ('position' in p) ? (p as any).position || '' : '',
-        number: ('number' in p) ? (p as any).number : ('nummer' in p) ? (p as any).nummer : '',
-      }));
-
       const res = await apiFetch('/api/video-analysis/process', {
         method: 'POST',
         body: JSON.stringify({
@@ -724,13 +730,6 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
     if (!aiAnalysisResult) return;
     setTrainingPlanLoading(true);
     try {
-      const squadPlayers = players.map(p => ({
-        lastName: ('lastName' in p) ? p.lastName : (p as any).name || '',
-        firstName: ('firstName' in p) ? (p as any).firstName || '' : '',
-        position: ('position' in p) ? (p as any).position || '' : '',
-        number: ('number' in p) ? (p as any).number : ('nummer' in p) ? (p as any).nummer : '',
-      }));
-
       const res = await apiFetch('/api/video-analysis/training-plan', {
         method: 'POST',
         body: JSON.stringify({

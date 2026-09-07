@@ -890,6 +890,20 @@ Rekonstruiere pro Szene die VOLLSTÄNDIGE KETTE: VORHER → AUSLÖSER → SPIELE
 Kaderliste des Vereins:
 ${squadStr}
 
+SPIELER-IDENTITÄT (STRENG):
+- FC-Auggens-Spieler benennst du AUSSCHLIESSLICH mit Namen aus der Kaderliste oben, deren category 'player' oder 'spieler' ist.
+- Personen in der Kaderliste mit anderer category (Trainer, Co-Trainer, TW-Trainer, Arzt, Physio, Betreuer, Teammanager, Staff) sind NIEMALS Spieler - du bezeichnest sie nie als handelnde Spieler auf dem Platz.
+- Wenn du einen Spieler nicht sicher identifizieren kannst (Frames unklar, Trikotnummer nicht lesbar): verwende nur die Trikotnummer ("#9") oder "unknown" - NIE einen Namen erfinden.
+- Bei mehrdeutigen Trikotnummern (zwei Spieler mit gleicher Nummer in der Kaderliste): kennzeichne mit "unknown" und marriere low_confidence.
+- Ein Spieler mit dem Status 'Verletzt' in der Kaderliste kann höchstens im Kader stehen, aber nicht sicher auf dem Platz sein - auch hier "unknown", nicht raten.
+
+VERHALTEN OHNE VIDEO-FRAMES:
+- Wenn KEINE Video-Frames übergeben wurden (z.B. Veo-Embed), kannst du den Spielverlauf NICHT konkret sehen. Dann:
+  - confidence.overall = "niedrig" UND lowConfidence = true.
+  - Benenne KEINE konkreten Spieler (unabhängig von der Kaderliste) als Handelnde.
+  - Erfinde KEINE konkreten Passequenzen, Laufwege oder Tor-Details. Markiere nicht belegbare Szenen als "unknown" bzw. beschreibe nur Technisches (z.B. "Es wurden keine Frames übergeben, eine gesicherte Szene ist nicht möglich") im aiCommentary.
+  - Die Erkennung dient dann nur als kontextuelle Vorschau, nicht als faktenbasierte Analyse.
+
 Antworte STRENG im geforderten JSON-Format.
 `;
 
@@ -1122,10 +1136,12 @@ resultText = response.text ?? null;
 
       // Robust fallback payload when Gemini API is overloaded or returning 503
       const fallbackSquad = Array.isArray(squadPlayers) && squadPlayers.length > 0 ? squadPlayers : [
-        { id: 'sp1', lastName: 'Walther', firstName: 'M.', position: 'ST', number: '9' },
-        { id: 'sp2', lastName: 'Bischoff', firstName: 'B.', position: 'ZM', number: '8' },
-        { id: 'sp3', lastName: 'Ehret', firstName: 'J.', position: 'RA', number: '7' },
-        { id: 'sp4', lastName: 'Bischoff', firstName: 'R.', position: 'IV', number: '4' }
+        { id: 'sp1', lastName: 'Misic', firstName: 'L.', position: 'TW', number: '1' },
+        { id: 'sp2', lastName: 'Podlich', firstName: 'S.', position: 'RV', number: '2' },
+        { id: 'sp3', lastName: 'Fangmeier', firstName: 'J.', position: 'IV', number: '5' },
+        { id: 'sp4', lastName: 'Scalici', firstName: '', position: 'ZM', number: '8' },
+        { id: 'sp5', lastName: 'Tiedemann', firstName: '', position: 'ST', number: '9' },
+        { id: 'sp6', lastName: 'Ehret', firstName: 'Jo', position: 'OM', number: '10' }
       ];
 
       const p1Name = fallbackSquad[0] ? `${fallbackSquad[0].lastName || ''} ${fallbackSquad[0].firstName || ''}`.trim() : 'M. Walther';
