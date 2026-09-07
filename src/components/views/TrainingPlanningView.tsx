@@ -975,12 +975,35 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
   const currentWeekPlans = activeMatchDay ? WOCHENPLAENNE[activeMatchDay] : WOCHENPLAENNE.friday;
 
   // Editierbare Wochen-Tage (für Trainingstage hinzufügen/entfernen & Stufe wählen)
-  const KW_START_DATES = ['2026-08-31', '2026-09-07', '2026-09-14', '2026-09-21', '2026-09-28'];
-  const KW_LABELS = ['KW 36 · 31.08–06.09', 'KW 37 · 07.09–13.09', 'KW 38 · 14.09–20.09', 'KW 39 · 21.09–27.09', 'KW 40 · 28.09–04.10'];
+  // Ganzes Jahr: 52 Kalenderwochen dynamisch erzeugen (ISO-Woche + Datumsbereich).
+  const getIsoWeek = (d: Date): number => {
+    const date = new Date(d.getTime());
+    date.setHours(0, 0, 0, 0);
+    const dayNum = (date.getDay() + 6) % 7;
+    date.setDate(date.getDate() - dayNum + 3);
+    const firstThursday = new Date(date.getFullYear(), 0, 4);
+    const firstDayNum = (firstThursday.getDay() + 6) % 7;
+    firstThursday.setDate(firstThursday.getDate() - firstDayNum + 3);
+    return 1 + Math.round(((date.getTime() - firstThursday.getTime()) / 86400000) / 7);
+  };
+  const YEAR_START = new Date('2026-01-05T12:00:00');
+  const YEAR_WEEKS = 52;
+  const KW_START_DATES: string[] = [];
+  const KW_LABELS: string[] = [];
+  for (let wi = 0; wi < YEAR_WEEKS; wi++) {
+    const monday = new Date(YEAR_START);
+    monday.setDate(monday.getDate() + wi * 7);
+    const sunday = new Date(monday);
+    sunday.setDate(sunday.getDate() + 6);
+    KW_START_DATES.push(`${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`);
+    const kw = getIsoWeek(monday);
+    KW_LABELS.push(`KW ${String(kw).padStart(2, '0')} · ${monday.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}–${sunday.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}`);
+  }
   const [weekIndex, setWeekIndex] = useState(0);
   const [weekDays, setWeekDays] = useState<TagesPlan[]>(() => currentWeekPlans[0]?.tage?.map((t) => ({ ...t })) || []);
   useEffect(() => {
-    setWeekDays(currentWeekPlans[weekIndex]?.tage?.map((t) => ({ ...t })) || []);
+    const template = currentWeekPlans[weekIndex % currentWeekPlans.length] || currentWeekPlans[0];
+    setWeekDays(template?.tage?.map((t) => ({ ...t })) || []);
   }, [activeMatchDay, weekIndex]);
 
   const changeWeekDayStufe = (i: number, stufe: number) => {
@@ -1053,6 +1076,79 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
     { pos: 'Torwart (TW)', stufen: [4, 6, 5, 6, 0, 3, 8], farbe: '#6B7280' },
   ];
   const TAGE_KURZ = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+
+  // ═══ 3–4-WOCHEN-BLOCK (Periodisierung) ═══
+  // Zusatz-Modus: mehrere Wochen als zusammenhängenden Block planen.
+  const [blockMode, setBlockMode] = useState<boolean>(false);
+  const [blockWeeks, setBlockWeeks] = useState<3 | 4>(4);
+  const [blockStartWeek, setBlockStartWeek] = useState<number>(0);
+
+  // Periodisierungs-Themen je Woche im Block (aufbauend)
+  const BLOCK_THEMES = [
+    { name: 'Woche 1 · Grundlage', focus: 'Technik & Kondition', stufenFaktor: 0.85, farbe: '#10B981' },
+    { name: 'Woche 2 · Aufbau', focus: 'Spielstruktur & Taktik', stufenFaktor: 1.0, farbe: '#F59E0B' },
+    { name: 'Woche 3 · Intensivierung', focus: 'Tempo, Pressing & Wettkampf', stufenFaktor: 1.15, farbe: '#EF4444' },
+    { name: 'Woche 4 · Taper / Spiel', focus: 'Regeneration & Abschluss', stufenFaktor: 0.9, farbe: '#8B5CF6' },
+  ];
+
+  // Basis-Woche des aktiven Spieltagstyps (thematisch) — für Stufen-Rotation
+  const basePlan: WochenPlan | null = (currentWeekPlans[blockStartWeek % currentWeekPlans.length] || currentWeekPlans[0] || null);
+
+  // Eigenständige Wochenplan-Rotation im Block: Stufen je Woche anheben/abflachen,
+  // ohne die Spieltag-Vorlagen zu mutieren.
+  const blockWeekPlans: WochenPlan[] = (() => {
+    if (!basePlan) return [];
+    const count = blockWeeks;
+    const weekThemes = BLOCK_THEMES.slice(0, count);
+    return weekThemes.map((theme) => {
+      const tage = (basePlan.tage || []).map((t) => {
+        if (t.stufe === 0) {
+          // Spieltag bleibt Spieltag
+          return { ...t, schwerpunkt: 'Pflichtspiel', inhalt: t.inhalt || 'SPIELTAG' };
+        }
+        const newStufe = Math.max(1, Math.min(9, Math.round(t.stufe * theme.stufenFaktor)));
+        return { ...t, stufe: newStufe, schwerpunkt: theme.focus };
+      });
+      return { tage };
+    });
+  })();
+
+  // Gesamten Block (alle Wochen) in Sessions synchronisieren
+  const syncFullBlock = () => {
+    const count = blockWeeks;
+    const firstWeek = blockStartWeek;
+    let synced = 0;
+    for (let w = 0; w < count; w++) {
+      const plan = blockWeekPlans[w];
+      if (!plan) continue;
+      const wkBase = new Date(KW_START_DATES[(firstWeek + w) % KW_START_DATES.length] || KW_START_DATES[0]);
+      plan.tage.forEach((tag, dayIndex) => {
+        if (tag.stufe === 0) return;
+        const dateStr = new Date(wkBase);
+        dateStr.setDate(wkBase.getDate() + dayIndex);
+        const iso = dateStr.toISOString().split('T')[0];
+        const existing = sessions.find((s: any) => s.date === iso);
+        const payload = {
+          date: iso,
+          weekday: tag.weekday,
+          location: 'Rasenplatz Auggen',
+          loadLevel: tag.stufe,
+          load: BELASTUNGS_STUFEN[tag.stufe]?.label || '',
+          intensity: BELASTUNGS_STUFEN[tag.stufe]?.intensity || '',
+          duration: tag.dauer,
+          sessionFocus: tag.schwerpunkt,
+        };
+        if (existing) {
+          saveSession({ ...existing, ...payload });
+        } else if (localSession) {
+          saveSession({ ...localSession, ...payload });
+        }
+        synced++;
+      });
+    }
+    setNotification(`${synced} Einheiten aus ${count}-Wochen-Block synchronisiert.`);
+    setTimeout(() => setNotification(null), 3000);
+  };
 
   // ═══════════════════════════════════════════════════════════════
 
@@ -3112,32 +3208,130 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
           </div>
         </div>
 
-        {/* ═══ 3-WOCHENPLAN & BELASTUNG (kompakt, oben) ═══ */}
+        {/* ═══ 3-WOCHENPLAN / 3–4-WOCHEN-BLOCK & BELASTUNG (kompakt, oben) ═══ */}
         <div className="bg-white border-b-2 border-black print:hidden shrink-0">
-          <div className="px-2.5 py-1 bg-[#111827] flex items-center justify-between">
-            <span className="text-[8px] font-black uppercase tracking-widest text-[#F59E0B]">3-Wochenplan · Stufen 1–9 (Intensität auto)</span>
+          <div className="px-2.5 py-1 bg-[#111827] flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[8px] font-black uppercase tracking-widest text-[#F59E0B]">
+                {blockMode ? `${blockWeeks}-Wochen-Block` : '3-Wochenplan'} · Stufen 1–9 (Intensität auto)
+              </span>
+              <div className="flex items-center gap-1 bg-[#0F172A] rounded-md p-0.5">
+                <button
+                  onClick={() => setBlockMode(false)}
+                  className={`px-2 py-0.5 rounded text-[7px] font-black uppercase border cursor-pointer transition-all ${!blockMode ? 'bg-[#F59E0B] text-black border-[#F59E0B]' : 'bg-transparent text-slate-400 border-slate-600 hover:text-white'}`}
+                >
+                  Einzelwoche
+                </button>
+                <button
+                  onClick={() => setBlockMode(true)}
+                  className={`px-2 py-0.5 rounded text-[7px] font-black uppercase border cursor-pointer transition-all ${blockMode ? 'bg-[#F59E0B] text-black border-[#F59E0B]' : 'bg-transparent text-slate-400 border-slate-600 hover:text-white'}`}
+                >
+                  3–4-Wochen-Block
+                </button>
+              </div>
+              {blockMode && (
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setBlockWeeks(3)}
+                    className={`px-1.5 py-0.5 rounded text-[7px] font-black uppercase border cursor-pointer ${blockWeeks === 3 ? 'bg-emerald-500 text-black border-emerald-500' : 'bg-transparent text-slate-400 border-slate-600'}`}
+                  >
+                    3 Wo
+                  </button>
+                  <button
+                    onClick={() => setBlockWeeks(4)}
+                    className={`px-1.5 py-0.5 rounded text-[7px] font-black uppercase border cursor-pointer ${blockWeeks === 4 ? 'bg-emerald-500 text-black border-emerald-500' : 'bg-transparent text-slate-400 border-slate-600'}`}
+                  >
+                    4 Wo
+                  </button>
+                  <select
+                    value={blockStartWeek}
+                    onChange={(e) => setBlockStartWeek(Number(e.target.value))}
+                    className="text-[7px] font-black uppercase bg-[#1E293B] border border-slate-600 rounded px-1 py-0.5 text-slate-300 cursor-pointer"
+                    title="Start-KW des Blocks"
+                  >
+                    {KW_LABELS.map((lab, idx) => (<option key={idx} value={idx}>{lab}</option>))}
+                  </select>
+                  <button
+                    onClick={syncFullBlock}
+                    className="px-2 py-0.5 rounded text-[7px] font-black uppercase border bg-sky-600 text-white border-sky-400 hover:bg-sky-500 cursor-pointer"
+                  >
+                    Block sync
+                  </button>
+                </div>
+              )}
+            </div>
             <span className="text-[7px] font-black uppercase text-slate-400">
               Spieltag: {activeMatchDay === 'friday' ? 'Freitag' : activeMatchDay === 'saturday' ? 'Samstag' : activeMatchDay === 'sunday' ? 'Sonntag' : 'Auto'}
             </span>
           </div>
-          {/* Wochen-Wechsler (KW 36–40) */}
-          {currentWeekPlans.length > 1 && (
-            <div className="px-2.5 py-1 bg-[#0F172A] flex gap-1 overflow-x-auto">
-              {KW_LABELS.map((label, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setWeekIndex(idx)}
-                  className={`px-2 py-0.5 rounded text-[7px] font-black uppercase whitespace-nowrap border cursor-pointer transition-all ${
-                    weekIndex === idx
-                      ? 'bg-[#F59E0B] text-black border-[#F59E0B]'
-                      : 'bg-transparent text-slate-400 border-slate-600 hover:text-white hover:border-slate-400'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
+          {/* Wochen-Wechsler (KW 36–40) — nur im Einzelwochen-Modus */}
+          {/* Jahres-Wochen-Auswahl (Dropdown + zurück/vor) — nur im Einzelwochen-Modus */}
+          {!blockMode && (
+            <div className="px-2.5 py-1 bg-[#0F172A] flex items-center gap-1 overflow-x-auto">
+              <button
+                onClick={() => setWeekIndex(Math.max(0, weekIndex - 1))}
+                className="px-1.5 py-0.5 rounded text-[9px] font-black text-slate-300 border border-slate-600 hover:text-white cursor-pointer"
+                title="Vorherige Woche"
+              >‹</button>
+              <select
+                value={weekIndex}
+                onChange={(e) => setWeekIndex(Math.min(KW_LABELS.length - 1, Math.max(0, Number(e.target.value))))}
+                className="px-2 py-0.5 rounded text-[8px] font-black uppercase bg-[#1E293B] border border-slate-600 text-slate-200 cursor-pointer"
+                title="Woche des Jahres wählen"
+              >
+                {KW_LABELS.map((label, idx) => (
+                  <option key={idx} value={idx}>{label}</option>
+                ))}
+              </select>
+              <button
+                onClick={() => setWeekIndex(Math.min(KW_LABELS.length - 1, weekIndex + 1))}
+                className="px-1.5 py-0.5 rounded text-[9px] font-black text-slate-300 border border-slate-600 hover:text-white cursor-pointer"
+                title="Nächste Woche"
+              >›</button>
             </div>
           )}
+          {/* 3–4-Wochen-Block-Ansicht: nur die Block-Wochen erscheinen */}
+          {blockMode && (
+            <div className="px-2.5 py-1.5 space-y-2">
+              {blockWeekPlans.map((plan, wIdx) => {
+                const theme = BLOCK_THEMES[wIdx] || BLOCK_THEMES[BLOCK_THEMES.length - 1];
+                const wkBase = new Date(KW_START_DATES[(blockStartWeek + wIdx) % KW_START_DATES.length] || KW_START_DATES[0]);
+                const wkLabel = KW_LABELS[(blockStartWeek + wIdx) % KW_LABELS.length] || '';
+                return (
+                  <div key={wIdx} className="rounded-md border border-slate-200 overflow-hidden">
+                    <div className="px-2 py-1 bg-[#0F172A] flex items-center justify-between" style={{ borderLeft: `3px solid ${theme.farbe}` }}>
+                      <span className="text-[8px] font-black uppercase" style={{ color: theme.farbe }}>
+                        {theme.name} · {wkLabel}
+                      </span>
+                      <span className="text-[7px] font-black uppercase text-slate-400">{theme.focus}</span>
+                    </div>
+                    <div className="px-2 py-1.5 flex flex-wrap gap-1.5">
+                      {plan.tage.map((tag, dayIndex) => {
+                        const stufe = BELASTUNGS_STUFEN[tag.stufe];
+                        const d = new Date(wkBase);
+                        d.setDate(wkBase.getDate() + dayIndex);
+                        const dateStr = d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
+                        return (
+                          <div key={dayIndex} className="flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 pl-1.5 pr-1 py-1" style={{ borderLeft: `3px solid ${tag.stufe === 0 ? '#64748b' : stufe?.farbe || '#94a3b8'}` }}>
+                            <div className="flex flex-col leading-none">
+                              <span className="text-[8px] font-black uppercase text-slate-600">{tag.weekday} · {dateStr}</span>
+                              <span className="text-[8px] text-slate-500 truncate max-w-[100px]">{tag.schwerpunkt}</span>
+                            </div>
+                            <span className="text-[8px] font-black uppercase px-1 py-0.5 rounded" style={{ backgroundColor: stufe?.farbe || '#64748b', color: tag.stufe >= 7 ? '#fff' : '#111' }}>
+                              {tag.stufe === 0 ? 'Spiel' : stufe?.intensity || ''}
+                            </span>
+                            <span className="text-[8px] font-bold text-slate-400">{tag.dauer}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {/* Einzelwoche-Inhalt (nur im Einzelwochen-Modus) */}
+          {!blockMode && (
           <div className="px-2.5 py-1.5 space-y-1.5">
             {/* 6 Übungsbausteine als Mini-Chips */}
             <div className="flex flex-wrap gap-1">
@@ -3168,7 +3362,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
             <div className="flex flex-wrap gap-1.5 items-stretch">
               {weekDays.map((tag, i) => {
                 const stufe = BELASTUNGS_STUFEN[tag.stufe];
-                const dateBase = new Date(KW_START_DATES[weekIndex] || KW_START_DATES[0]);
+const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || KW_START_DATES[0]);
                 dateBase.setDate(dateBase.getDate() + i);
                 const dateStr = dateBase.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
                 return (
@@ -3198,6 +3392,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
               })}
             </div>
           </div>
+          )}
         </div>
 
         {/* XPS DRILL PANEL — Kategorien-Editor */}
