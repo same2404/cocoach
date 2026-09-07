@@ -1095,8 +1095,9 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
   const basePlan: WochenPlan | null = (currentWeekPlans[blockStartWeek % currentWeekPlans.length] || currentWeekPlans[0] || null);
 
   // Eigenständige Wochenplan-Rotation im Block: Stufen je Woche anheben/abflachen,
-  // ohne die Spieltag-Vorlagen zu mutieren.
-  const blockWeekPlans: WochenPlan[] = (() => {
+  // ohne die Spieltag-Vorlagen zu mutieren. Bearbeitbar per State.
+  const [blockPlans, setBlockPlans] = useState<WochenPlan[]>([]);
+  const buildBlockPlans = (): WochenPlan[] => {
     if (!basePlan) return [];
     const count = blockWeeks;
     const weekThemes = BLOCK_THEMES.slice(0, count);
@@ -1111,7 +1112,63 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
       });
       return { tage };
     });
-  })();
+  };
+  useEffect(() => {
+    setBlockPlans(buildBlockPlans());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blockStartWeek, blockWeeks, currentWeekPlans]);
+
+  // Block-Tag bearbeiten: Stufe ändern
+  const changeBlockDayStufe = (wIdx: number, dayIndex: number, stufe: number) => {
+    setBlockPlans((prev) => prev.map((plan, wi) => {
+      if (wi !== wIdx) return plan;
+      const tage = (plan.tage || []).map((t, di) => (di === dayIndex ? { ...t, stufe } : t));
+      return { ...plan, tage };
+    }));
+  };
+
+  // Block-Tag bearbeiten: Schwerpunkt/Fokus ändern
+  const changeBlockDayFocus = (wIdx: number, dayIndex: number, schwerpunkt: string) => {
+    setBlockPlans((prev) => prev.map((plan, wi) => {
+      if (wi !== wIdx) return plan;
+      const tage = (plan.tage || []).map((t, di) => (di === dayIndex ? { ...t, schwerpunkt } : t));
+      return { ...plan, tage };
+    }));
+  };
+
+  // Block-Tag bearbeiten: entfernen
+  const removeBlockDay = (wIdx: number, dayIndex: number) => {
+    setBlockPlans((prev) => prev.map((plan, wi) => {
+      if (wi !== wIdx) return plan;
+      const tage = (plan.tage || []).filter((_, di) => di !== dayIndex);
+      return { ...plan, tage };
+    }));
+  };
+
+  // Einzelnen Block-Tag in die aktuelle/konkrete Session übernehmen (echtes Datum!)
+  const applyBlockDayToSession = (wIdx: number, tag: TagesPlan, dayIndex: number) => {
+    if (!localSession) return;
+    const wkBase = new Date(KW_START_DATES[(blockStartWeek + wIdx) % KW_START_DATES.length] || KW_START_DATES[0]);
+    const dateStr = new Date(wkBase);
+    dateStr.setDate(wkBase.getDate() + dayIndex);
+    const iso = dateStr.toISOString().split('T')[0];
+    const stufe = BELASTUNGS_STUFEN[tag.stufe];
+    const updated = {
+      ...localSession,
+      date: iso,
+      weekday: tag.weekday,
+      location: tag.stufe === 0 ? (localSession.location || '') : 'Rasenplatz Auggen',
+      loadLevel: tag.stufe,
+      load: stufe?.label || '',
+      intensity: stufe?.intensity || '',
+      duration: tag.dauer,
+      sessionFocus: tag.schwerpunkt,
+    };
+    setLocalSession(updated);
+    saveSession(updated);
+    setNotification(`KW ${wIdx + 1} · ${tag.weekday} · ${iso}: Stufe ${tag.stufe} — ${stufe?.label || ''} | ${tag.schwerpunkt}`);
+    setTimeout(() => setNotification(null), 3000);
+  };
 
   // Gesamten Block (alle Wochen) in Sessions synchronisieren
   const syncFullBlock = () => {
@@ -1119,7 +1176,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
     const firstWeek = blockStartWeek;
     let synced = 0;
     for (let w = 0; w < count; w++) {
-      const plan = blockWeekPlans[w];
+      const plan = blockPlans[w];
       if (!plan) continue;
       const wkBase = new Date(KW_START_DATES[(firstWeek + w) % KW_START_DATES.length] || KW_START_DATES[0]);
       plan.tage.forEach((tag, dayIndex) => {
@@ -3293,7 +3350,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
           {/* 3–4-Wochen-Block-Ansicht: nur die Block-Wochen erscheinen */}
           {blockMode && (
             <div className="px-2.5 py-1.5 space-y-2">
-              {blockWeekPlans.map((plan, wIdx) => {
+              {blockPlans.map((plan, wIdx) => {
                 const theme = BLOCK_THEMES[wIdx] || BLOCK_THEMES[BLOCK_THEMES.length - 1];
                 const wkBase = new Date(KW_START_DATES[(blockStartWeek + wIdx) % KW_START_DATES.length] || KW_START_DATES[0]);
                 const wkLabel = KW_LABELS[(blockStartWeek + wIdx) % KW_LABELS.length] || '';
@@ -3301,9 +3358,9 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
                   <div key={wIdx} className="rounded-md border border-slate-200 overflow-hidden">
                     <div className="px-2 py-1 bg-[#0F172A] flex items-center justify-between" style={{ borderLeft: `3px solid ${theme.farbe}` }}>
                       <span className="text-[8px] font-black uppercase" style={{ color: theme.farbe }}>
-                        {theme.name} · {wkLabel}
+                        Woche {wIdx + 1} · {wkLabel}
                       </span>
-                      <span className="text-[7px] font-black uppercase text-slate-400">{theme.focus}</span>
+                      <span className="text-[7px] font-black uppercase text-slate-400">Trainingswoche</span>
                     </div>
                     <div className="px-2 py-1.5 flex flex-wrap gap-1.5">
                       {plan.tage.map((tag, dayIndex) => {
@@ -3315,12 +3372,33 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
                           <div key={dayIndex} className="flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 pl-1.5 pr-1 py-1" style={{ borderLeft: `3px solid ${tag.stufe === 0 ? '#64748b' : stufe?.farbe || '#94a3b8'}` }}>
                             <div className="flex flex-col leading-none">
                               <span className="text-[8px] font-black uppercase text-slate-600">{tag.weekday} · {dateStr}</span>
-                              <span className="text-[8px] text-slate-500 truncate max-w-[100px]">{tag.schwerpunkt}</span>
+                              <input
+                                value={tag.schwerpunkt}
+                                onChange={(e) => changeBlockDayFocus(wIdx, dayIndex, e.target.value)}
+                                className="text-[8px] text-slate-700 bg-white border border-slate-300 rounded px-0.5 py-0.5 w-[110px] focus:outline-none focus:border-sky-400"
+                                title="Schwerpunkt bearbeiten"
+                              />
                             </div>
+                            {tag.stufe === 0 ? (
+                              <span className="text-[8px] font-black uppercase px-1 py-0.5 rounded bg-slate-400 text-white">Spiel</span>
+                            ) : (
+                              <select
+                                value={tag.stufe}
+                                onChange={(e) => changeBlockDayStufe(wIdx, dayIndex, Number(e.target.value))}
+                                className="text-[8px] font-black border border-slate-300 rounded bg-white px-0.5 py-0.5 cursor-pointer"
+                                title="Belastungsstufe wählen (Intensität passt sich automatisch an)"
+                              >
+                                {[1,2,3,4,5,6,7,8,9].map((s) => (
+                                  <option key={s} value={s}>{s} · {BELASTUNGS_STUFEN[s].label}</option>
+                                ))}
+                              </select>
+                            )}
                             <span className="text-[8px] font-black uppercase px-1 py-0.5 rounded" style={{ backgroundColor: stufe?.farbe || '#64748b', color: tag.stufe >= 7 ? '#fff' : '#111' }}>
                               {tag.stufe === 0 ? 'Spiel' : stufe?.intensity || ''}
                             </span>
                             <span className="text-[8px] font-bold text-slate-400">{tag.dauer}</span>
+                            <button onClick={() => applyBlockDayToSession(wIdx, tag, dayIndex)} className="text-[8px] font-black uppercase text-sky-700 hover:text-sky-500 cursor-pointer" title="In aktuelle Einheit übernehmen">✓</button>
+                            <button onClick={() => removeBlockDay(wIdx, dayIndex)} className="text-[9px] font-black text-red-500 hover:text-red-700 cursor-pointer" title="Trainingstag entfernen">✕</button>
                           </div>
                         );
                       })}

@@ -820,7 +820,14 @@ Erstelle bitte den Wochenbericht gemäß den Vorgaben.
 
       const systemInstruction = `
 Du bist das fortschrittliche Computer-Vision & KI-Videoanalyse-System des Vereins "${teamName}".
-Deine Aufgabe ist es, die vollständige technische Grunderkennung UND die automatische Spielszenen-Klassifikation für ein Fußballvideo durchzuführen.
+Deine Aufgabe ist es, die vollständige technische Grunderkennung UND die maximale taktische Informations-Extraktion (CoCoach "Maximum Information Extraction Engine") für ein Fußballvideo durchzuführen.
+
+WICHTIG – EINORDNUNG DER LIMITATIONEN:
+- Du siehst nur die übergebenen Einzelbilder (Frames), NICHT das gesamte 25-fps-Video. Deshalb gelten folgende Ehrlichkeitsregeln:
+  - Spieler, deren Identität du nicht sicher erkennst: kennzeichne mit "unknown" (nie erraten).
+  - Distanzen/Abstände: nur als Schätzung angeben, z.B. "estimated: 8-11 m" - NIE Scheinpräzision wie "10,37 m". Marker: "estimated".
+  - Unsichere Aussagen mit "low_confidence" markieren.
+  - NIEMALS Information erfinden oder "auffüllen". Wenn etwas nicht erkennbar ist, stehe dazu (unknown/estimated/low_confidence) statt zu raten.
 
 Deine Erkennungs- & Klassifikationsaufgaben:
 1. **Personen-Tracking (Spieler-Erkennung)**:
@@ -828,6 +835,7 @@ Deine Erkennungs- & Klassifikationsaufgaben:
    - Bestimme für jeden erkannten Spieler die Position auf dem Spielfeld in Prozent (xPercent: 0-100%, yPercent: 0-100%).
    - Schätze die Bewegungsintensität ("Gehen", "Trab", "Sprint") und aktuelle Geschwindigkeit in km/h.
    - Verknüpfe erkannte Spieler nach Möglichkeit mit Spielern aus der Kaderliste des Vereins.
+   - Das ist die TRACK-Phase: verfolge Ballträger, An-/Mitläufer und Gegenspieler über die Frames.
 2. **Objekt-Tracking (Ball-Erkennung)**:
    - Erkenne die Position des Balls (xPercent, yPercent), Flughöhe ("Boden", "Halbhoch", "Hochball") und Ballgeschwindigkeit in km/h.
 3. **Spielfeldlinien- & Zonen-Erkennung (Pitch Detection)**:
@@ -843,6 +851,7 @@ Deine Erkennungs- & Klassifikationsaufgaben:
      d) "PRESSING" (z.B. Subcategory: "Hohes Pressing", "Mittelfeldpressing", "Tiefes Pressing")
      e) "AUFBAU" (z.B. Subcategory: "IV-Aufbau", "AV-Aufbau", "Sechser-Aufbau", "Halbraum-Aufbau")
      f) "UMSCHALTMOMENTE" (z.B. Subcategory: "Ballgewinn → Angriff", "Ballverlust → Gegenangriff")
+   - **MEHRFACH-TAGGING**: Eine Szene kann mehreren Kategorien angehören (z.B. eine Chance, die durch Umschalten nach hohem Pressing entsteht). Fülle daher zusätzlich das Feld "categories" mit ALLEN zutreffenden Kategorien - die Kategorien schließen sich NICHT gegenseitig aus.
    - Für jede Szene:
      - Berechne die Clip-Länge: startTimeSeconds = max(0, eventTimestamp - 6), endTimeSeconds = eventTimestamp + 6.
      - timestampFormatted (z.B. "04:12").
@@ -850,6 +859,33 @@ Deine Erkennungs- & Klassifikationsaufgaben:
      - participatingPlayerNames: Gib 1-3 beteiligte Spielernamen an (idealerweise aus der Kaderliste).
      - pitchZone: "Abwehr" | "Mittelfeld" | "Angriff" | "Strafraum" | "Flügel" | "Halbraum".
      - teamInvolved: "${teamName}" | "Gegner" | "Beide".
+
+**COCOACH-ANALYSEPRINZIP (SEE → TRACK → IDENTIFY → CONNECT → ANALYZE → EXPLAIN → COACH)**:
+Reihenfolge: erst Gesamtbild erfassen (SEE), dann Systeme/Spieler über Frames verfolgen (TRACK), Identitäten/zones zuordnen (IDENTIFY), Szenen miteinander verknüpfen (CONNECT), Tiefenanalyse anwenden (ANALYZE), Verlauf verständlich erklären (EXPLAIN), konkreten Lernpunkt für den Trainer formulieren (COACH).
+
+**TIEFENANALYSE je erkannter Spielszene (CONNECT → ANALYZE → EXPLAIN → COACH)**:
+Rekonstruiere pro Szene die VOLLSTÄNDIGE KETTE: VORHER → AUSLÖSER → SPIELERAKTIONEN → PASSFOLGE → LAUFWEGE → RAUMVERÄNDERUNG → ENTSCHEIDUNG → HAUPTEREIGNIS → FOLGE. Verliere dabei NIEMALS Information - vereinfache nichts weg, was du erkennst.
+- **beforeSituation (VORHER)**: Wo standen die Teams, wie war die Struktur, wo war der Ball?
+- **trigger (AUSLÖSER)**: Was löste die Aktion aus (Pressingsignal, Ballgewinn, Ballverlust, Gegnerfehler, Standard)?
+- **passSequence (PASSFOLGE)**: Lückenlose Kette mit Passgeber → Empfänger → Richtung → Art → Zone, inkl. Erfolg. Beispiel: "#6 → #8 (kurz, Halbraum links) → #10 (vertikal) → #9 (Steilpass, Tiefe)".
+- **keyPlayers**: Für jeden relevanten Spieler: Trikotnummer, Team, Position, Start-/Endzone, Laufrichtung, Aktion, Beteiligungsgrad.
+- **runPatterns (LAUFWEGE)**: Erkenne und benenne: Tiefenlauf, Diagonallauf, Gegenbewegung (Kommen & Gehen), Hinterlaufen, Überlaufen, Einrücken (Mitte), Breitengebung, Gegner-Binden/-Wegziehen, Schnittstellenlauf. Pro Laufweg: Spieler, Richtung, Zielzone, Zweck.
+- **spatialAnalysis (RAUMANALYSE)**: Bewerte die Zonen Kennzahlenartig: Zentrum, Halbraum links, Halbraum rechts, Flügel links, Flügel rechts, Zwischenlinienraum, Raum hinter der Abwehr. Pro Zone: freier Raum? Wurde er genutzt oder brachgelassen? Freie Mitspieler?
+- **defensiveLines (DEFENSIVLINIEN)**: Bestimme Linien & Abstände: Torwartlinie, Abwehrkette, Mittelfeldlinie, Angriffslinie - jeweils Soll-IST-Vergleich; Abstände IMMER als Schätzung ("estimated: 8-11 m"), Kettenverschiebung (links/rechts), Kompaktheit. NIE Scheinpräzision.
+- **opponentStructure (GEGNERSTRUKTUR)**: Gegnerische Formation, Pressing-Höhe, Pressing-Richtung, Spieler hinter dem Ball, Spieler vor dem Ball, offene Passwege/Räume, zugestellte Passwege, freie Spieler.
+- **decision (ENTSCHEIDUNG)**: availableOptions: 2-3 real vorhandene Optionen; bestOption: die taktisch beste; reasoning: Begründung unabhängig vom Ergebnis (Prozess > Outcome).
+- **mainLearningPoint (HAUPTLERNPUNKT)**: Nach dieser Priorisierung:
+  1. Spielentscheidender individueller Fehler/Erfolg
+  2. Taktische Ursache des Fehlers/Erfolgs
+  3. Entscheidungsverhalten (richtig/falsch, losgelöst vom Ergebnis)
+  4. Raum-/Linienproblem (z. B. Lücke zwischen IV und AV)
+  5. Individuelle Aktion (Technik, Timing)
+- **goalDetails**: Nur bei TORE: Abschlussart, Vorbereiter, Torwart-Position, warum das Tor entstand (GOLDE REGEL: "Wie ist es entstanden?" - beschreibe den ENTSTEHUNGSWEG, nicht nur das Ergebnis), Clip-Empfehlung 4-6s vor entscheidendem Kontakt bis 2-3s nach dem Tor.
+- **concededGoalDetails**: Nur bei GEGENTOR: Hauptfrage "Was hätte ${teamName} verhindern können?" - Zeige auf, wo man eingreifen musste, Clip-Empfehlung 5-8s vor dem Torschuss.
+- **relatedSceneIds (SZENENVERKNÜPFUNG)**: Verbinde die Szene mit logisch zusammenhängenden anderen Szenen (selbe Spieler, selbes Muster, Ursache-Folge, wiederkehrendes Muster). Nutze als Verweis die "id" der jeweils anderen Szene - VERGIB den Szenen daher NACHBARN-SINNVOL als wiederverwendbare Ids (z.B. "tor_18min", "pressing_ballgewinn_52min").
+- **confidence**: Pro Szene: overall ("hoch"/"mittel"/"niedrig"), markers: Liste ALLER Erkennungs-Unsicherheiten, estimated: true/false, lowConfidence: true/false.
+- **blankFields**: Wenn eine Information aus den Frames NICHT ableitbar ist, fülle das Feld NICHT mit Phantasie, sondern mit "unknown" bzw. bei Distanzen "estimated: X-Y m".
+- **qualityCheck (AUTOMATISCHE QUALITÄTSKONTROLLE)**: Beantworte vor dem Absenden intern alle Prüffragen und schreibe das Ergebnis als Liste: (1) Ist die Kette VORHER→FOLGE lückenlos? (2) Sind Daten erdichtet? (3) Sind Distanzen nur Schätzwerte? (4) Sind unknown-Marker gesetzt? (5) Ist der Hauptlernpunkt priorisiert? (6) Sind verwandte Szenen verknüpft? (7) Ist der Entstehungsweg erklärt (nicht nur das Ergebnis)? (8) Sind Mehrfach-Kategorien gesetzt? (9) Fehlt eine Option bei der Entscheidung? (10) Sind die Clip-Empfehlungen kategoriespezifisch?
 
 Kaderliste des Vereins:
 ${squadStr}
@@ -869,10 +905,10 @@ Antworte STRENG im geforderten JSON-Format.
           });
         });
         contents.push({
-          text: `Analysiere bitte diese extrahierten Frames aus dem Video "${videoTitle || 'Fußballspiel'}". Extrahiere Spieler-, Ball- und Zonen-Tracking, die Event-Timeline sowie alle klassifizierten Version 2 Spielszenen (Tore, Chancen, Standards, Pressing, Spielaufbau, Umschaltmomente).`
+          text: `Analysiere bitte diese extrahierten Frames aus dem Video "${videoTitle || 'Fußballspiel'}". Extrahiere Spieler-, Ball- und Zonen-Tracking, die Event-Timeline sowie alle klassifizierten Version 2 Spielszenen (Tore, Chancen, Standards, Pressing, Spielaufbau, Umschaltmomente) MIT vollständiger CoCoach-Tiefenanalyse (VORHER→AUSLÖSER→PASSFOLGE→LAUFWEGE→RAUMANALYSE→DEFENSIVLINIEN→ENTSCHEIDUNG→HAUPTLERNPUNKT, Mehrfach-Tags, related_scene_ids, confidence-Marker unknown/estimated/low_confidence).`
         });
       } else {
-        contents = [`Analysiere bitte das Fußballvideo "${videoTitle || 'FC Auggen Video'}" und erstelle Trackingdaten, Event-Timeline sowie die klassifizierten Version 2 Spielszenen-Clips (Tore, Chancen, Standards, Pressing, Spielaufbau, Umschaltmomente).`];
+        contents = [`Analysiere bitte das Fußballvideo "${videoTitle || 'FC Auggen Video'}" und erstelle Trackingdaten, Event-Timeline sowie die klassifizierten Version 2 Spielszenen-Clips (Tore, Chancen, Standards, Pressing, Spielaufbau, Umschaltmomente) MIT vollständiger CoCoach-Tiefenanalyse (VORHER→AUSLÖSER→PASSFOLGE→LAUFWEGE→RAUMANALYSE→DEFENSIVLINIEN→ENTSCHEIDUNG→HAUPTLERNPUNKT, Mehrfach-Tags, related_scene_ids, confidence-Marker unknown/estimated/low_confidence).`];
       }
 
       let resultText: string | null = null;
@@ -967,7 +1003,101 @@ Antworte STRENG im geforderten JSON-Format.
                       pitchZone: { type: Type.STRING, description: "'Abwehr', 'Mittelfeld', 'Angriff', 'Strafraum', 'Flügel', 'Halbraum'" },
                       teamInvolved: { type: Type.STRING, description: "'FC Auggen', 'Gegner', 'Beide'" },
                       tacticalRating: { type: Type.STRING, description: "Taktische Bewertung, z.B. '9.0/10' oder 'Vorbildlicher Umschaltmoment'" },
-                      improvementSuggestions: { type: Type.STRING, description: "Konkrete Verbesserungsvorschläge für Trainer/Spieler" }
+                      improvementSuggestions: { type: Type.STRING, description: "Konkrete Verbesserungsvorschläge für Trainer/Spieler" },
+                      categories: {
+                        type: Type.ARRAY,
+                        items: { type: Type.STRING },
+                        description: "MEHRFACH-TAGGING: ALLE zutreffenden Kategorien dieser Szene, z.B. ['UMSCHALTMOMENTE','PRESSING','CHANCEN'] - Kategorien schließen sich nicht aus"
+                      },
+                      beforeSituation: { type: Type.STRING, description: "VORHER: Struktur beider Teams und Ballposition vor der Szene" },
+                      trigger: { type: Type.STRING, description: "AUSLÖSER: Was löste die Szene aus (Pressingsignal, Ballgewinn, Ballverlust, Gegnerfehler, Standard)?" },
+                      passSequence: { type: Type.STRING, description: "PASSFOLGE: lückenlose Kette mit Passgeber→Empfänger→Richtung→Art→Zone, z.B. '#6 → #8 (kurz, Halbraum links) → #10 (vertikal) → #9 (Steilpass, Tiefe)'" },
+                      runPatterns: {
+                        type: Type.ARRAY,
+                        items: { type: Type.STRING },
+                        description: "LAUFWEGE: benannte Muster (Tiefenlauf, Diagonallauf, Gegenbewegung, Hinterlaufen, Überlaufen, Einrücken, Breite, Gegner binden, Schnittstellenlauf) mit Spieler, Richtung, Zielzone, Zweck"
+                      },
+                      keyPlayers: {
+                        type: Type.ARRAY,
+                        items: {
+                          type: Type.OBJECT,
+                          properties: {
+                            jerseyNumber: { type: Type.STRING, description: "Trikotnummer oder 'unknown'" },
+                            name: { type: Type.STRING },
+                            team: { type: Type.STRING, description: "'FC Auggen' oder 'Gegner'" },
+                            positionZone: { type: Type.STRING, description: "Spielposition/Zone z.B. 'IV', '6er', 'LA'" },
+                            startZone: { type: Type.STRING, description: "Startzone" },
+                            endZone: { type: Type.STRING, description: "Endzone" },
+                            movementDirection: { type: Type.STRING, description: "Laufrichtung" },
+                            action: { type: Type.STRING, description: "Aktion z.B. 'Steilpass', 'Tiefenlauf', 'Kontern'" }
+                          }
+                        }
+                      },
+                      spatialAnalysis: {
+                        type: Type.OBJECT,
+                        properties: {
+                          center: { type: Type.STRING },
+                          leftHalfSpace: { type: Type.STRING },
+                          rightHalfSpace: { type: Type.STRING },
+                          wingsLeft: { type: Type.STRING },
+                          wingsRight: { type: Type.STRING },
+                          betweenLines: { type: Type.STRING, description: "Zwischenlinienraum" },
+                          behindDefense: { type: Type.STRING, description: "Raum hinter der Abwehr" }
+                        },
+                        description: "RAUMANALYSE: pro Zone freier Raum? genutzt oder brachgelassen? freie Mitspieler?"
+                      },
+                      defensiveLines: {
+                        type: Type.OBJECT,
+                        properties: {
+                          homeLineHeight: { type: Type.STRING, description: "estimated: X-Y m zur Mittellinie" },
+                          opponentLineHeight: { type: Type.STRING, description: "estimated: X-Y m zur Mittellinie" },
+                          lineDistance: { type: Type.STRING, description: "estimated: X-Y m" },
+                          compactness: { type: Type.STRING, description: "kompakt/gelockert" },
+                          shiftDirection: { type: Type.STRING, description: "Kettenverschiebung links/rechts" }
+                        },
+                        description: "DEFENSIVLINIEN: IMMER Schätzwerte, nie Scheinpräzision"
+                      },
+                      opponentStructure: {
+                        type: Type.OBJECT,
+                        properties: {
+                          formation: { type: Type.STRING },
+                          pressingHeight: { type: Type.STRING, description: "hoch/mittel/tief" },
+                          pressingDirection: { type: Type.STRING },
+                          playersBehindBall: { type: Type.INTEGER },
+                          playersAheadOfBall: { type: Type.INTEGER },
+                          openPassLanes: { type: Type.STRING },
+                          closedPassLanes: { type: Type.STRING },
+                          freePlayers: { type: Type.STRING }
+                        },
+                        description: "GEGNERSTRUKTUR"
+                      },
+                      decision: {
+                        type: Type.OBJECT,
+                        properties: {
+                          availableOptions: { type: Type.ARRAY, items: { type: Type.STRING }, description: "2-3 real vorhandene Optionen" },
+                          bestOption: { type: Type.STRING, description: "taktisch beste Option" },
+                          reasoning: { type: Type.STRING, description: "Begründung losgelöst vom Ergebnis (Prozess > Outcome)" }
+                        },
+                        description: "ENTSCHEIDUNG & BESTE OPTION"
+                      },
+                      mainLearningPoint: { type: Type.STRING, description: "HAUPTLERNPUNKT nach Priorisierung (individueller Fehler → taktische Ursache → Entscheidung → Raum-/Linienproblem → Einzelaktion)" },
+                      goalDetails: { type: Type.STRING, description: "Nur TORE: Abschlussart, Vorbereiter, Entstehungsweg (GOLDENE REGEL: Wie ist es entstanden?), Clip 4-6s vor bis 2-3s nach" },
+                      concededGoalDetails: { type: Type.STRING, description: "Nur GEGENTOR: Was hätte FC Auggen verhindern können? Clip 5-8s vor dem Torschuss" },
+                      relatedSceneIds: {
+                        type: Type.ARRAY,
+                        items: { type: Type.STRING },
+                        description: "SZENENVERKNÜPFUNG: ids logisch zusammenhängender anderer Szenen"
+                      },
+                      confidence: {
+                        type: Type.OBJECT,
+                        properties: {
+                          overall: { type: Type.STRING, description: "'hoch'/'mittel'/'niedrig'" },
+                          markers: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Liste aller Erkennungs-Unsicherheiten, z.B. 'Trikotnummer #9 nicht sicher erkennbar'" },
+                          estimated: { type: Type.BOOLEAN },
+                          lowConfidence: { type: Type.BOOLEAN }
+                        }
+                      },
+                      qualityCheck: { type: Type.ARRAY, items: { type: Type.STRING }, description: "AUTOMATISCHE QUALITÄTSKONTROLLE: Ergebnisse der Prüffragen als Liste" }
                     },
                     required: ["id", "category", "subcategory", "title", "startTimeSeconds", "endTimeSeconds", "timestampFormatted", "aiCommentary", "participatingPlayerNames", "pitchZone", "teamInvolved"]
                   }

@@ -214,7 +214,238 @@ export interface TacticalVideoClip {
   assignedPlayerId?: string;
   assignedPlayerName?: string;
   cutFileName?: string;
+  // CoCoach Maximum Information Extraction (Tiefenanalyse-Szenenfelder)
+  aiSceneId?: string;
+  categories?: string[];
+  beforeSituation?: string;
+  trigger?: string;
+  passSequence?: string;
+  runPatterns?: string[];
+  keyPlayers?: {
+    jerseyNumber?: string;
+    name?: string;
+    team?: string;
+    positionZone?: string;
+    startZone?: string;
+    endZone?: string;
+    movementDirection?: string;
+    action?: string;
+  }[];
+  spatialAnalysis?: {
+    center?: string;
+    leftHalfSpace?: string;
+    rightHalfSpace?: string;
+    wingsLeft?: string;
+    wingsRight?: string;
+    betweenLines?: string;
+    behindDefense?: string;
+  };
+  defensiveLines?: {
+    homeLineHeight?: string;
+    opponentLineHeight?: string;
+    lineDistance?: string;
+    compactness?: string;
+    shiftDirection?: string;
+  };
+  opponentStructure?: {
+    formation?: string;
+    pressingHeight?: string;
+    pressingDirection?: string;
+    playersBehindBall?: number;
+    playersAheadOfBall?: number;
+    openPassLanes?: string;
+    closedPassLanes?: string;
+    freePlayers?: string;
+  };
+  decision?: {
+    availableOptions?: string[];
+    bestOption?: string;
+    reasoning?: string;
+  };
+  mainLearningPoint?: string;
+  goalDetails?: string;
+  concededGoalDetails?: string;
+  relatedSceneIds?: string[];
+  confidence?: {
+    overall?: string;
+    markers?: string[];
+    estimated?: boolean;
+    lowConfidence?: boolean;
+  };
+  qualityCheck?: string[];
+  subTags?: string[];
 }
+
+// CoCoach-Tiefenanalyse-Anzeige (Maximum Information Extraction Engine)
+const TacticalAnalysisPanel: React.FC<{ clip: TacticalVideoClip }> = ({ clip }) => {
+  const {
+    beforeSituation, trigger, passSequence, runPatterns, keyPlayers,
+    spatialAnalysis, defensiveLines, opponentStructure, decision,
+    mainLearningPoint, goalDetails, concededGoalDetails, relatedSceneIds, confidence,
+  } = clip;
+
+  const hasAny = beforeSituation || trigger || passSequence ||
+    (runPatterns && runPatterns.length > 0) ||
+    (keyPlayers && keyPlayers.length > 0) ||
+    spatialAnalysis || defensiveLines || opponentStructure || decision ||
+    mainLearningPoint || goalDetails || concededGoalDetails ||
+    (relatedSceneIds && relatedSceneIds.length > 0) || confidence;
+  if (!hasAny) return null;
+
+  const Section: React.FC<{ title: string; children: React.ReactNode; icon?: React.ReactNode }> = ({ title, children, icon }) => (
+    <div className="space-y-1">
+      <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-[#10B981]">
+        {icon}
+        <span>{title}</span>
+      </div>
+      {children}
+    </div>
+  );
+
+  const Chip: React.FC<{ children: React.ReactNode; tone?: 'neutral' | 'warn' }> = ({ children, tone = 'neutral' }) => (
+    <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+      tone === 'warn' ? 'bg-amber-950/60 text-amber-300 border-amber-500/40' : 'bg-[#0F172A] text-[#CBD5E1] border-[#2A3447]'
+    }`}>
+      {children}
+    </span>
+  );
+
+  const Labeled: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
+    <div className="text-[11px] leading-relaxed">
+      <span className="font-bold text-[#94A3B8]">{label}: </span>
+      <span className="text-[#E2E8F0]">{value}</span>
+    </div>
+  );
+
+  const spaceEntries = spatialAnalysis
+    ? ([
+        ['Zentrum', spatialAnalysis.center],
+        ['Halbraum links', spatialAnalysis.leftHalfSpace],
+        ['Halbraum rechts', spatialAnalysis.rightHalfSpace],
+        ['Flügel links', spatialAnalysis.wingsLeft],
+        ['Flügel rechts', spatialAnalysis.wingsRight],
+        ['Zwischenlinienraum', spatialAnalysis.betweenLines],
+        ['Raum hinter Abwehr', spatialAnalysis.behindDefense],
+      ] as const).filter(([, v]) => v)
+    : [];
+
+  const confBadges: string[] = [];
+  if (confidence?.overall) confBadges.push(`Konfidenz: ${confidence.overall}`);
+  if (confidence?.estimated) confBadges.push('estimated');
+  if (confidence?.lowConfidence) confBadges.push('low_confidence');
+
+  return (
+    <div className="space-y-3 rounded-xl bg-[#0D1320] border border-[#242F42] p-3">
+      {/* Kette: VORHER → AUSLÖSER */}
+      {(beforeSituation || trigger) && (
+        <Section title="Szenen-Kette" icon={<ListOrdered size={12} />}>
+          {beforeSituation && <Labeled label="VORHER" value={beforeSituation} />}
+          {trigger && trigger !== 'unknown' && <Labeled label="AUSLÖSER" value={trigger} />}
+        </Section>
+      )}
+
+      {passSequence && passSequence !== 'unknown' && (
+        <Section title="Passfolge" icon={<Layers size={12} />}>
+          <div className="text-[11px] leading-relaxed text-[#E2E8F0]">{passSequence}</div>
+        </Section>
+      )}
+
+      {runPatterns && runPatterns.length > 0 && (
+        <Section title="Laufwege" icon={<Target size={12} />}>
+          <div className="flex flex-wrap gap-1.5">
+            {runPatterns.map((r, i) => <Chip key={i}>{r}</Chip>)}
+          </div>
+        </Section>
+      )}
+
+      {keyPlayers && keyPlayers.length > 0 && (
+        <Section title="Schlüsselspieler" icon={<Users size={12} />}>
+          <div className="space-y-1">
+            {keyPlayers.map((kp, i) => (
+              <div key={i} className="text-[11px] leading-relaxed text-[#E2E8F0]">
+                <span className="font-bold text-white">
+                  {kp.team === 'Gegner' ? '🟥' : '🟩'} Nr. {kp.jerseyNumber || 'unknown'}{kp.name ? ` ${kp.name}` : ''}
+                  {kp.positionZone ? ` (${kp.positionZone})` : ''}
+                </span>
+                {kp.startZone || kp.endZone ? `: ${kp.startZone || '?'} → ${kp.endZone || '?'}` : ''}
+                {kp.movementDirection ? `, ${kp.movementDirection}` : ''}
+                {kp.action ? <span className="text-[#10B981]"> — {kp.action}</span> : null}
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {spaceEntries.length > 0 && (
+        <Section title="Raumanalyse" icon={<Layers size={12} />}>
+          <div className="grid grid-cols-1 gap-1">
+            {spaceEntries.map(([zone, v]) => <Labeled key={zone} label={zone} value={v} />)}
+          </div>
+        </Section>
+      )}
+
+      {defensiveLines && (Object.values(defensiveLines).some(v => !!v)) && (
+        <Section title="Defensivlinien (Schätzwerte)" icon={<Shield size={12} />}>
+          {defensiveLines.homeLineHeight && <Labeled label="Eigene Linie" value={defensiveLines.homeLineHeight} />}
+          {defensiveLines.opponentLineHeight && <Labeled label="Gegner Linie" value={defensiveLines.opponentLineHeight} />}
+          {defensiveLines.lineDistance && <Labeled label="Abstand der Linien" value={defensiveLines.lineDistance} />}
+          {defensiveLines.compactness && <Labeled label="Kompaktheit" value={defensiveLines.compactness} />}
+          {defensiveLines.shiftDirection && <Labeled label="Verschiebung" value={defensiveLines.shiftDirection} />}
+        </Section>
+      )}
+
+      {opponentStructure && (Object.values(opponentStructure).some(v => !!v)) && (
+        <Section title="Gegnerstruktur" icon={<Shield size={12} />}>
+          {opponentStructure.formation && <Labeled label="Formation" value={opponentStructure.formation} />}
+          {opponentStructure.pressingHeight && <Labeled label="Pressing-Höhe" value={opponentStructure.pressingHeight} />}
+          {opponentStructure.pressingDirection && <Labeled label="Pressing-Richtung" value={opponentStructure.pressingDirection} />}
+          {(opponentStructure.playersBehindBall != null) && <Labeled label="Hinter dem Ball" value={String(opponentStructure.playersBehindBall)} />}
+          {(opponentStructure.playersAheadOfBall != null) && <Labeled label="Vor dem Ball" value={String(opponentStructure.playersAheadOfBall)} />}
+          {opponentStructure.openPassLanes && <Labeled label="Offene Passwege" value={opponentStructure.openPassLanes} />}
+          {opponentStructure.closedPassLanes && <Labeled label="Zugestellte Passwege" value={opponentStructure.closedPassLanes} />}
+          {opponentStructure.freePlayers && <Labeled label="Freie Spieler" value={opponentStructure.freePlayers} />}
+        </Section>
+      )}
+
+      {decision && (decision.availableOptions?.length || decision.bestOption || decision.reasoning) && (
+        <Section title="Entscheidung" icon={<Target size={12} />}>
+          {decision.availableOptions && decision.availableOptions.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-1">
+              {decision.availableOptions.map((o, i) => <Chip key={i}>Option {i + 1}: {o}</Chip>)}
+            </div>
+          )}
+          {decision.bestOption && <Labeled label="Beste Option" value={<span className="text-[#10B981]">{decision.bestOption}</span>} />}
+          {decision.reasoning && <Labeled label="Begründung" value={decision.reasoning} />}
+        </Section>
+      )}
+
+      {goalDetails && <Section title="Entstehungsweg Tor (Goldene Regel)" icon={<CheckCircle2 size={12} />}><div className="text-[11px] leading-relaxed text-[#E2E8F0]">{goalDetails}</div></Section>}
+      {concededGoalDetails && <Section title="Gegentor – Was hätte FC Auggen verhindern können?" icon={<AlertTriangle size={12} />}><div className="text-[11px] leading-relaxed text-rose-200">{concededGoalDetails}</div></Section>}
+
+      {mainLearningPoint && mainLearningPoint !== 'unknown' && (
+        <div className="p-2.5 rounded-lg bg-[#10B981]/10 border border-[#10B981]/30">
+          <div className="text-[10px] font-black uppercase tracking-wider text-[#10B981] mb-0.5">Hauptlernpunkt</div>
+          <div className="text-[11px] leading-relaxed text-[#F1F5F9]">{mainLearningPoint}</div>
+        </div>
+      )}
+
+      {relatedSceneIds && relatedSceneIds.length > 0 && (
+        <Section title="Verknüpfte Szenen" icon={<Layers size={12} />}>
+          <div className="flex flex-wrap gap-1.5">
+            {relatedSceneIds.map((rid) => <Chip key={rid} tone="neutral">{rid}</Chip>)}
+          </div>
+        </Section>
+      )}
+
+      {confBadges.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 pt-1 border-t border-[#242F42]">
+          {confBadges.map(b => <Chip key={b} tone="warn">{b}</Chip>)}
+          {confidence?.markers && confidence.markers.map((m, i) => <Chip key={i} tone="warn">{m}</Chip>)}
+        </div>
+      )}
+    </div>
+  );
+};
 
 interface VideoAnalysisViewProps {
   players?: (Spieler | Player)[];
@@ -425,7 +656,7 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
       setShowAiResults(true);
 
       if (result.sceneClips) {
-        result.sceneClips.forEach((clip: any) => {
+        const aiClips = result.sceneClips.map((clip: any, idx: number) => {
           const categoryMap: Record<string, VideoCategory> = {
             'TORE': 'Tore',
             'CHANCEN': 'Tore',
@@ -434,12 +665,18 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
             'AUFBAU': 'Spielaufbau',
             'UMSCHALTMOMENTE': 'Ballverlust',
           };
-          const mappedCategory = categoryMap[clip.category] || 'Spielaufbau';
-          const newId = `ai_clip_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+          const primaryCat: VideoCategory = clip.categories && clip.categories.length > 0
+            ? (categoryMap[clip.categories[0]] || 'Spielaufbau')
+            : (categoryMap[clip.category] || 'Spielaufbau');
+          const newId = `ai_clip_${Date.now()}_${Math.random().toString(36).substring(2, 7)}_${idx}`;
           const newClip: TacticalVideoClip = {
             id: newId,
-            category: mappedCategory,
-videoUrl: videoSource ?? '',
+            aiSceneId: clip.id,
+            category: primaryCat,
+            categories: Array.isArray(clip.categories) && clip.categories.length > 0
+              ? clip.categories.map((c: string) => categoryMap[c] || c)
+              : [primaryCat],
+            videoUrl: videoSource ?? '',
             videoName: videoFileName,
             startTime: clip.startTimeSeconds || 0,
             endTime: clip.endTimeSeconds || 10,
@@ -448,8 +685,31 @@ videoUrl: videoSource ?? '',
             colorMarking: (clip.tacticalRating || '').includes('9') ? 'green' : (clip.improvementSuggestions ? 'red' : 'none'),
             createdAt: new Date().toISOString(),
             title: clip.title || `${clip.category} - ${clip.subcategory}`,
+            beforeSituation: clip.beforeSituation,
+            trigger: clip.trigger,
+            passSequence: clip.passSequence,
+            runPatterns: Array.isArray(clip.runPatterns) ? clip.runPatterns : undefined,
+            keyPlayers: Array.isArray(clip.keyPlayers) ? clip.keyPlayers : undefined,
+            spatialAnalysis: clip.spatialAnalysis,
+            defensiveLines: clip.defensiveLines,
+            opponentStructure: clip.opponentStructure,
+            decision: clip.decision,
+            mainLearningPoint: clip.mainLearningPoint,
+            goalDetails: clip.goalDetails,
+            concededGoalDetails: clip.concededGoalDetails,
+            relatedSceneIds: Array.isArray(clip.relatedSceneIds) ? clip.relatedSceneIds : undefined,
+            confidence: clip.confidence,
+            qualityCheck: Array.isArray(clip.qualityCheck) ? clip.qualityCheck : undefined,
           };
-          saveClip(newClip);
+          return newClip;
+        });
+        const idByAiId: Record<string, string> = {};
+        aiClips.forEach(c => { if (c.aiSceneId) idByAiId[c.aiSceneId] = c.id; });
+        aiClips.forEach(c => {
+          if (c.relatedSceneIds && c.relatedSceneIds.length > 0) {
+            c.relatedSceneIds = c.relatedSceneIds.map(rid => idByAiId[rid] || rid);
+          }
+          saveClip(c);
         });
       }
     } catch (err: any) {
@@ -2294,6 +2554,9 @@ videoUrl: videoSource ?? '',
                               />
                             </div>
 
+                            {/* CoCoach-Tiefenanalyse (Maximum Information Extraction) */}
+                            <TacticalAnalysisPanel clip={clip} />
+
                             {/* Color Marking Selector & Delete Button */}
                             <div className="pt-2 border-t border-[#242F42] flex items-center justify-between gap-2">
                               <div className="flex items-center gap-1.5">
@@ -2468,6 +2731,8 @@ videoUrl: videoSource ?? '',
                 <div className="p-3 bg-[#0F172A] border border-[#2A3447] rounded-xl text-xs text-[#F1F5F9] whitespace-pre-wrap">
                   {activePlaybackClip.tacticalNote || 'Keine Notiz vorhanden.'}
                 </div>
+                {/* CoCoach-Tiefenanalyse */}
+                <TacticalAnalysisPanel clip={activePlaybackClip} />
               </div>
             </motion.div>
           </div>
