@@ -999,8 +999,24 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
     const kw = getIsoWeek(monday);
     KW_LABELS.push(`KW ${String(kw).padStart(2, '0')} · ${monday.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}–${sunday.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}`);
   }
-  const [weekIndex, setWeekIndex] = useState(0);
+  // Aktuelle Kalenderwoche (KW) automatisch ermitteln → Plan fokussiert darauf.
+  const todayMonday = (() => {
+    const t = new Date();
+    t.setHours(0, 0, 0, 0);
+    t.setDate(t.getDate() - (t.getDay() + 6) % 7);
+    return t.getTime();
+  })();
+  const currentWeekIdx = Math.max(0, Math.min(KW_START_DATES.length - 1, Math.floor((todayMonday - new Date(YEAR_START).getTime()) / (7 * 86400000))));
+  const loadIdx = (key: string, fallback: number): number => {
+    try {
+      const v = localStorage.getItem(key);
+      if (v !== null && v !== '' && !isNaN(Number(v))) return Math.max(0, Math.min(KW_START_DATES.length - 1, Number(v)));
+    } catch { /* ignore */ }
+    return fallback;
+  };
+  const [weekIndex, setWeekIndex] = useState<number>(() => loadIdx('fca_trainingplan_week', currentWeekIdx));
   const [weekDays, setWeekDays] = useState<TagesPlan[]>(() => currentWeekPlans[0]?.tage?.map((t) => ({ ...t })) || []);
+  useEffect(() => { try { localStorage.setItem('fca_trainingplan_week', String(weekIndex)); } catch { /* ignore */ } }, [weekIndex]);
   useEffect(() => {
     const template = currentWeekPlans[weekIndex % currentWeekPlans.length] || currentWeekPlans[0];
     setWeekDays(template?.tage?.map((t) => ({ ...t })) || []);
@@ -1079,9 +1095,12 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
 
   // ═══ 3–4-WOCHEN-BLOCK (Periodisierung) ═══
   // Zusatz-Modus: mehrere Wochen als zusammenhängenden Block planen.
-  const [blockMode, setBlockMode] = useState<boolean>(false);
-  const [blockWeeks, setBlockWeeks] = useState<3 | 4>(4);
-  const [blockStartWeek, setBlockStartWeek] = useState<number>(0);
+  const [blockMode, setBlockMode] = useState<boolean>(() => { try { return localStorage.getItem('fca_trainingplan_block_mode') === '1'; } catch { return false; } });
+  const [blockWeeks, setBlockWeeks] = useState<3 | 4>(() => { try { return localStorage.getItem('fca_trainingplan_block_weeks') === '3' ? 3 : 4; } catch { return 4; } });
+  const [blockStartWeek, setBlockStartWeek] = useState<number>(() => loadIdx('fca_trainingplan_block_start', currentWeekIdx));
+  useEffect(() => { try { localStorage.setItem('fca_trainingplan_block_mode', blockMode ? '1' : '0'); } catch { /* ignore */ } }, [blockMode]);
+  useEffect(() => { try { localStorage.setItem('fca_trainingplan_block_weeks', String(blockWeeks)); } catch { /* ignore */ } }, [blockWeeks]);
+  useEffect(() => { try { localStorage.setItem('fca_trainingplan_block_start', String(blockStartWeek)); } catch { /* ignore */ } }, [blockStartWeek]);
 
   // Periodisierungs-Themen je Woche im Block (aufbauend)
   const BLOCK_THEMES = [
@@ -3309,6 +3328,11 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
                     {KW_LABELS.map((lab, idx) => (<option key={idx} value={idx}>{lab}</option>))}
                   </select>
                   <button
+                    onClick={() => setBlockStartWeek(currentWeekIdx)}
+                    className="px-1.5 py-0.5 rounded text-[7px] font-black uppercase text-emerald-300 border border-emerald-500/60 hover:bg-emerald-500/10 cursor-pointer"
+                    title={`Aktuelle Woche (${KW_LABELS[currentWeekIdx]})`}
+                  >Heute</button>
+                  <button
                     onClick={syncFullBlock}
                     className="px-2 py-0.5 rounded text-[7px] font-black uppercase border bg-sky-600 text-white border-sky-400 hover:bg-sky-500 cursor-pointer"
                   >
@@ -3345,6 +3369,11 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
                 className="px-1.5 py-0.5 rounded text-[9px] font-black text-slate-300 border border-slate-600 hover:text-white cursor-pointer"
                 title="Nächste Woche"
               >›</button>
+              <button
+                onClick={() => setWeekIndex(currentWeekIdx)}
+                className="px-1.5 py-0.5 rounded text-[9px] font-black text-emerald-300 border border-emerald-500/60 hover:bg-emerald-500/10 cursor-pointer"
+                title={`Aktuelle Woche (${KW_LABELS[currentWeekIdx]})`}
+              >Heute</button>
             </div>
           )}
           {/* 3–4-Wochen-Block-Ansicht: nur die Block-Wochen erscheinen */}
