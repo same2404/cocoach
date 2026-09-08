@@ -1,6 +1,7 @@
 node_modules
 dist
-server.log
-server_output.log
-*.zip
+clips
+.env
+*.log
 .git
+.gitignore

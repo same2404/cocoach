@@ -37,9 +37,10 @@ const execFileAsync = promisify(execFile);
   }
 })();
 
-async function startServer() {
+const PORT = 5175;
+
+function createApp() {
   const app = express();
-  const PORT = 5175;
 
   // Set up body parsers with limits for large JSON sets
   app.use(express.json({ limit: '10mb' }));
@@ -50,6 +51,8 @@ async function startServer() {
   const ALLOWED_ORIGINS = [
     'https://fc-auggen-manager-26-27-kappa.vercel.app',
     'https://fc-auggen-manager-26-27.vercel.app',
+    'https://cocoach-app.vercel.app',
+    'https://cocoach-app-samerkhaleel720-7844s-projects.vercel.app',
     'http://localhost:5175',
     'http://localhost:5173',
     'http://localhost:3000',
@@ -1861,7 +1864,7 @@ Jeder Block soll fachlich präzise, sofort nutzbar und im Deutschen sein. Antwor
   // ============================================
   // VIDEO-SCHNEIDEN (ffmpeg): echten .mp4-Clip erzeugen
   // ============================================
-  const clipsDir = path.join(process.cwd(), 'clips');
+  const clipsDir = process.env.VERCEL ? path.join('/tmp', 'clips') : path.join(process.cwd(), 'clips');
   if (!fs.existsSync(clipsDir)) fs.mkdirSync(clipsDir, { recursive: true });
 
   const upload = multer({
@@ -1946,6 +1949,12 @@ Jeder Block soll fachlich präzise, sofort nutzbar und im Deutschen sein. Antwor
     });
   }, runCut);
 
+  return app;
+}
+
+// Lokaler Betrieb: Vite-Dev-Middleware bzw. statische dist-Auslieferung + listen.
+// Auf Vercel (Serverless) wird stattdessen nur die Express-App exportiert.
+async function startServer(app: express.Express) {
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
@@ -1981,4 +1990,9 @@ Jeder Block soll fachlich präzise, sofort nutzbar und im Deutschen sein. Antwor
   });
 }
 
-startServer();
+const app = createApp();
+export default app;
+
+if (!process.env.VERCEL) {
+  startServer(app);
+}
