@@ -125,7 +125,7 @@ export const VideoReelPlayerModal: React.FC<VideoReelPlayerModalProps> = ({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 bg-black/95 z-50 flex flex-col p-2 sm:p-4 backdrop-blur-md overflow-hidden text-white">
+      <div className="fixed inset-0 bg-black/95 z-50 flex flex-col p-2 sm:p-4 backdrop-blur-md overflow-y-auto text-white">
         
         {/* Top Header Bar */}
         <div className="p-3.5 bg-[#181F2E] border border-[#2A3447] rounded-xl flex items-center justify-between gap-4 mb-3 shadow-xl">
@@ -168,7 +168,7 @@ export const VideoReelPlayerModal: React.FC<VideoReelPlayerModalProps> = ({
         </div>
 
         {/* Main Content (Player + Sidebar Playlist) */}
-        <div className="flex-1 flex flex-col lg:flex-row gap-4 overflow-hidden">
+        <div className="flex-1 flex flex-col lg:flex-row gap-4 overflow-y-auto items-start">
           
           {/* Left Column: Player & HUD */}
           <div className="flex-1 flex flex-col bg-[#131A26] border border-[#2A3447] rounded-2xl overflow-hidden shadow-2xl">

@@ -594,6 +594,25 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
   const [trainingPlan, setTrainingPlan] = useState<any>(null);
   const [showTrainingPlan, setShowTrainingPlan] = useState<boolean>(false);
 
+  // Hudl Sportscode / Coach Paint interaktive Overlays
+  const [activePaintTools, setActivePaintTools] = useState<string[]>(['Passweg', 'Laufweg', 'Sprint-Pfeil']);
+  const [gpsOverlays, setGpsOverlays] = useState<Record<string, boolean>>({
+    'GPS-In Pocket-Overlay': false,
+    'Herzfrequenz-Balken': false,
+    'Belastungs-Warnung': false,
+  });
+
+  const togglePaintTool = (label: string) => {
+    setActivePaintTools(prev => prev.includes(label) ? prev.filter(x => x !== label) : [...prev, label]);
+  };
+  const toggleGpsOverlay = (label: string) => {
+    setGpsOverlays(prev => ({ ...prev, [label]: !prev[label] }));
+  };
+  const openFirstClipMatching = (predicate: (c: TacticalVideoClip) => boolean) => {
+    const match = savedClips.find(predicate);
+    if (match) setActivePlaybackClip(match);
+  };
+
   // Extract frames from video for AI analysis
   const extractFrames = async (videoEl: HTMLVideoElement, frameCount: number = 5): Promise<string[]> => {
     const frames: string[] = [];
@@ -1810,15 +1829,21 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
             <div className="text-[8px] font-black uppercase text-[#60A5FA] tracking-widest mb-2">Auto-Tagging Engine</div>
             <div className="space-y-1">
               {['Tor', 'Großchance', 'Konter', 'Standard (Eck)', 'Standard (Freistoß)', 'Rote Karte', 'Penalty', 'Druckphase'].map((tag, i) => {
-                const count = savedClips.filter(c => c.label?.toLowerCase().includes(tag.toLowerCase().split(' ')[0])).length;
+                const tagKey = tag.toLowerCase().split(' ')[0];
+                const count = savedClips.filter(c => c.label?.toLowerCase().includes(tagKey)).length;
                 return (
-                  <div key={i} className="flex items-center justify-between px-2 py-1 bg-[#0D1117] rounded border border-[#1E293B]">
+                  <button
+                    key={i}
+                    onClick={() => openFirstClipMatching(c => c.label?.toLowerCase().includes(tagKey))}
+                    disabled={count === 0}
+                    className="flex items-center justify-between px-2 py-1 bg-[#0D1117] rounded border border-[#1E293B] w-full cursor-pointer hover:border-[#60A5FA]/40 disabled:cursor-not-allowed disabled:opacity-60 transition-all"
+                  >
                     <div className="flex items-center gap-1.5">
                       <div className={`w-1.5 h-1.5 rounded-full ${count > 0 ? 'bg-[#10B981]' : 'bg-[#334155]'}`} />
                       <span className="text-[8px] font-bold text-[#94A3B8]">{tag}</span>
                     </div>
                     <span className="text-[8px] font-black text-[#60A5FA]">{count}</span>
-                  </div>
+                  </button>
                 );
               })}
             </div>
@@ -1829,21 +1854,28 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
             <div className="text-[8px] font-black uppercase text-[#C084FC] tracking-widest mb-2">TV-Grafiken Overlay (Coach Paint™)</div>
             <div className="grid grid-cols-2 gap-1.5">
               {[
-                { icon: '➡️', label: 'Passweg', active: true },
-                { icon: '🏃', label: 'Laufweg', active: true },
-                { icon: '🔴', label: 'Pressingzone', active: false },
-                { icon: '🟢', label: 'Freiraum', active: false },
-                { icon: '⚡', label: 'Sprint-Pfeil', active: true },
-                { icon: '🎯', label: 'Torwahrscheinlichkeit', active: false },
-                { icon: '🔵', label: 'Zonen-Overlay', active: false },
-                { icon: '📐', label: 'Abseits-Linie', active: false },
-              ].map((tool, i) => (
-                <button key={i} className={`flex items-center gap-1 px-2 py-1.5 rounded text-[7px] font-bold border transition-all cursor-pointer ${
-                  tool.active ? 'bg-[#A855F7]/20 border-[#A855F7]/50 text-[#C084FC]' : 'bg-[#0D1117] border-[#1E293B] text-[#64748B] hover:border-[#A855F7]/30'
-                }`}>
-                  <span>{tool.icon}</span> {tool.label}
-                </button>
-              ))}
+                { icon: '➡️', label: 'Passweg' },
+                { icon: '🏃', label: 'Laufweg' },
+                { icon: '🔴', label: 'Pressingzone' },
+                { icon: '🟢', label: 'Freiraum' },
+                { icon: '⚡', label: 'Sprint-Pfeil' },
+                { icon: '🎯', label: 'Torwahrscheinlichkeit' },
+                { icon: '🔵', label: 'Zonen-Overlay' },
+                { icon: '📐', label: 'Abseits-Linie' },
+              ].map((tool, i) => {
+                const active = activePaintTools.includes(tool.label);
+                return (
+                  <button
+                    key={i}
+                    onClick={() => togglePaintTool(tool.label)}
+                    className={`flex items-center gap-1 px-2 py-1.5 rounded text-[7px] font-bold border transition-all cursor-pointer ${
+                      active ? 'bg-[#A855F7]/20 border-[#A855F7]/50 text-[#C084FC]' : 'bg-[#0D1117] border-[#1E293B] text-[#64748B] hover:border-[#A855F7]/30'
+                    }`}
+                  >
+                    <span>{tool.icon}</span> {tool.label} {active && <span className="text-[#10B981]">✓</span>}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -1852,21 +1884,29 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
             <div className="text-[8px] font-black uppercase text-[#10B981] tracking-widest mb-2">Taktische Sequenzen</div>
             <div className="space-y-1">
               {[
-                { name: 'Aufbau von hinten', clips: savedClips.filter(c => c.label?.includes('Aufbau')).length, icon: '🏗️' },
-                { name: 'Pressing ausgelöst', clips: savedClips.filter(c => c.label?.includes('Press')).length, icon: '🔴' },
-                { name: 'Umschaltmoment', clips: savedClips.filter(c => c.label?.includes('Umschalt')).length, icon: '⚡' },
-                { name: 'Flügelüberladung', clips: savedClips.filter(c => c.label?.includes('Flügel')).length, icon: '🏃' },
-                { name: 'Konterchance', clips: savedClips.filter(c => c.label?.includes('Konter')).length, icon: '🚀' },
-                { name: 'Standards erarbeitet', clips: savedClips.filter(c => c.label?.includes('Standard')).length, icon: '📐' },
-              ].map((seq, i) => (
-                <div key={i} className="flex items-center justify-between px-2 py-1 bg-[#0D1117] rounded border border-[#1E293B]">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[8px]">{seq.icon}</span>
-                    <span className="text-[8px] font-bold text-[#94A3B8]">{seq.name}</span>
-                  </div>
-                  <span className={`text-[8px] font-black ${seq.clips > 0 ? 'text-[#10B981]' : 'text-[#334155]'}`}>{seq.clips}</span>
-                </div>
-              ))}
+                { name: 'Aufbau von hinten', filter: (l?: string) => l?.includes('Aufbau') ?? false, icon: '🏗️' },
+                { name: 'Pressing ausgelöst', filter: (l?: string) => l?.includes('Press') ?? false, icon: '🔴' },
+                { name: 'Umschaltmoment', filter: (l?: string) => l?.includes('Umschalt') ?? false, icon: '⚡' },
+                { name: 'Flügelüberladung', filter: (l?: string) => l?.includes('Flügel') ?? false, icon: '🏃' },
+                { name: 'Konterchance', filter: (l?: string) => l?.includes('Konter') ?? false, icon: '🚀' },
+                { name: 'Standards erarbeitet', filter: (l?: string) => l?.includes('Standard') ?? false, icon: '📐' },
+              ].map((seq, i) => {
+                const clips = savedClips.filter(c => seq.filter(c.label)).length;
+                return (
+                  <button
+                    key={i}
+                    onClick={() => openFirstClipMatching(c => seq.filter(c.label))}
+                    disabled={clips === 0}
+                    className="flex items-center justify-between px-2 py-1 bg-[#0D1117] rounded border border-[#1E293B] w-full cursor-pointer hover:border-[#10B981]/40 disabled:cursor-not-allowed disabled:opacity-60 transition-all"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[8px]">{seq.icon}</span>
+                      <span className="text-[8px] font-bold text-[#94A3B8]">{seq.name}</span>
+                    </div>
+                    <span className={`text-[8px] font-black ${clips > 0 ? 'text-[#10B981]' : 'text-[#334155]'}`}>{clips}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -1876,9 +1916,26 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
           <span className="text-[8px] font-black uppercase text-[#F59E0B] tracking-wider">GPS-Sync:</span>
           <span className="text-[7px] text-[#64748B]">Catapult Vector Daten mit Video-Timecode synchronisieren</span>
           <div className="flex items-center gap-1.5 ml-auto">
-            <button className="px-2 py-1 bg-[#F59E0B]/20 border border-[#F59E0B]/40 text-[#F59E0B] text-[7px] font-bold rounded cursor-pointer hover:bg-[#F59E0B]/30">GPS-In Pocket-Overlay</button>
-            <button className="px-2 py-1 bg-[#2563EB]/20 border border-[#2563EB]/40 text-[#60A5FA] text-[7px] font-bold rounded cursor-pointer hover:bg-[#2563EB]/30">Herzfrequenz-Balken</button>
-            <button className="px-2 py-1 bg-[#EF4444]/20 border border-[#EF4444]/40 text-[#EF4444] text-[7px] font-bold rounded cursor-pointer hover:bg-[#EF4444]/30">Belastungs-Warnung</button>
+            {(['GPS-In Pocket-Overlay', 'Herzfrequenz-Balken', 'Belastungs-Warnung'] as const).map(label => {
+              const on = gpsOverlays[label];
+              return (
+                <button
+                  key={label}
+                  onClick={() => toggleGpsOverlay(label)}
+                  className={`px-2 py-1 text-[7px] font-bold rounded cursor-pointer border transition-all ${
+                    on && label === 'GPS-In Pocket-Overlay'
+                      ? 'bg-[#F59E0B]/30 border-[#F59E0B] text-[#FBBF24]'
+                      : on && label === 'Herzfrequenz-Balken'
+                        ? 'bg-[#2563EB]/30 border-[#2563EB] text-[#93C5FD]'
+                        : on
+                          ? 'bg-[#EF4444]/30 border-[#EF4444] text-[#FCA5A5]'
+                          : 'bg-[#0D1117] border-[#1E293B] text-[#64748B] hover:border-[#F59E0B]/40'
+                  }`}
+                >
+                  {on ? '✓ ' : ''}{label}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -2662,10 +2719,22 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
                                   className="w-full h-full object-cover"
                                 />
                               ) : (
-                                <div className="text-[#64748B] text-xs font-bold flex flex-col items-center gap-1">
-                                  <Film size={24} />
-                                  <span>Video Clip</span>
-                                </div>
+                                <video
+                                  src={clip.videoUrl}
+                                  muted
+                                  autoPlay={false}
+                                  preload="metadata"
+                                  playsInline
+                                  onLoadedMetadata={(e) => {
+                                    const v = e.currentTarget;
+                                    const t = Number(clip.startTime) || 0;
+                                    if (isFinite(t) && v.duration && t < v.duration) {
+                                      v.currentTime = t;
+                                    }
+                                    v.pause();
+                                  }}
+                                  className="w-full h-full object-contain pointer-events-none"
+                                />
                               )}
 
                               {/* Play Button Overlay */}
