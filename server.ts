@@ -3,11 +3,9 @@
 
 import express from "express";
 import path from "path";
-import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import fs from "fs";
 import { execFile } from "child_process";
-import ffmpegPath from "ffmpeg-static";
 import multer from "multer";
 import { promisify } from "util";
 
@@ -1897,7 +1895,17 @@ Jeder Block soll fachlich präzise, sofort nutzbar und im Deutschen sein. Antwor
       inputPath = file.path;
       outputPath = path.join(clipsDir, `${baseName}_${outId}.mp4`);
 
-      const ffmpeg = ffmpegPath as unknown as string;
+      let ffmpeg: string;
+      try {
+        const ffmpegModule: any = await import("ffmpeg-static");
+        ffmpeg = (ffmpegModule?.default ?? ffmpegModule) as string;
+        if (!ffmpeg || !ffmpeg.length) {
+          return res.status(500).json({ error: "ffmpeg ist auf diesem Server nicht verfügbar." });
+        }
+      } catch {
+        return res.status(500).json({ error: "ffmpeg ist auf diesem Server nicht verfügbar." });
+      }
+
       const durationSec = end - start;
       const args = [
         "-y",
@@ -1955,8 +1963,9 @@ Jeder Block soll fachlich präzise, sofort nutzbar und im Deutschen sein. Antwor
 // Lokaler Betrieb: Vite-Dev-Middleware bzw. statische dist-Auslieferung + listen.
 // Auf Vercel (Serverless) wird stattdessen nur die Express-App exportiert.
 async function startServer(app: express.Express) {
-  // Vite middleware for development
+  // Vite middleware for development (lazy import: nur für den lokalen Dev-Modus → bleibt aus dem Serverless-Bundle)
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
