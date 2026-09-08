@@ -11,8 +11,9 @@ export default async function handler(req: any, res: any) {
   try {
     if (!app) {
       // @ts-ignore – dist/server.cjs wird vor dem Funktions-Build erzeugt
-      const mod = await import('../dist/server.cjs');
-      app = mod?.default ?? mod;
+      const ns: any = await import('../dist/server.cjs');
+      const m = ns?.default;
+      app = (m && m.default) ?? m;
     }
     return app(req, res);
   } catch (err: any) {
