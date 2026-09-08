@@ -625,16 +625,24 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
     };
     const latestReport = [...(matchAnalyses || [])]
       .filter((a: any) => a && a.startingLineup && String(a.startingLineup).trim().length > 0)
-      .sort((a: any, b: any) => String(b.date || b.createdAt || '').localeCompare(String(a.date || a.createdAt || '')))[0];
-    const reportPool: Player[] = [];
+      .sort((a: any, b: any) => {
+        const da = new Date(String(a.date || a.createdAt || '')).getTime();
+        const db = new Date(String(b.date || b.createdAt || '')).getTime();
+        return (isNaN(db) ? 0 : db) - (isNaN(da) ? 0 : da) || String(b.id || '').localeCompare(String(a.id || ''));
+      })[0];
+
+    // Startelf-NAMEN direkt aus dem Spielbericht in Spielbericht-Reihenfolge (TW → ST).
+    // Namensmatch gegen Kader nützt Foto/Nummer; ohne Match wird der Spielbericht-Name trotzdem angezeigt.
+    const reportEntries: Array<{ rawName: string; player: Player | null }> = [];
     if (latestReport) {
       const usedInReport = new Set<string>();
       parseReportNames(latestReport.startingLineup).forEach((n) => {
         const found = squad.find((p: any) => !usedInReport.has(p.id) && matchReportName(p, n));
-        if (found) { usedInReport.add(found.id); reportPool.push(found); }
+        if (found) { usedInReport.add(found.id); reportEntries.push({ rawName: n, player: found }); }
+        else { reportEntries.push({ rawName: n, player: null }); }
       });
     }
-    const reportIds = new Set<string>(reportPool.map((p: any) => p.id));
+    const reportIds = new Set<string>(reportEntries.map((e) => e.player ? (e.player as any).id : '').filter(Boolean));
 
     const pickFor = (targetPos: string) => {
       const tp = targetPos.toUpperCase();
@@ -663,22 +671,25 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
     const result: typeof FORMATION_PRESETS = {};
     for (const [key, preset] of Object.entries(FORMATION_PRESETS)) {
       used.clear();
-      const reportUsed = new Set<string>();
-      const pickReport = (fn: (p: any) => boolean) => {
-        const hit = reportPool.find((p: any) => !reportUsed.has(p.id) && fn(p));
-        if (hit) reportUsed.add(hit.id);
-        return hit || null;
-      };
       const positions = posOrder[key] || [];
       const mappedNodes = preset.nodes.map((node, i) => {
         const targetPos = positions[i] || node.position;
-        const tp = targetPos.toUpperCase();
-        const fromReport =
-          pickReport((p: any) => (p.position || '').toUpperCase() === tp) ||
-          pickReport((p: any) => (p.position || '').toUpperCase().includes(tp)) ||
-          pickReport((p: any) => (p.position || '').toUpperCase().split(/[\/\s]+/).some((part: string) => part === tp || part.includes(tp))) ||
-          pickReport(() => true);
-        const matched = fromReport || pickFor(targetPos);
+        const entry = reportEntries[i];
+        if (entry) {
+          if (entry.player) {
+            used.add((entry.player as any).id);
+            return {
+              ...node,
+              name: shortName(entry.player),
+              number: String((entry.player as any).number || node.number),
+              position: (entry.player as any).position || node.position,
+              image: (entry.player as any).image,
+            };
+          }
+          // Kein Kader-Match: Spielbericht-Name trotzdem auf dem Feld anzeigen
+          return { ...node, name: entry.rawName, number: String(node.number || ''), position: node.position, image: undefined };
+        }
+        const matched = pickFor(targetPos);
         if (matched) {
           return { ...node, name: shortName(matched), number: String(matched.number || node.number), position: matched.position || node.position, image: matched.image };
         }
@@ -688,6 +699,19 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
     }
     return result;
   }, [players, activeClub.id, matchAnalyses]);
+
+  // Quellen-Stempel der Startelf: Ändert sich der letzte Spielbericht (neue Startelf), wird die
+  // gespeicherte Präsentations-Startelf beim nächsten Sync frisch vom Board übernommen.
+  const reportSrcId = useMemo(() => {
+    const latest = [...(matchAnalyses || [])]
+      .filter((a: any) => a && a.startingLineup && String(a.startingLineup).trim().length > 0)
+      .sort((a: any, b: any) => {
+        const da = new Date(String(a.date || a.createdAt || '')).getTime();
+        const db = new Date(String(b.date || b.createdAt || '')).getTime();
+        return (isNaN(db) ? 0 : db) - (isNaN(da) ? 0 : da) || String(b.id || '').localeCompare(String(a.id || ''));
+      })[0];
+    return latest ? String(latest.id || latest.date || latest.createdAt || 'report-unknown') : 'none';
+  }, [matchAnalyses]);
 
   // Aktuelle Startelf (editierbar über Bank-Wechsel) — Board als Quelle beim Start, danach User-Wechsel.
   // Persistiert in localStorage, damit Wechsel/Positionen nicht beim erneuten Laden "zurückspringen".
@@ -699,8 +723,13 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
       if (saved) {
         const arr = JSON.parse(saved);
         if (Array.isArray(arr) && arr.length > 0) {
-          // Gespeicherte Startelf komplett vor Auto-Sync schützen
-          arr.forEach((_: any, i: number) => swappedPositionsRef.current.add(i));
+          const savedSrc = localStorage.getItem('fca_presentationLineup_src') || '';
+          const sourceUnchanged = savedSrc === reportSrcId;
+          // Nur bei unveränderter Quelle als 'manuell getauscht' schützen;
+          // neuer/aktualisierter Spielbericht ⇒ frische Übernahme vom Board.
+          if (sourceUnchanged) {
+            arr.forEach((_: any, i: number) => swappedPositionsRef.current.add(i));
+          }
           return arr;
         }
       }
@@ -823,9 +852,12 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
   // Startelf persistieren (Wechsel, Positionen) → kein Zurückspringen nach Reload
   useEffect(() => {
     if (presentationLineup.length > 0) {
-      try { localStorage.setItem('fca_presentationLineup', JSON.stringify(presentationLineup)); } catch { /* ignore */ }
+      try {
+        localStorage.setItem('fca_presentationLineup', JSON.stringify(presentationLineup));
+        localStorage.setItem('fca_presentationLineup_src', reportSrcId);
+      } catch { /* ignore */ }
     }
-  }, [presentationLineup]);
+  }, [presentationLineup, reportSrcId]);
 
   // Automatisch sync: Board-Aufstellung spiegeln, aber User-Wechsel respektieren
   useEffect(() => {
