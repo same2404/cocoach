@@ -295,6 +295,77 @@ INTERPRETATION:
     res.json({ version: "2026-08-24_12-00" });
   });
 
+  // Veo match resolver: the Veo app API exposes match metadata (incl. reel_url)
+  // but does not send CORS headers, so the browser cannot fetch it directly.
+  // We proxy the lookup server-side and return the streamable reel MP4.
+  app.post("/api/veo-resolve", async (req, res) => {
+    try {
+      const rawUrl: string = String(req.body?.url || '').trim();
+      if (!rawUrl) {
+        return res.status(400).json({ error: "url ist erforderlich." });
+      }
+      if (!/veo\.co|veoplayer\.com/i.test(rawUrl)) {
+        return res.status(400).json({ error: "Keine gültige Veo-URL." });
+      }
+
+      const slugMatch = rawUrl.match(/(?:matches?|m|embed)\/([a-zA-Z0-9_-]+)/i) || rawUrl.match(/recordings?\/([a-zA-Z0-9_-]+)/i);
+      const slug = slugMatch ? slugMatch[1] : rawUrl.split('/').filter(Boolean).pop() || '';
+      if (!slug) {
+        return res.status(400).json({ error: "Veo-Match-ID nicht erkannt." });
+      }
+
+      const [slugResp, idResp] = await Promise.all([
+        fetch(`https://app.veo.co/api/app/matches/${slug}`, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; FcAuggenCoCoach/1.0)' },
+          redirect: 'follow',
+        }),
+        fetch(`https://app.veo.co/api/app/matches/${slug}?identifier=${slug}`, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; FcAuggenCoCoach/1.0)' },
+          redirect: 'follow',
+        }),
+      ]);
+
+      const resp = slugResp.ok ? slugResp : idResp;
+      if (!resp.ok) {
+        return res.status(slugResp.status || 502).json({ error: `Veo-API antwortet mit HTTP ${resp.status}.`, status: resp.status });
+      }
+
+      const data = await resp.json();
+
+      if (data?.privacy && data.privacy !== 'public' && data.privacy !== 'link') {
+        return res.status(403).json({ error: 'Dieses Veo-Video ist nicht öffentlich freigegeben.' });
+      }
+      if (data?.is_accessible === false) {
+        return res.status(403).json({ error: 'Dieses Veo-Video ist nicht öffentlich zugänglich.' });
+      }
+
+      const reelUrl: string = typeof data?.reel_url === 'string' ? data.reel_url : '';
+      const videoModesUrl: string = reelUrl || '';
+      const thumbnail: string = typeof data?.thumbnail === 'string' ? data.thumbnail : '';
+      const title: string = typeof data?.title === 'string' ? data.title : 'Veo Match';
+      const duration: number = typeof data?.duration === 'number' ? data.duration : 0;
+
+      if (!videoModesUrl) {
+        return res.status(404).json({ error: 'Kein öffentlicher Video-Stream für dieses Match gefunden.' });
+      }
+
+      res.json({
+        ok: true,
+        url: videoModesUrl,
+        thumbnail,
+        title,
+        duration,
+        slug,
+        matchId: data?.identifier || data?.id || null,
+        team: data?.team?.name || null,
+        opponent: data?.opponent_team_name || data?.opponent_team_name || null,
+      });
+    } catch (err: any) {
+      console.error('[Veo-Resolve Error]', err.message);
+      res.status(500).json({ error: err.message || 'Interner Fehler beim Veo-Abruf.' });
+    }
+  });
+
   // API Route for TRACKTICS Sportscientific analysis
   app.post("/api/player-performance/analyze", async (req, res) => {
     try {

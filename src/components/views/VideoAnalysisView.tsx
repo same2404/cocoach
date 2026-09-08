@@ -940,8 +940,26 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
     // Build a list of candidate URLs to try, from most specific to fallback.
     const candidates: string[] = [url];
     if (isVeo) {
-      // Veo offers an embedded playback endpoint that serves the raw stream
-      // for publicly shared matches.
+      // Veo exposes match metadata (including the public reel MP4) at app.veo.co,
+      // but that host sends no CORS headers. Resolve it through our server-side
+      // proxy first, then stream the reel MP4 from c.veocdn.com (ACAO: *).
+      try {
+        const res = await apiFetch('/api/veo-resolve', {
+          method: 'POST',
+          body: JSON.stringify({ url }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.url) {
+            candidates.length = 0;
+            candidates.push(data.url);
+          } else {
+            setDownloadError(data?.error || 'Veo-Match konnte nicht aufgelöst werden.');
+          }
+        }
+      } catch {
+        // Proxy not reachable – fall through to the classic candidates below.
+      }
       const matchPatterns = [
         /(?:app\.)?veo\.co\/(?:matches?|m|embed)\/([a-zA-Z0-9_-]+)/i,
         /veoplayer\.com\/match\/([a-zA-Z0-9_-]+)/i,
@@ -962,7 +980,38 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
     }
 
     let lastErr: any = null;
+
+    // Some Veo candidates resolve to match metadata (JSON) exposing a reel URL
+    // that is directly streamable. Resolve those before treating them as videos.
+    const resolvedCandidates: string[] = [];
     for (const candidate of candidates) {
+      try {
+        const response = await fetch(candidate, { mode: 'cors' });
+        const contentType = response.headers.get('content-type') || '';
+        if (response.ok && contentType.includes('json')) {
+          try {
+            const data = await response.json();
+            if (Array.isArray(data?.videos) && data.videos[0]?.url) {
+              resolvedCandidates.push(data.videos[0].url);
+            } else if (typeof data?.reel_url === 'string' && data.reel_url) {
+              resolvedCandidates.push(data.reel_url);
+            } else if (typeof data?.stream_url === 'string' && data.stream_url) {
+              resolvedCandidates.push(data.stream_url);
+            } else {
+              resolvedCandidates.push(candidate);
+            }
+          } catch {
+            resolvedCandidates.push(candidate);
+          }
+        } else if (response.ok && !response.bodyUsed) {
+          resolvedCandidates.push(candidate);
+        }
+      } catch {
+        resolvedCandidates.push(candidate);
+      }
+    }
+
+    for (const candidate of resolvedCandidates) {
       try {
         const response = await fetch(candidate, { mode: 'cors' });
         if (!response.ok) {
