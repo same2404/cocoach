@@ -1865,11 +1865,14 @@ Jeder Block soll fachlich präzise, sofort nutzbar und im Deutschen sein. Antwor
   if (!fs.existsSync(clipsDir)) fs.mkdirSync(clipsDir, { recursive: true });
 
   const upload = multer({
-    storage: multer.memoryStorage(),
-    limits: { fileSize: 2 * 1024 * 1024 * 1024 },
+    storage: multer.diskStorage({
+      destination: (req, file, cb) => cb(null, clipsDir),
+      filename: (req, file, cb) => cb(null, `up_${Date.now()}_${Math.random().toString(36).slice(2, 8)}${path.extname(file.originalname || '') || '.mp4'}`),
+    }),
+    limits: { fileSize: 6 * 1024 * 1024 * 1024, files: 1 },
   });
 
-  app.post("/api/video/cut", upload.single("file"), async (req: any, res: any) => {
+  const runCut = async (req: any, res: any) => {
     const sanitize = (s: string) => s.replace(/[^a-zA-Z0-9_-]/g, '_');
     let inputPath = "";
     let outputPath = "";
@@ -1879,7 +1882,7 @@ Jeder Block soll fachlich präzise, sofort nutzbar und im Deutschen sein. Antwor
       const end = parseFloat(req.body?.end ?? '');
       const baseName = sanitize(String(req.body?.name || 'clip'));
 
-      if (!file || !file.buffer) {
+      if (!file || !file.path) {
         return res.status(400).json({ error: "Video-Datei (FormData-Feld 'file') fehlt." });
       }
       if (!isFinite(start) || !isFinite(end) || start < 0 || end <= start) {
@@ -1888,10 +1891,8 @@ Jeder Block soll fachlich präzise, sofort nutzbar und im Deutschen sein. Antwor
 
       const ext = (file.originalname?.match(/\.([a-zA-Z0-9]+)$/) || [])[1] || 'mp4';
       const outId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-      inputPath = path.join(clipsDir, `in_${outId}.${ext}`);
+      inputPath = file.path;
       outputPath = path.join(clipsDir, `${baseName}_${outId}.mp4`);
-
-      fs.writeFileSync(inputPath, file.buffer);
 
       const ffmpeg = ffmpegPath as unknown as string;
       const durationSec = end - start;
@@ -1930,7 +1931,20 @@ Jeder Block soll fachlich präzise, sofort nutzbar und im Deutschen sein. Antwor
       if (fs.existsSync(outputPath)) { try { fs.unlinkSync(outputPath); } catch {} }
       res.status(500).json({ error: err?.message || "Interner Fehler beim Schneiden." });
     }
-  });
+  };
+
+  app.post("/api/video/cut", (req: any, res: any, next: any) => {
+    upload.single("file")(req, res, (err: any) => {
+      if (err) {
+        const code = err?.code || '';
+        if (code === 'LIMIT_FILE_SIZE') {
+          return res.status(413).json({ error: "Video-Datei zu groß. Maximale Größe ist 6 GB – bitte kürzeres Video nutzen." });
+        }
+        return res.status(400).json({ error: `Upload fehlgeschlagen: ${err?.message || 'Unbekannter Upload-Fehler'}` });
+      }
+      next();
+    });
+  }, runCut);
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
