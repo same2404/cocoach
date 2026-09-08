@@ -20,6 +20,7 @@ import {
   ExternalLink,
   Film,
   Sparkles,
+  Clapperboard,
   Maximize2,
   X,
   ChevronLeft,
@@ -628,6 +629,61 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
     return frames;
   };
 
+  // Veo-ähnliche Auto-Analyse: gleichmäßig über das ganze Video verteilte Frames
+  // mit sichtbarer Zeit-Einblendung, damit die KI Zeiten bestimmen kann.
+  const extractTimedFrames = async (videoEl: HTMLVideoElement, frameCount: number = 24): Promise<string[]> => {
+    const frames: string[] = [];
+    const canvas = document.createElement('canvas');
+    canvas.width = 848;
+    canvas.height = 477;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return frames;
+
+    const originalTime = videoEl.currentTime;
+    const wasPlaying = !videoEl.paused;
+    videoEl.pause();
+
+    const duration = videoEl.duration || 0;
+    if (!duration || !isFinite(duration) || duration <= 0) {
+      videoEl.currentTime = originalTime;
+      if (wasPlaying) videoEl.play();
+      return frames;
+    }
+
+    const count = Math.max(6, Math.min(frameCount, 30));
+    const interval = duration / (count + 1);
+
+    for (let i = 1; i <= count; i++) {
+      const seekTime = interval * i;
+      videoEl.currentTime = seekTime;
+      await new Promise(resolve => {
+        const onSeeked = () => {
+          videoEl.removeEventListener('seeked', onSeeked);
+          resolve(undefined);
+        };
+        videoEl.addEventListener('seeked', onSeeked);
+      });
+
+      ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+      ctx.fillRect(0, canvas.height - 44, 150, 32);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 24px Arial';
+      ctx.textBaseline = 'middle';
+      const m = Math.floor(seekTime / 60);
+      const s = Math.floor(seekTime % 60);
+      const timeLabel = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+      ctx.fillText(timeLabel, 14, canvas.height - 28);
+
+      frames.push(canvas.toDataURL('image/jpeg', 0.55));
+    }
+
+    videoEl.currentTime = originalTime;
+    if (wasPlaying) videoEl.play();
+    return frames;
+  };
+
   // Start AI Video Analysis
   const handleStartAIAnalysis = async () => {
     const videoEl = mainVideoRef.current;
@@ -658,68 +714,111 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       const result = await res.json();
-      setAiAnalysisResult(result);
-      setShowAiResults(true);
-
-      if (result.sceneClips) {
-        const aiClips = result.sceneClips.map((clip: any, idx: number) => {
-          const categoryMap: Record<string, VideoCategory> = {
-            'TORE': 'Tore',
-            'CHANCEN': 'Tore',
-            'STANDARDS': 'Standards',
-            'PRESSING': 'Pressing MIT Ball',
-            'AUFBAU': 'Spielaufbau',
-            'UMSCHALTMOMENTE': 'Ballverlust',
-          };
-          const primaryCat: VideoCategory = clip.categories && clip.categories.length > 0
-            ? (categoryMap[clip.categories[0]] || 'Spielaufbau')
-            : (categoryMap[clip.category] || 'Spielaufbau');
-          const newId = `ai_clip_${Date.now()}_${Math.random().toString(36).substring(2, 7)}_${idx}`;
-          const newClip: TacticalVideoClip = {
-            id: newId,
-            aiSceneId: clip.id,
-            category: primaryCat,
-            categories: Array.isArray(clip.categories) && clip.categories.length > 0
-              ? clip.categories.map((c: string) => categoryMap[c] || c)
-              : [primaryCat],
-            videoUrl: videoSource ?? '',
-            videoName: videoFileName,
-            startTime: clip.startTimeSeconds || 0,
-            endTime: clip.endTimeSeconds || 10,
-            duration: (clip.endTimeSeconds || 10) - (clip.startTimeSeconds || 0),
-            tacticalNote: `${clip.aiCommentary || ''}\n\nBewertung: ${clip.tacticalRating || ''}\n\nVerbesserung: ${clip.improvementSuggestions || ''}`,
-            colorMarking: (clip.tacticalRating || '').includes('9') ? 'green' : (clip.improvementSuggestions ? 'red' : 'none'),
-            createdAt: new Date().toISOString(),
-            title: clip.title || `${clip.category} - ${clip.subcategory}`,
-            beforeSituation: clip.beforeSituation,
-            trigger: clip.trigger,
-            passSequence: clip.passSequence,
-            runPatterns: Array.isArray(clip.runPatterns) ? clip.runPatterns : undefined,
-            keyPlayers: Array.isArray(clip.keyPlayers) ? clip.keyPlayers : undefined,
-            spatialAnalysis: clip.spatialAnalysis,
-            defensiveLines: clip.defensiveLines,
-            opponentStructure: clip.opponentStructure,
-            decision: clip.decision,
-            mainLearningPoint: clip.mainLearningPoint,
-            goalDetails: clip.goalDetails,
-            concededGoalDetails: clip.concededGoalDetails,
-            relatedSceneIds: Array.isArray(clip.relatedSceneIds) ? clip.relatedSceneIds : undefined,
-            confidence: clip.confidence,
-            qualityCheck: Array.isArray(clip.qualityCheck) ? clip.qualityCheck : undefined,
-          };
-          return newClip;
-        });
-        const idByAiId: Record<string, string> = {};
-        aiClips.forEach(c => { if (c.aiSceneId) idByAiId[c.aiSceneId] = c.id; });
-        aiClips.forEach(c => {
-          if (c.relatedSceneIds && c.relatedSceneIds.length > 0) {
-            c.relatedSceneIds = c.relatedSceneIds.map(rid => idByAiId[rid] || rid);
-          }
-          saveClip(c);
-        });
-      }
+      applyAiResult(result);
     } catch (err: any) {
       setAiAnalysisError(err.message || 'KI-Analyse fehlgeschlagen.');
+    } finally {
+      setAiAnalysisLoading(false);
+    }
+  };
+
+  // Remaps the AI result object into saved tactical clips and shows the result panel.
+  const applyAiResult = (result: any) => {
+    setAiAnalysisResult(result);
+    setShowAiResults(true);
+
+    if (result.sceneClips) {
+      const aiClips = result.sceneClips.map((clip: any, idx: number) => {
+        const categoryMap: Record<string, VideoCategory> = {
+          'TORE': 'Tore',
+          'CHANCEN': 'Tore',
+          'STANDARDS': 'Standards',
+          'PRESSING': 'Pressing MIT Ball',
+          'AUFBAU': 'Spielaufbau',
+          'UMSCHALTMOMENTE': 'Ballverlust',
+        };
+        const primaryCat: VideoCategory = clip.categories && clip.categories.length > 0
+          ? (categoryMap[clip.categories[0]] || 'Spielaufbau')
+          : (categoryMap[clip.category] || 'Spielaufbau');
+        const newId = `ai_clip_${Date.now()}_${Math.random().toString(36).substring(2, 7)}_${idx}`;
+        const newClip: TacticalVideoClip = {
+          id: newId,
+          aiSceneId: clip.id,
+          category: primaryCat,
+          categories: Array.isArray(clip.categories) && clip.categories.length > 0
+            ? clip.categories.map((c: string) => categoryMap[c] || c)
+            : [primaryCat],
+          videoUrl: videoSource ?? '',
+          videoName: videoFileName,
+          startTime: clip.startTimeSeconds || 0,
+          endTime: clip.endTimeSeconds || 10,
+          duration: (clip.endTimeSeconds || 10) - (clip.startTimeSeconds || 0),
+          tacticalNote: `${clip.aiCommentary || ''}\n\nBewertung: ${clip.tacticalRating || ''}\n\nVerbesserung: ${clip.improvementSuggestions || ''}`,
+          colorMarking: (clip.tacticalRating || '').includes('9') ? 'green' : (clip.improvementSuggestions ? 'red' : 'none'),
+          createdAt: new Date().toISOString(),
+          title: clip.title || `${clip.category} - ${clip.subcategory}`,
+          beforeSituation: clip.beforeSituation,
+          trigger: clip.trigger,
+          passSequence: clip.passSequence,
+          runPatterns: Array.isArray(clip.runPatterns) ? clip.runPatterns : undefined,
+          keyPlayers: Array.isArray(clip.keyPlayers) ? clip.keyPlayers : undefined,
+          spatialAnalysis: clip.spatialAnalysis,
+          defensiveLines: clip.defensiveLines,
+          opponentStructure: clip.opponentStructure,
+          decision: clip.decision,
+          mainLearningPoint: clip.mainLearningPoint,
+          goalDetails: clip.goalDetails,
+          concededGoalDetails: clip.concededGoalDetails,
+          relatedSceneIds: Array.isArray(clip.relatedSceneIds) ? clip.relatedSceneIds : undefined,
+          confidence: clip.confidence,
+          qualityCheck: Array.isArray(clip.qualityCheck) ? clip.qualityCheck : undefined,
+        };
+        return newClip;
+      });
+      const idByAiId: Record<string, string> = {};
+      aiClips.forEach(c => { if (c.aiSceneId) idByAiId[c.aiSceneId] = c.id; });
+      aiClips.forEach(c => {
+        if (c.relatedSceneIds && c.relatedSceneIds.length > 0) {
+          c.relatedSceneIds = c.relatedSceneIds.map(rid => idByAiId[rid] || rid);
+        }
+        saveClip(c);
+      });
+    }
+  };
+
+  // Veo-ähnliche Auto-Analyse: gesamtes Video wird gleichmäßig abgetastet
+  const handleAutoSceneScan = async () => {
+    const videoEl = mainVideoRef.current;
+
+    setAiAnalysisLoading(true);
+    setAiAnalysisError(null);
+    setAiAnalysisResult(null);
+    setShowAiResults(false);
+
+    try {
+      if (!videoEl || !videoSource || isVeoLink) {
+        throw new Error('Bitte zuerst ein eigenes Video laden (Veo-Link nicht unterstützt).');
+      }
+
+      const frames = await extractTimedFrames(videoEl, 24);
+
+      const res = await apiFetch('/api/video-analysis/process', {
+        method: 'POST',
+        body: JSON.stringify({
+          videoTitle: videoFileName || 'Spielvideo',
+          videoUrl: videoSource,
+          squadPlayers,
+          sampleFrames: frames,
+          clubName,
+        }),
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const result = await res.json();
+      applyAiResult(result);
+    } catch (err: any) {
+      setAiAnalysisError(err.message || 'Auto-Erkennung fehlgeschlagen.');
     } finally {
       setAiAnalysisLoading(false);
     }
@@ -1749,25 +1848,42 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
           <p className="text-xs text-[#94A3B8] mb-4">
             {isVeoLink
               ? 'Veo-Video erkannt. Die KI analysiert basierend auf Kader und Spielkontext (Frames werden beim Veo-Embed nicht extrahiert).'
-              : 'Die KI analysiert 5 Frames aus dem Video und erkennt automatisch Spielszenen, Spieler-Positionen, Taktik und Schwachstellen.'}
+              : 'Die KI analysiert 5 Frames oder tastet das ganze Spiel automatisch ab (wie Veo) und erkennt Spielszenen, Spieler-Positionen, Taktik und Schwachstellen.'}
           </p>
-          <button
-            onClick={handleStartAIAnalysis}
-            disabled={aiAnalysisLoading}
-            className="px-6 py-3 bg-[#8B5CF6] hover:bg-[#7C3AED] disabled:opacity-50 text-white font-black text-sm uppercase tracking-wider rounded-xl transition-all shadow-lg flex items-center gap-2 cursor-pointer disabled:cursor-not-allowed"
-          >
-            {aiAnalysisLoading ? (
-              <>
-                <Loader2 size={18} className="animate-spin" />
-                <span>KI analysiert Video... (dauert ca. 30s)</span>
-              </>
-            ) : (
-              <>
-                <Sparkles size={18} />
-                <span>KI-Analyse starten</span>
-              </>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={handleStartAIAnalysis}
+              disabled={aiAnalysisLoading}
+              className="px-6 py-3 bg-[#8B5CF6] hover:bg-[#7C3AED] disabled:opacity-50 text-white font-black text-sm uppercase tracking-wider rounded-xl transition-all shadow-lg flex items-center gap-2 cursor-pointer disabled:cursor-not-allowed"
+            >
+              {aiAnalysisLoading ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" />
+                  <span>KI analysiert Video... (dauert ca. 30s)</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles size={18} />
+                  <span>KI-Analyse starten</span>
+                </>
+              )}
+            </button>
+            {!isVeoLink && (
+              <button
+                onClick={handleAutoSceneScan}
+                disabled={aiAnalysisLoading}
+                title="Scant das gesamte Video automatisch nach Spielszenen (wie Veo) – dauert ca. 1–2 Minuten"
+                className="px-6 py-3 bg-gradient-to-r from-[#0EA5E9] to-[#06B6D4] hover:from-[#0284C7] hover:to-[#0891B2] disabled:opacity-50 text-white font-black text-sm uppercase tracking-wider rounded-xl transition-all shadow-lg flex items-center gap-2 cursor-pointer disabled:cursor-not-allowed"
+              >
+                {aiAnalysisLoading ? (
+                  <Loader2 size={18} className="animate-spin" />
+                ) : (
+                  <Clapperboard size={18} />
+                )}
+                <span>{aiAnalysisLoading ? 'Auto-Scan läuft...' : 'Auto-Erkennung (wie Veo)'}</span>
+              </button>
             )}
-          </button>
+          </div>
           {aiAnalysisError && (
             <div className="mt-3 p-3 bg-rose-950/50 border border-rose-700/50 rounded-xl text-rose-300 text-xs font-bold">
               {aiAnalysisError}

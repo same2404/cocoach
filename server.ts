@@ -910,7 +910,7 @@ Antworte STRENG im geforderten JSON-Format.
 
       let contents: any[] = [];
       if (Array.isArray(sampleFrames) && sampleFrames.length > 0) {
-        sampleFrames.slice(0, 3).forEach((frameData: string) => {
+        sampleFrames.slice(0, 28).forEach((frameData: string) => {
           const cleanBase64 = frameData.includes(',') ? frameData.split(',')[1] : frameData;
           contents.push({
             inlineData: {
@@ -920,7 +920,7 @@ Antworte STRENG im geforderten JSON-Format.
           });
         });
         contents.push({
-          text: `Analysiere bitte diese extrahierten Frames aus dem Video "${videoTitle || 'Fußballspiel'}". Extrahiere Spieler-, Ball- und Zonen-Tracking, die Event-Timeline sowie alle klassifizierten Version 2 Spielszenen (Tore, Chancen, Standards, Pressing, Spielaufbau, Umschaltmomente) MIT vollständiger CoCoach-Tiefenanalyse (VORHER→AUSLÖSER→PASSFOLGE→LAUFWEGE→RAUMANALYSE→DEFENSIVLINIEN→ENTSCHEIDUNG→HAUPTLERNPUNKT, Mehrfach-Tags, related_scene_ids, confidence-Marker unknown/estimated/low_confidence).`
+          text: `Analysiere bitte diese extrahierten Frames aus dem Video "${videoTitle || 'Fußballspiel'}". Diese Frames verteilen sich gleichmäßig über die gesamte Match-Dauer. Die Frames tragen unten links eine sichtbare Zeit-Einblendung (Format M:SS) – nutze sie, um die Szenen-Zeiten (startTimeSeconds/endTimeSeconds) realitätsnah zu bestimmen. Wenn keine Einblendung sichtbar ist, schätze die Zeit mit Marker "estimated" und ±15 Sekunden Toleranz. Extrahiere Spieler-, Ball- und Zonen-Tracking, die Event-Timeline sowie alle klassifizierten Version 2 Spielszenen (Tore, Chancen, Standards, Pressing, Spielaufbau, Umschaltmomente) MIT vollständiger CoCoach-Tiefenanalyse (VORHER→AUSLÖSER→PASSFOLGE→LAUFWEGE→RAUMANALYSE→DEFENSIVLINIEN→ENTSCHEIDUNG→HAUPTLERNPUNKT, Mehrfach-Tags, related_scene_ids, confidence-Marker unknown/estimated/low_confidence).`
         });
       } else {
         contents = [`Analysiere bitte das Fußballvideo "${videoTitle || 'FC Auggen Video'}" und erstelle Trackingdaten, Event-Timeline sowie die klassifizierten Version 2 Spielszenen-Clips (Tore, Chancen, Standards, Pressing, Spielaufbau, Umschaltmomente) MIT vollständiger CoCoach-Tiefenanalyse (VORHER→AUSLÖSER→PASSFOLGE→LAUFWEGE→RAUMANALYSE→DEFENSIVLINIEN→ENTSCHEIDUNG→HAUPTLERNPUNKT, Mehrfach-Tags, related_scene_ids, confidence-Marker unknown/estimated/low_confidence).`];
