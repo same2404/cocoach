@@ -601,19 +601,53 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
       return fn && ln ? `${fn.charAt(0)}. ${ln}` : ln || fn || '?';
     };
 
+    // Startelf aus dem letzten Spielbericht (startingLineup) hat Vorrang vor der Positions-Zuordnung.
+    const parseReportNames = (v: any): string[] => {
+      const raw: string[] = Array.isArray(v) ? v.map(String) : String(v || '').split(/[,;\n]+/);
+      const names: string[] = [];
+      raw.forEach((entry: string) => {
+        const cleaned = String(entry)
+          .replace(/\s*\([\s\S]*?\)\s*/g, ' ')
+          .replace(/^\s*[\d]+[\.\)]?\s*/, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+        if (!cleaned) return;
+        names.push(cleaned.replace(/[.,'"]/g, ''));
+      });
+      return names;
+    };
+    const matchReportName = (p: any, name: string) => {
+      const full = `${p.firstName || ''} ${p.lastName || p.name || ''}`.trim().toLowerCase();
+      const ln = name.toLowerCase();
+      const pl = `${p.lastName || p.name || ''}`.toLowerCase();
+      return full.includes(ln) || ln.includes(pl) || full.includes(ln.replace(/^[a-z]\.?\s*/, ''));
+    };
+    const latestReport = [...(matchAnalyses || [])]
+      .filter((a: any) => a && a.startingLineup && String(a.startingLineup).trim().length > 0)
+      .sort((a: any, b: any) => String(b.date || b.createdAt || '').localeCompare(String(a.date || a.createdAt || '')))[0];
+    const reportPool: Player[] = [];
+    if (latestReport) {
+      const usedInReport = new Set<string>();
+      parseReportNames(latestReport.startingLineup).forEach((n) => {
+        const found = squad.find((p: any) => !usedInReport.has(p.id) && matchReportName(p, n));
+        if (found) { usedInReport.add(found.id); reportPool.push(found); }
+      });
+    }
+    const reportIds = new Set<string>(reportPool.map((p: any) => p.id));
+
     const pickFor = (targetPos: string) => {
       const tp = targetPos.toUpperCase();
-      const exact = squad.find((p: any) => !used.has(p.id) && (p.position || '').toUpperCase() === tp);
+      const exact = squad.find((p: any) => !used.has(p.id) && !reportIds.has(p.id) && (p.position || '').toUpperCase() === tp);
       if (exact) { used.add(exact.id); return exact; }
-      const contains = squad.find((p: any) => !used.has(p.id) && (p.position || '').toUpperCase().includes(tp));
+      const contains = squad.find((p: any) => !used.has(p.id) && !reportIds.has(p.id) && (p.position || '').toUpperCase().includes(tp));
       if (contains) { used.add(contains.id); return contains; }
       const multiPos = squad.find((p: any) => {
-        if (used.has(p.id)) return false;
+        if (used.has(p.id) || reportIds.has(p.id)) return false;
         const parts = (p.position || '').toUpperCase().split(/[\/\s]+/);
         return parts.some((part: string) => part === tp || part.includes(tp));
       });
       if (multiPos) { used.add(multiPos.id); return multiPos; }
-      const any = squad.find((p: any) => !used.has(p.id));
+      const any = squad.find((p: any) => !used.has(p.id) && !reportIds.has(p.id));
       if (any) { used.add(any.id); return any; }
       return null;
     };
@@ -628,10 +662,22 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
     const result: typeof FORMATION_PRESETS = {};
     for (const [key, preset] of Object.entries(FORMATION_PRESETS)) {
       used.clear();
+      const reportUsed = new Set<string>();
+      const pickReport = (fn: (p: any) => boolean) => {
+        const hit = reportPool.find((p: any) => !reportUsed.has(p.id) && fn(p));
+        if (hit) reportUsed.add(hit.id);
+        return hit || null;
+      };
       const positions = posOrder[key] || [];
       const mappedNodes = preset.nodes.map((node, i) => {
         const targetPos = positions[i] || node.position;
-        const matched = pickFor(targetPos);
+        const tp = targetPos.toUpperCase();
+        const fromReport =
+          pickReport((p: any) => (p.position || '').toUpperCase() === tp) ||
+          pickReport((p: any) => (p.position || '').toUpperCase().includes(tp)) ||
+          pickReport((p: any) => (p.position || '').toUpperCase().split(/[\/\s]+/).some((part: string) => part === tp || part.includes(tp))) ||
+          pickReport(() => true);
+        const matched = fromReport || pickFor(targetPos);
         if (matched) {
           return { ...node, name: shortName(matched), number: String(matched.number || node.number), position: matched.position || node.position, image: matched.image };
         }
@@ -640,7 +686,7 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
       result[key] = { ...preset, nodes: mappedNodes };
     }
     return result;
-  }, [players, activeClub.id]);
+  }, [players, activeClub.id, matchAnalyses]);
 
   // Aktuelle Startelf (editierbar über Bank-Wechsel) — Board als Quelle beim Start, danach User-Wechsel.
   // Persistiert in localStorage, damit Wechsel/Positionen nicht beim erneuten Laden "zurückspringen".
