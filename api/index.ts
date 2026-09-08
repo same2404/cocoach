@@ -1,20 +1,19 @@
 // Copyright (c) 2026 FC Auggen Manager. All rights reserved. Copying or duplication is prohibited.
 
 
-// Vercel-Serverless-Einstiegspunkt: exportiert die gesamte Express-App aus server.ts als Handler.
-// Lazy-Import + Try/Catch, damit Startfehler als JSON sichtbar werden statt generischem 500.
-let appPromise: Promise<any> | null = null;
-
-async function getApp() {
-  if (!appPromise) {
-    appPromise = import('../server').then((m) => m.default);
-  }
-  return appPromise;
-}
+// Vercel-Serverless-Einstiegspunkt.
+// Bindet das von `npm run build` erzeugte `dist/server.cjs` ein (deterministisches,
+// zuvor getestetes Bundle) statt server.ts direkt – der Vercel-Funktions-Bundler
+// löst diesen relativen Pfad auf und legt das Bundle ins Lambda.
+let app: any = null;
 
 export default async function handler(req: any, res: any) {
   try {
-    const app = await getApp();
+    if (!app) {
+      // @ts-ignore – dist/server.cjs wird vor dem Funktions-Build erzeugt
+      const mod = await import('../dist/server.cjs');
+      app = mod?.default ?? mod;
+    }
     return app(req, res);
   } catch (err: any) {
     res.statusCode = 500;
