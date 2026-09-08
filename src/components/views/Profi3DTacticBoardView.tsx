@@ -5040,6 +5040,49 @@ Gib mir in 3 kurzen, klaren Bullet Points:
             </button>
 
             <button
+              onClick={() => {
+                if (animRef.current) cancelAnimationFrame(animRef.current);
+                setIsAnimating(false);
+                setAnimPaused(false);
+                animProgressRef.current = 0;
+                setAnimProgress(0);
+                setSeqRunning(false);
+                setSeqPhase(null);
+                setSeqProgress(0);
+                setAnimatedPlayerPositions({});
+                setPassBallPos(null);
+                setBallPositions([]);
+                setBallMode(false);
+                setDrawnPaths([]);
+                setCurrentDrawPoints([]);
+                setFreeDrawMode(false);
+                setIsDrawingFreehand(false);
+                setPassStations([]);
+                setPassMode(false);
+                setOpponentPlayers(defaultOpponents.map(o => ({ ...o })));
+                setShowOpponents(false);
+                setCustomRuns([]);
+                setCustomPositionsMap({});
+                setCustomZones([]);
+                setCustomRoles({});
+                setHighlightedPlayerIds([]);
+                setLockedPlayerIds([]);
+                setShowChampionsAnimation(false);
+                setChampionsStarted(false);
+                setChampPaused(false);
+                setChampPhase('big');
+                setChampNoteOpen(false);
+                setChampionsActiveCount(0);
+                setShowRunVectors(true);
+                notify('Taktikfeld zurückgesetzt – alles Gelöschte entfernt, Board ist wieder leer');
+              }}
+              className="px-2 py-0.5 text-[9.5px] font-black uppercase rounded-md border cursor-pointer transition-all bg-rose-600 text-white border-rose-400 hover:bg-rose-500 shadow flex items-center gap-1"
+              title="Alles löschen: Bälle, Gegner, Laufwege, Freihand-Zeichnungen, Passstafetten und Animationen entfernen – Board auf blanko System zurücksetzen"
+            >
+              <Trash2 size={11} /> Alles löschen
+            </button>
+
+            <button
               onClick={() => { setFreeDrawMode(!freeDrawMode); if (freeDrawMode) { setIsDrawingFreehand(false); setCurrentDrawPoints([]); } }}
               className={`px-2 py-0.5 text-[9.5px] font-black uppercase rounded-md border cursor-pointer transition-all ${
                 freeDrawMode ? 'bg-green-600 text-white border-green-400 font-black' : 'bg-slate-900 text-slate-400 border-slate-800'
