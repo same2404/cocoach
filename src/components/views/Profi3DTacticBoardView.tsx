@@ -958,15 +958,13 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
     }
     const sub = presentationSubstitutes[subIdx];
     const starter = presentationLineup[targetIdx];
-    // TW-Guard: exakt 1 Torwart in der Startelf — TW auswechseln nur gegen TW/ETW
+    // TW-Hinweis (kein Block mehr): Wechsel wird durchgeführt, nur informieren
     const twOf = (pos: string) => String(pos || '').toUpperCase().includes('TW');
     if (twOf(starter.position) && !twOf(sub.pos)) {
-      notify('Der Torwart bleibt in der Startelf – es darf nur ein Torwart im Spiel sein!');
-      return;
+      notify('Hinweis: Du tauschst den Torwart gegen einen Feldspieler – danach steht kein Torwart in der Startelf.');
     }
     if (twOf(sub.pos) && !twOf(starter.position)) {
-      notify('Der Ersatztorwart bleibt auf der Bank – in der Startelf steht bereits ein Torwart.');
-      return;
+      notify('Hinweis: Du holst einen Torwart für einen Feldspieler aufs Feld.');
     }
     const subPlayer = players.find((p: any) => {
       const fullName = `${p.firstName || ''} ${p.lastName || p.name || ''}`.trim().toLowerCase();
@@ -999,6 +997,55 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
     });
     setLineupSwapTarget(null);
     notify(`Wechsel: ${sub.name} ↔ ${starter.name} — ${sub.name} ist jetzt in der Startelf`);
+  };
+
+  // ── STARTELF MANUELL BEARBEITEN (Button-Modus): Spieler ergänzen/ändern, wird automatisch gespeichert ──
+  const [startelfEditMode, setStartelfEditMode] = useState(false);
+  const squadForLineupEdit = useMemo(() => (players || []).filter((p: any) => p.category === 'player'), [players]);
+  const shortNameOf = (p: any) => {
+    const fn = (p.firstName || '').trim();
+    const ln = (p.lastName || p.name || '').trim();
+    return fn && ln ? `${fn.charAt(0)}. ${ln}` : ln || fn || '?';
+  };
+  const replaceStartelfRow = (idx: number, player: any) => {
+    if (!player) return;
+    const twOf = (pos: string) => String(pos || '').toUpperCase().replace(/[^A-ZÄÖÜ]/g, '').includes('TW');
+    if (idx === 0 && !twOf(player.position)) {
+      notify('Hinweis: Kein Torwart auf der Torwart-Position gewählt (du kannst es trotzdem machen).');
+    }
+    if (idx !== 0 && twOf(player.position)) {
+      notify('Hinweis: Torwart auf eine Feld-Position gesetzt.');
+    }
+    setPresentationLineup((prev) => {
+      const next = [...prev];
+      if (!next[idx]) return prev;
+      next[idx] = { ...next[idx], name: shortNameOf(player), number: String(player.number || next[idx].number), position: player.position || next[idx].position, image: player.image || next[idx].image };
+      return next;
+    });
+    swappedPositionsRef.current.add(idx);
+    notify(`Startelf: ${shortNameOf(player)} gesetzt (automatisch gespeichert ✓)`);
+  };
+  const clearStartelfRow = (idx: number) => {
+    setPresentationLineup((prev) => {
+      const next = [...prev];
+      if (!next[idx]) return prev;
+      next[idx] = { ...next[idx], name: '', number: '', image: undefined };
+      return next;
+    });
+    swappedPositionsRef.current.add(idx);
+    notify('Position in der Startelf geleert (automatisch gespeichert ✓)');
+  };
+  const addPlayerToBank = (player: any) => {
+    if (!player) return;
+    setPresentationSubstitutes((prev) => {
+      if (prev.some((s) => s.name === shortNameOf(player) && String(s.num) === String(player.number || ''))) return prev;
+      return [...prev, { num: String(player.number || ''), name: shortNameOf(player), pos: player.position || '', note: '', image: player.image }];
+    });
+    notify(`Bank: ${shortNameOf(player)} hinzugefügt (automatisch gespeichert ✓)`);
+  };
+  const removePlayerFromBank = (idx: number) => {
+    setPresentationSubstitutes((prev) => prev.filter((_, i) => i !== idx));
+    notify('Spieler von der Bank entfernt (automatisch gespeichert ✓)');
   };
 
   // Zurücksetzen: System wieder auf 4-2-3-1, Startelf & Bank zurück auf Ursprung, alle Wechsel gelöscht
@@ -7369,9 +7416,14 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                             </h3>
                             <p className="text-[11px] text-slate-400 font-mono">Spielsystem: 4-3-3 &bull; Startelf (XI)</p>
                           </div>
+                          <div className="flex items-center gap-1.5">
+                          <button onClick={() => setStartelfEditMode(!startelfEditMode)} className={`${startelfEditMode ? 'bg-amber-400 text-slate-950' : 'bg-slate-800 hover:bg-slate-700 text-slate-200'} font-black text-xs uppercase px-3 py-2 rounded-xl border border-slate-700 transition-all flex items-center gap-1.5 active:scale-95`} title="Startelf manuell bearbeiten: Spieler in Startelf-Slots austauschen, Bank ergänzen/entfernen – wird automatisch gespeichert">
+                            <Pencil size={13} /> {startelfEditMode ? 'Fertig' : 'Startelf bearbeiten'}
+                          </button>
                           <button onClick={() => startChampions()} className="bg-gradient-to-br from-amber-500 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 text-slate-950 font-black text-xs uppercase px-4 py-2.5 rounded-xl shadow-lg transition-all flex items-center gap-1.5 active:scale-95" title="Startelf-Karten von oben animiert einfliegen lassen">
                             Startelf-Karten
                           </button>
+                          </div>
                         </div>
                         <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4">
                           <TacticScenarioView
@@ -7394,9 +7446,26 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                             {presentationLineup.map((p: any, idx: number) => (
                               <div key={idx} className="flex items-center gap-2 bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2">
                                 <span className="w-6 h-6 rounded-full bg-emerald-400 text-slate-950 font-black text-[10px] flex items-center justify-center shrink-0">{p.number}</span>
-                                <span className="text-[11px] text-white font-bold truncate flex-1">{p.name}</span>
+                                <span className="text-[11px] text-white font-bold truncate flex-1">{p.name || '— freier Platz —'}</span>
                                 <span className="text-[9px] text-slate-500 uppercase font-mono shrink-0">{p.position}</span>
-                                <button onClick={() => setLineupSwapTarget(idx)} className={`text-[10px] px-1.5 py-0.5 rounded border transition-all shrink-0 ${lineupSwapTarget === idx ? 'bg-amber-400 text-slate-950 border-amber-300 font-black' : 'bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500'}`} title="Diesen Spieler zum Tausch auswählen">↔</button>
+                                {startelfEditMode ? (
+                                  <div className="flex items-center gap-1 shrink-0">
+                                    <select
+                                      value=""
+                                      onChange={(e) => { const pl = squadForLineupEdit.find((s) => s.id === e.target.value); if (pl) replaceStartelfRow(idx, pl); }}
+                                      className="text-[9px] bg-slate-900 border border-amber-500/50 rounded px-1.5 py-1 text-slate-200 focus:outline-none max-w-[130px]"
+                                      title="Spieler für diese Position wählen"
+                                    >
+                                      <option value="">Ersetzen…</option>
+                                      {squadForLineupEdit.map((s) => (
+                                        <option key={s.id} value={s.id}>{s.number ? `${s.number} ` : ''}{shortNameOf(s)} ({s.position})</option>
+                                      ))}
+                                    </select>
+                                    <button onClick={() => clearStartelfRow(idx)} className="text-[9px] px-1.5 py-1 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/40 font-black" title="Position leeren">✕</button>
+                                  </div>
+                                ) : (
+                                  <button onClick={() => setLineupSwapTarget(idx)} className={`text-[10px] px-1.5 py-0.5 rounded border transition-all shrink-0 ${lineupSwapTarget === idx ? 'bg-amber-400 text-slate-950 border-amber-300 font-black' : 'bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500'}`} title="Diesen Spieler zum Tausch auswählen">↔</button>
+                                )}
                               </div>
                             ))}
                           </div>
@@ -7411,10 +7480,28 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                                 <span className="w-6 h-6 rounded-full bg-slate-700 text-slate-300 font-black text-[10px] flex items-center justify-center shrink-0">{sub.num}</span>
                                 <span className="text-[11px] text-slate-300 font-bold truncate flex-1">{sub.name}</span>
                                 <span className="text-[9px] text-slate-500 uppercase font-mono shrink-0">{sub.pos}</span>
-                                <button onClick={() => swapStartelfWithSub(idx)} className="text-[9px] px-2 py-0.5 rounded bg-violet-500/20 text-violet-300 border border-violet-500/40 hover:bg-violet-500/40 font-bold uppercase shrink-0 transition-all">Einwechseln</button>
+                                {startelfEditMode ? (
+                                  <button onClick={() => removePlayerFromBank(idx)} className="text-[9px] px-1.5 py-1 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/40 font-black shrink-0" title="Spieler von der Bank entfernen">✕ Entf.</button>
+                                ) : (
+                                  <button onClick={() => swapStartelfWithSub(idx)} className="text-[9px] px-2 py-0.5 rounded bg-violet-500/20 text-violet-300 border border-violet-500/40 hover:bg-violet-500/40 font-bold uppercase shrink-0 transition-all">Einwechseln</button>
+                                )}
                               </div>
                             ))}
                           </div>
+                          {startelfEditMode && (
+                            <div className="mt-2 flex items-center gap-1.5">
+                              <select
+                                value=""
+                                onChange={(e) => { const pl = squadForLineupEdit.find((s) => s.id === e.target.value); if (pl) addPlayerToBank(pl); }}
+                                className="text-[9px] bg-slate-900 border border-emerald-500/40 rounded px-1.5 py-1 text-slate-200 focus:outline-none flex-1"
+                              >
+                                <option value="">+ Spieler zur Bank hinzufügen…</option>
+                                {squadForLineupEdit.map((s) => (
+                                  <option key={s.id} value={s.id}>{s.number ? `${s.number} ` : ''}{shortNameOf(s)} ({s.position})</option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
                         </div>
                         <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4">
                           <h4 className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-2 flex items-center gap-2">
