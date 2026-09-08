@@ -366,6 +366,101 @@ INTERPRETATION:
     }
   });
 
+  // API Route: Startelf aus AUFSTELLUNGS-Bildern des Spielberichts per Gemini-Vision erkennen
+  app.post("/api/analyze-lineup", async (req, res) => {
+    try {
+      const { images, squadPlayers } = req.body;
+      if (!images || !Array.isArray(images) || images.length === 0) {
+        return res.status(400).json({ error: "images (Array von Bild-URLs) ist erforderlich." });
+      }
+      const playersListStr = Array.isArray(squadPlayers)
+        ? squadPlayers.map((p: any) => `- Nr ${p.number || '?'}: ${p.lastName || ''} ${p.firstName || p.name || ''} (Position: ${p.position || '?'})`).join('\n')
+        : "Keine Kaderliste bereitgestellt.";
+
+      const parts: any[] = [];
+      const urlList = images.slice(0, 2);
+      for (const url of urlList) {
+        try {
+          const imgResp = await fetch(url, {
+            headers: { 'User-Agent': 'Mozilla/5.0 (compatible; FcAuggenCoCoach/1.0)' },
+            redirect: 'follow',
+          });
+          if (!imgResp.ok) continue;
+          const contentType = imgResp.headers.get('content-type') || 'image/jpeg';
+          const mimeType = contentType.includes('png') ? 'image/png' : contentType.includes('webp') ? 'image/webp' : contentType.includes('gif') ? 'image/gif' : 'image/jpeg';
+          const buf = Buffer.from(await imgResp.arrayBuffer());
+          if (buf.length > 9_000_000) continue;
+          parts.push({ inlineData: { mimeType, data: buf.toString('base64') } });
+        } catch { /* einzelnes Bild überspringen */ }
+      }
+      if (parts.length === 0) {
+        return res.status(502).json({ error: "Keines der Aufstellungs-Bilder konnte geladen werden." });
+      }
+
+      const systemInstruction = `
+Du bist Co-Trainer des FC Auggen und liest aus einem AUFSTELLUNGS- / FORMATIONS-Bild die STARTELF (Startaufstellung) der eigenen Mannschaft ab.
+
+Kaderliste des FC Auggen zur Zuordnung:
+${playersListStr}
+
+Anweisungen:
+- Erkenne aus dem Bild die Trikotnummern und (falls lesbar) die Spielernamen aller Startspieler (maximal 11).
+- Ist ein Name NICHT lesbar, aber die Nummer erkennbar: ordne die Nummer dem passenden Spieler aus der Kaderliste zu und trage dessen echten Namen ein.
+- Ist auch die Nummer unlesbar, schreibe als number "0" und versuche den Namen zu lesen.
+- Bestimme für jeden Spieler die naheliegendste Position (TW, RV, IV, LV, DM, ZM, OM, RM, LM, RA, LA, ST).
+- Antworte STRENG als JSON-Array. Jedes Element: { "number": "12", "name": "Tiedemann", "position": "ST" }.
+`;
+
+      const response = await safeGenerateContent({
+        model: "gemini-3.6-flash",
+        contents: [
+          ...parts,
+          { text: "Erkenne die Startelf aus diesem Aufstellungs-Bild und liefere das JSON-Array mit number, name und position." }
+        ],
+        config: {
+          systemInstruction,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                number: { type: Type.STRING, description: "Trikotnummer als String" },
+                name: { type: Type.STRING, description: "Spielername (Nachname oder vollständiger Name)" },
+                position: { type: Type.STRING, description: "Position, z.B. TW, IV, ZM, ST" }
+              },
+              required: ["number"]
+            }
+          }
+        }
+      });
+
+      const resultText = response.text;
+      if (!resultText) {
+        throw new Error("Startelf konnte nicht erkannt werden.");
+      }
+      const cleaned = resultText.trim();
+      const parsed = cleaned.startsWith('[')
+        ? JSON.parse(cleaned)
+        : JSON.parse(cleaned.slice(cleaned.indexOf('['), cleaned.lastIndexOf(']') + 1));
+
+      const normalized = (Array.isArray(parsed) ? parsed : []).map((p: any) => {
+        const digits = String(p.number || '').replace(/[^0-9]/g, '');
+        return {
+          number: digits ? String(parseInt(digits, 10)) : '0',
+          name: String(p.name || '').trim(),
+          position: String(p.position || '').trim().toUpperCase(),
+        };
+      });
+
+      console.log(`[Analyze-Lineup] ${normalized.length} Spieler aus ${urlList.length} Aufstellungs-Bild(ern) erkannt.`);
+      res.json({ ok: true, lineup: normalized });
+    } catch (err: any) {
+      console.error("[Analyze-Lineup Error]", err.message);
+      res.status(500).json({ error: err.message || "Interner Fehler bei der Startelf-Erkennung." });
+    }
+  });
+
   // API Route for TRACKTICS Sportscientific analysis
   app.post("/api/player-performance/analyze", async (req, res) => {
     try {

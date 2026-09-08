@@ -24,6 +24,7 @@ import {
   Lock,
   Unlock,
   Star,
+  ScanSearch,
   Layers,
   Check,
   X,
@@ -722,6 +723,102 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
     setPresentationLineup(withImages);
     swappedPositionsRef.current = new Set();
   }, [liveFormations, players]);
+
+  // ── Startelf aus dem AUFSTELLUNG-BILD des letzten Spielberichts per KI-Bilderkennung ──
+  const [analyzingLineupFromImage, setAnalyzingLineupFromImage] = useState(false);
+  const loadStartelfFromLineupImages = useCallback(async () => {
+    const report = [...(matchAnalyses || [])]
+      .filter((a: any) => a && ((Array.isArray(a.lineupImages) && a.lineupImages.length > 0) || (a.lineupImage && String(a.lineupImage).length > 0)))
+      .sort((a: any, b: any) => String(b.date || b.createdAt || '').localeCompare(String(a.date || a.createdAt || '')))[0];
+    if (!report) {
+      notify('Kein Spielbericht mit AUFSTELLUNG-Bild – bitte zuerst im Spielbericht ein Aufstellungs-Bild hinterlegen.');
+      return;
+    }
+    const images = ((Array.isArray(report.lineupImages) ? report.lineupImages : []) as string[]).concat(report.lineupImage ? [report.lineupImage] : []).filter(Boolean);
+    if (images.length === 0) return;
+    setAnalyzingLineupFromImage(true);
+    notify(`Startelf wird aus dem Aufstellungs-Bild erkannt (${report.opponent || 'Spielbericht'})…`);
+    try {
+      const resp: any = await apiFetch('/api/analyze-lineup', {
+        method: 'POST',
+        body: JSON.stringify({
+          images,
+          squadPlayers: (players || []).filter((p: any) => p.category === 'player').map((p: any) => ({
+            number: String(p.number || ''),
+            firstName: p.firstName || '',
+            lastName: p.lastName || p.name || '',
+            name: `${p.firstName || ''} ${p.lastName || p.name || ''}`.trim(),
+            position: p.position || '',
+          })),
+        }),
+      });
+      if (!resp?.ok || !Array.isArray(resp.lineup)) {
+        throw new Error(resp?.error || 'Startelf-Erkennung fehlgeschlagen');
+      }
+      const squad = (players || []).filter((p: any) => p.category === 'player');
+      const shortName = (p: any) => {
+        const fn = (p.firstName || '').trim();
+        const ln = (p.lastName || p.name || '').trim();
+        return fn && ln ? `${fn.charAt(0)}. ${ln}` : ln || fn || '?';
+      };
+      const resolved: Array<{ number: string; name: string; position: string; player: any }> = [];
+      (resp.lineup as Array<any>).forEach((slot: any) => {
+        const numStr = String(slot.number || '').replace(/\D+/g, '');
+        const byNum = numStr ? squad.find((p: any) => String(p.number || '').replace(/\D+/g, '') === numStr) : undefined;
+        const byName = byNum ? undefined : squad.find((p: any) => {
+          const full = `${p.firstName || ''} ${p.lastName || p.name || ''}`.trim().toLowerCase();
+          const n = String(slot.name || '').toLowerCase().replace(/[.,'"]/g, '');
+          const pl = `${p.lastName || p.name || ''}`.toLowerCase();
+          return full.includes(n) || n.includes(pl) || full.includes(n.replace(/^[a-z]\.?\s*/, ''));
+        });
+        const player = byNum || byName;
+        resolved.push({ number: slot.number || '', name: slot.name || '', position: slot.position || '', player: player || null });
+      });
+
+      const order = ['TW', 'RV', 'IV', 'IV', 'LV', 'DM', 'ZM', 'RA', 'OM', 'LA', 'ST'];
+      const slots = liveFormations['4-2-3-1']?.nodes || [];
+      if (slots.length === 0) throw new Error('Formation nicht verfügbar');
+      const usedReport = new Set<string>();
+      const usedSquad = new Set<string>();
+      const posMatch = (p: any, tp: string) => {
+        const pp = (p.position || '').toUpperCase().replace(/[^A-ZÄÜÖ]/g, '');
+        return pp === tp || pp.includes(tp) || tp.includes(pp);
+      };
+      const nextLineup = slots.map((node: any, i: number) => {
+        const tp = order[i] || 'ST';
+        const fromReport =
+          resolved.find((r) => r.player && !usedReport.has(r.player.id) && posMatch(r.player, tp)) ||
+          resolved.find((r) => r.player && !usedReport.has(r.player.id));
+        if (fromReport?.player) {
+          usedReport.add(fromReport.player.id);
+          usedSquad.add(fromReport.player.id);
+          return {
+            ...node,
+            name: shortName(fromReport.player),
+            number: String(fromReport.player.number || node.number),
+            position: fromReport.player.position || node.position,
+            image: fromReport.player.image || node.image,
+          };
+        }
+        const fromSquad = squad.find((p: any) => !usedSquad.has(p.id) && posMatch(p, tp)) ||
+                          squad.find((p: any) => !usedSquad.has(p.id));
+        if (fromSquad) {
+          usedSquad.add(fromSquad.id);
+          return { ...node, name: shortName(fromSquad), number: String(fromSquad.number || node.number), position: fromSquad.position || node.position, image: fromSquad.image || node.image };
+        }
+        return node;
+      });
+
+      setPresentationLineup(nextLineup);
+      swappedPositionsRef.current = new Set();
+      notify(`✅ Startelf aus Aufstellungs-Bild übernommen: ${usedReport.size} von ${order.length} Spielern erkannt & eingesetzt`);
+    } catch (err: any) {
+      console.error('[Analyze-Lineup Client]', err);
+      notify(`❌ Startelf-Erkennung fehlgeschlagen: ${err?.message || 'Unbekannter Fehler'}`);
+    } finally {
+      setAnalyzingLineupFromImage(false);
+    }
+  }, [liveFormations, matchAnalyses, players]);
 
   // Startelf persistieren (Wechsel, Positionen) → kein Zurückspringen nach Reload
   useEffect(() => {
@@ -7026,6 +7123,15 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                 title="Aktuelle Aufstellung vom 3D-Board übernehmen (inkl. Bilder)"
               >
                 <RefreshCw size={15} /> Vom Board
+              </button>
+
+              <button
+                onClick={loadStartelfFromLineupImages}
+                disabled={analyzingLineupFromImage}
+                className="bg-gradient-to-br from-sky-500 to-cyan-600 hover:from-sky-400 hover:to-cyan-500 text-white font-black text-xs uppercase px-4 py-2.5 rounded-xl shadow-lg transition-all flex items-center gap-1.5 active:scale-95 disabled:opacity-60 disabled:cursor-wait"
+                title="Startelf aus dem AUFSTELLUNG-Bild (von der letzten Aufstellung) des letzten Spielberichts per KI-Erkennung übernehmen – Namen per Trikotnummer dem Kader zuordnen, falls Name unlesbar"
+              >
+                <ScanSearch size={15} /> {analyzingLineupFromImage ? 'Erkenne…' : 'Ans Bild-Analyse'}
               </button>
 
               <button
