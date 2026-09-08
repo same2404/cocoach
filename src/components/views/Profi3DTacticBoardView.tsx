@@ -1,4 +1,4 @@
-﻿import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Maximize2, 
@@ -189,19 +189,19 @@ const FORMATION_PRESETS: Record<string, {
 }> = {
   '4-2-3-1': {
     name: `4-2-3-1 (Stamm-System - BESTE AUFSTELLUNG)`,
-    description: 'Doppel-Sechs fÃ¼r optimale Absicherung, variable FlÃ¼gelzange und Trequartista im Halbraum.',
-    strengths: ['Maximale Mittelfeld-Kontrolle', 'Ãœberladung der FlÃ¼gelzonen', 'Schnelles Gegenpressing'],
-    weaknesses: ['LÃ¼cke zwischen DM und AV bei gegnerischen Kontern'],
+    description: 'Doppel-Sechs für optimale Absicherung, variable Flügelzange und Trequartista im Halbraum.',
+    strengths: ['Maximale Mittelfeld-Kontrolle', 'Überladung der Flügelzonen', 'Schnelles Gegenpressing'],
+    weaknesses: ['Lücke zwischen DM und AV bei gegnerischen Kontern'],
     winRate: 85,
     xGAvg: 2.35,
     pressingSuccess: 78,
     nodes: [
       { id: '1', name: 'L. Schneider', number: '1', position: 'TW', role: 'Mitspielender Torwart', xPercent: 50, yPercent: 92, offensivX: 50, offensivY: 88, defensivX: 50, defensivY: 95, umschaltX: 50, umschaltY: 91, speedKmh: 24.5, distanceKm: 4.8, duelSuccessPercent: 90, passAccuracyPercent: 82 },
-      { id: '2', name: 'J. Tiedemann', number: '2', position: 'RV', role: 'Offensiver AuÃŸenverteidiger', xPercent: 15, yPercent: 72, offensivX: 10, offensivY: 38, defensivX: 20, defensivY: 78, umschaltX: 12, umschaltY: 55, speedKmh: 31.8, distanceKm: 11.2, duelSuccessPercent: 78, passAccuracyPercent: 84 },
+      { id: '2', name: 'J. Tiedemann', number: '2', position: 'RV', role: 'Offensiver Außenverteidiger', xPercent: 15, yPercent: 72, offensivX: 10, offensivY: 38, defensivX: 20, defensivY: 78, umschaltX: 12, umschaltY: 55, speedKmh: 31.8, distanceKm: 11.2, duelSuccessPercent: 78, passAccuracyPercent: 84 },
       { id: '3', name: 'M. Paolillo', number: '4', position: 'IV', role: 'Aufbau-Innenverteidiger', xPercent: 38, yPercent: 76, offensivX: 35, offensivY: 68, defensivX: 38, defensivY: 82, umschaltX: 38, umschaltY: 74, speedKmh: 28.2, distanceKm: 9.8, duelSuccessPercent: 86, passAccuracyPercent: 91 },
       { id: '4', name: 'S. Klett', number: '5', position: 'IV', role: 'Zweikampf-Organisator', xPercent: 62, yPercent: 76, offensivX: 65, offensivY: 68, defensivX: 62, defensivY: 82, umschaltX: 62, umschaltY: 74, speedKmh: 29.1, distanceKm: 10.1, duelSuccessPercent: 88, passAccuracyPercent: 88 },
-      { id: '5', name: 'F. Ritzenthaler', number: '3', position: 'LV', role: 'Invertierter AuÃŸenverteidiger', xPercent: 85, yPercent: 72, offensivX: 88, offensivY: 40, defensivX: 80, defensivY: 78, umschaltX: 86, umschaltY: 56, speedKmh: 30.5, distanceKm: 10.9, duelSuccessPercent: 74, passAccuracyPercent: 86 },
-      { id: '6', name: 'Y. Kalchschmidt', number: '6', position: 'DM', role: 'Tiefen-Strategie & AbrÃ¤umer', xPercent: 38, yPercent: 58, offensivX: 35, offensivY: 48, defensivX: 40, defensivY: 66, umschaltX: 38, umschaltY: 54, speedKmh: 29.8, distanceKm: 11.8, duelSuccessPercent: 82, passAccuracyPercent: 89 },
+      { id: '5', name: 'F. Ritzenthaler', number: '3', position: 'LV', role: 'Invertierter Außenverteidiger', xPercent: 85, yPercent: 72, offensivX: 88, offensivY: 40, defensivX: 80, defensivY: 78, umschaltX: 86, umschaltY: 56, speedKmh: 30.5, distanceKm: 10.9, duelSuccessPercent: 74, passAccuracyPercent: 86 },
+      { id: '6', name: 'Y. Kalchschmidt', number: '6', position: 'DM', role: 'Tiefen-Strategie & Abräumer', xPercent: 38, yPercent: 58, offensivX: 35, offensivY: 48, defensivX: 40, defensivY: 66, umschaltX: 38, umschaltY: 54, speedKmh: 29.8, distanceKm: 11.8, duelSuccessPercent: 82, passAccuracyPercent: 89 },
       { id: '7', name: 'A. Boutagrat', number: '8', position: 'ZM', role: 'Box-to-Box Antreiber', xPercent: 62, yPercent: 52, offensivX: 60, offensivY: 34, defensivX: 60, defensivY: 64, umschaltX: 62, umschaltY: 48, speedKmh: 30.2, distanceKm: 12.1, duelSuccessPercent: 80, passAccuracyPercent: 87 },
       { id: '8', name: 'I. Valchuk', number: '7', position: 'RA', role: 'Dribbler & 1v1 Spezialist', xPercent: 18, yPercent: 32, offensivX: 15, offensivY: 18, defensivX: 25, defensivY: 52, umschaltX: 18, umschaltY: 26, speedKmh: 32.4, distanceKm: 10.8, duelSuccessPercent: 71, passAccuracyPercent: 81 },
       { id: '9', name: 'B. Dischinger', number: '10', position: 'OM', role: 'Spielmacher im Halbraum', xPercent: 50, yPercent: 35, offensivX: 50, offensivY: 22, defensivX: 50, defensivY: 54, umschaltX: 50, umschaltY: 30, speedKmh: 28.9, distanceKm: 11.0, duelSuccessPercent: 75, passAccuracyPercent: 92 },
@@ -211,30 +211,30 @@ const FORMATION_PRESETS: Record<string, {
   },
   '4-4-2': {
     name: '4-4-2 (Kompakte Kette & Doppelspitze)',
-    description: 'Zwei Viererketten halten die AbstÃ¤nde eng. ZielstÃ¼rmer kombiniert mit schnellem StoÃŸstÃ¼rmer.',
+    description: 'Zwei Viererketten halten die Abstände eng. Zielstürmer kombiniert mit schnellem Stoßstürmer.',
     strengths: ['Enorme horizontale Kompaktheit', 'Einfache Absicherung im Zentrum'],
-    weaknesses: ['Weniger Anspielstationen in den HalbrÃ¤umen'],
+    weaknesses: ['Weniger Anspielstationen in den Halbräumen'],
     winRate: 78,
     xGAvg: 1.95,
     pressingSuccess: 71,
     nodes: [
       { id: '1', name: 'L. Schneider', number: '1', position: 'TW', role: 'Torwart', xPercent: 50, yPercent: 92, offensivX: 50, offensivY: 90, defensivX: 50, defensivY: 95, umschaltX: 50, umschaltY: 92, speedKmh: 24.0, distanceKm: 4.5, duelSuccessPercent: 88, passAccuracyPercent: 80 },
-      { id: '2', name: 'J. Tiedemann', number: '2', position: 'RV', role: 'AuÃŸenverteidiger', xPercent: 18, yPercent: 74, offensivX: 15, offensivY: 50, defensivX: 20, defensivY: 80, umschaltX: 18, umschaltY: 62, speedKmh: 31.0, distanceKm: 10.5, duelSuccessPercent: 77, passAccuracyPercent: 82 },
+      { id: '2', name: 'J. Tiedemann', number: '2', position: 'RV', role: 'Außenverteidiger', xPercent: 18, yPercent: 74, offensivX: 15, offensivY: 50, defensivX: 20, defensivY: 80, umschaltX: 18, umschaltY: 62, speedKmh: 31.0, distanceKm: 10.5, duelSuccessPercent: 77, passAccuracyPercent: 82 },
       { id: '3', name: 'M. Paolillo', number: '4', position: 'IV', role: 'Innenverteidiger', xPercent: 38, yPercent: 76, offensivX: 38, offensivY: 70, defensivX: 38, defensivY: 82, umschaltX: 38, umschaltY: 75, speedKmh: 28.0, distanceKm: 9.5, duelSuccessPercent: 85, passAccuracyPercent: 88 },
       { id: '4', name: 'S. Klett', number: '5', position: 'IV', role: 'Innenverteidiger', xPercent: 62, yPercent: 76, offensivX: 62, offensivY: 70, defensivX: 62, defensivY: 82, umschaltX: 62, umschaltY: 75, speedKmh: 29.0, distanceKm: 9.8, duelSuccessPercent: 87, passAccuracyPercent: 86 },
-      { id: '5', name: 'F. Ritzenthaler', number: '3', position: 'LV', role: 'AuÃŸenverteidiger', xPercent: 82, yPercent: 74, offensivX: 85, offensivY: 50, defensivX: 80, defensivY: 80, umschaltX: 82, umschaltY: 62, speedKmh: 30.0, distanceKm: 10.2, duelSuccessPercent: 75, passAccuracyPercent: 84 },
+      { id: '5', name: 'F. Ritzenthaler', number: '3', position: 'LV', role: 'Außenverteidiger', xPercent: 82, yPercent: 74, offensivX: 85, offensivY: 50, defensivX: 80, defensivY: 80, umschaltX: 82, umschaltY: 62, speedKmh: 30.0, distanceKm: 10.2, duelSuccessPercent: 75, passAccuracyPercent: 84 },
       { id: '6', name: 'I. Valchuk', number: '7', position: 'RM', role: 'Rechter Mittelfeldspieler', xPercent: 18, yPercent: 50, offensivX: 15, offensivY: 28, defensivX: 22, defensivY: 65, umschaltX: 18, umschaltY: 42, speedKmh: 32.0, distanceKm: 11.0, duelSuccessPercent: 72, passAccuracyPercent: 80 },
       { id: '7', name: 'Y. Kalchschmidt', number: '6', position: 'ZM', role: 'Zentraler Mittelfeldspieler', xPercent: 38, yPercent: 54, offensivX: 38, offensivY: 42, defensivX: 38, defensivY: 68, umschaltX: 38, umschaltY: 52, speedKmh: 29.5, distanceKm: 11.5, duelSuccessPercent: 81, passAccuracyPercent: 88 },
       { id: '8', name: 'A. Boutagrat', number: '8', position: 'ZM', role: 'Zentraler Mittelfeldspieler', xPercent: 62, yPercent: 54, offensivX: 62, offensivY: 42, defensivX: 62, defensivY: 68, umschaltX: 62, umschaltY: 52, speedKmh: 30.0, distanceKm: 11.8, duelSuccessPercent: 79, passAccuracyPercent: 86 },
       { id: '9', name: 'J. Ehret', number: '11', position: 'LM', role: 'Linker Mittelfeldspieler', xPercent: 82, yPercent: 50, offensivX: 85, offensivY: 28, defensivX: 78, defensivY: 65, umschaltX: 82, umschaltY: 42, speedKmh: 32.5, distanceKm: 11.1, duelSuccessPercent: 70, passAccuracyPercent: 78 },
-      { id: '10', name: 'B. Dischinger', number: '10', position: 'ST', role: 'HÃ¤ngende Spitze', xPercent: 38, yPercent: 28, offensivX: 35, offensivY: 16, defensivX: 40, defensivY: 48, umschaltX: 38, umschaltY: 28, speedKmh: 29.0, distanceKm: 10.5, duelSuccessPercent: 74, passAccuracyPercent: 90 },
-      { id: '11', name: 'J. Akuegwu', number: '9', position: 'ST', role: 'StoÃŸstÃ¼rmer', xPercent: 62, yPercent: 22, offensivX: 65, offensivY: 10, defensivX: 60, defensivY: 42, umschaltX: 62, umschaltY: 22, speedKmh: 32.0, distanceKm: 10.2, duelSuccessPercent: 83, passAccuracyPercent: 81 }
+      { id: '10', name: 'B. Dischinger', number: '10', position: 'ST', role: 'Hängende Spitze', xPercent: 38, yPercent: 28, offensivX: 35, offensivY: 16, defensivX: 40, defensivY: 48, umschaltX: 38, umschaltY: 28, speedKmh: 29.0, distanceKm: 10.5, duelSuccessPercent: 74, passAccuracyPercent: 90 },
+      { id: '11', name: 'J. Akuegwu', number: '9', position: 'ST', role: 'Stoßstürmer', xPercent: 62, yPercent: 22, offensivX: 65, offensivY: 10, defensivX: 60, defensivY: 42, umschaltX: 62, umschaltY: 22, speedKmh: 32.0, distanceKm: 10.2, duelSuccessPercent: 83, passAccuracyPercent: 81 }
     ]
   },
   '4-1-4-1': {
     name: '4-1-4-1 (Single Pivot & Hohes Pressing)',
-    description: 'Agiles Pressing-System mit extrem hoher BallrÃ¼ckeroberung in der gegnerischen HÃ¤lfte.',
-    strengths: ['Extrem hohes Pressing', 'FÃ¼nfer-Mittelfeldkette bei gegnerischem Aufbau'],
+    description: 'Agiles Pressing-System mit extrem hoher Ballrückeroberung in der gegnerischen Hälfte.',
+    strengths: ['Extrem hohes Pressing', 'Fünfer-Mittelfeldkette bei gegnerischem Aufbau'],
     weaknesses: ['Hohe physische Anforderung an den Single-Pivot (DM)'],
     winRate: 82,
     xGAvg: 2.10,
@@ -246,18 +246,18 @@ const FORMATION_PRESETS: Record<string, {
       { id: '4', name: 'S. Klett', number: '5', position: 'IV', role: 'Absichernder IV', xPercent: 62, yPercent: 76, offensivX: 65, offensivY: 65, defensivX: 62, defensivY: 82, umschaltX: 62, umschaltY: 72, speedKmh: 29.3, distanceKm: 10.3, duelSuccessPercent: 89, passAccuracyPercent: 87 },
       { id: '5', name: 'F. Ritzenthaler', number: '3', position: 'LV', role: 'Pressing-AV', xPercent: 85, yPercent: 70, offensivX: 88, offensivY: 36, defensivX: 82, defensivY: 76, umschaltX: 85, umschaltY: 52, speedKmh: 30.8, distanceKm: 11.1, duelSuccessPercent: 76, passAccuracyPercent: 85 },
       { id: '6', name: 'Y. Kalchschmidt', number: '6', position: 'DM', role: 'Single Pivot Anchor', xPercent: 50, yPercent: 62, offensivX: 50, offensivY: 52, defensivX: 50, defensivY: 70, umschaltX: 50, umschaltY: 58, speedKmh: 30.1, distanceKm: 12.4, duelSuccessPercent: 84, passAccuracyPercent: 91 },
-      { id: '7', name: 'I. Valchuk', number: '7', position: 'RA', role: 'Pressing-FlÃ¼gel', xPercent: 18, yPercent: 36, offensivX: 15, offensivY: 20, defensivX: 25, defensivY: 55, umschaltX: 18, umschaltY: 32, speedKmh: 32.8, distanceKm: 11.2, duelSuccessPercent: 73, passAccuracyPercent: 81 },
+      { id: '7', name: 'I. Valchuk', number: '7', position: 'RA', role: 'Pressing-Flügel', xPercent: 18, yPercent: 36, offensivX: 15, offensivY: 20, defensivX: 25, defensivY: 55, umschaltX: 18, umschaltY: 32, speedKmh: 32.8, distanceKm: 11.2, duelSuccessPercent: 73, passAccuracyPercent: 81 },
       { id: '8', name: 'B. Dischinger', number: '10', position: 'ZM', role: 'Achter Offensive', xPercent: 38, yPercent: 40, offensivX: 35, offensivY: 26, defensivX: 40, defensivY: 56, umschaltX: 38, umschaltY: 36, speedKmh: 29.2, distanceKm: 11.6, duelSuccessPercent: 77, passAccuracyPercent: 93 },
       { id: '9', name: 'A. Boutagrat', number: '8', position: 'ZM', role: 'Achter Antreiber', xPercent: 62, yPercent: 40, offensivX: 65, offensivY: 26, defensivX: 60, defensivY: 56, umschaltX: 62, umschaltY: 36, speedKmh: 30.5, distanceKm: 12.0, duelSuccessPercent: 81, passAccuracyPercent: 88 },
-      { id: '10', name: 'J. Ehret', number: '11', position: 'LA', role: 'Pressing-FlÃ¼gel', xPercent: 82, yPercent: 36, offensivX: 85, offensivY: 20, defensivX: 75, defensivY: 55, umschaltX: 82, umschaltY: 32, speedKmh: 33.3, distanceKm: 11.6, duelSuccessPercent: 71, passAccuracyPercent: 80 },
-      { id: '11', name: 'J. Akuegwu', number: '9', position: 'ST', role: 'Pressing-AuslÃ¶ser (AnlÃ¤ufer)', xPercent: 50, yPercent: 18, offensivX: 50, offensivY: 8, defensivX: 50, defensivY: 40, umschaltX: 50, umschaltY: 18, speedKmh: 32.2, distanceKm: 10.9, duelSuccessPercent: 85, passAccuracyPercent: 81 }
+      { id: '10', name: 'J. Ehret', number: '11', position: 'LA', role: 'Pressing-Flügel', xPercent: 82, yPercent: 36, offensivX: 85, offensivY: 20, defensivX: 75, defensivY: 55, umschaltX: 82, umschaltY: 32, speedKmh: 33.3, distanceKm: 11.6, duelSuccessPercent: 71, passAccuracyPercent: 80 },
+      { id: '11', name: 'J. Akuegwu', number: '9', position: 'ST', role: 'Pressing-Auslöser (Anläufer)', xPercent: 50, yPercent: 18, offensivX: 50, offensivY: 8, defensivX: 50, defensivY: 40, umschaltX: 50, umschaltY: 18, speedKmh: 32.2, distanceKm: 10.9, duelSuccessPercent: 85, passAccuracyPercent: 81 }
     ]
   },
   '3-4-3': {
     name: '3-4-3 (Dreierkette & Schienenspieler)',
-    description: 'Dominantes FlÃ¼gelspiel mit 2 hoch stehenden Schienenspielern und 3er-Sturmreihe.',
-    strengths: ['Maximale Breite im Spielaufbau', '3er-Sturm erzeugt stÃ¤ndige Ãœberzahl'],
-    weaknesses: ['AnfÃ¤llig auf den AuÃŸenbahn-RÃ¤umen hinter den Schienenspielern'],
+    description: 'Dominantes Flügelspiel mit 2 hoch stehenden Schienenspielern und 3er-Sturmreihe.',
+    strengths: ['Maximale Breite im Spielaufbau', '3er-Sturm erzeugt ständige Überzahl'],
+    weaknesses: ['Anfällig auf den Außenbahn-Räumen hinter den Schienenspielern'],
     winRate: 80,
     xGAvg: 2.18,
     pressingSuccess: 76,
@@ -270,16 +270,16 @@ const FORMATION_PRESETS: Record<string, {
       { id: '6', name: 'Y. Kalchschmidt', number: '6', position: 'ZM', role: 'Strategischer ZM', xPercent: 38, yPercent: 56, offensivX: 36, offensivY: 44, defensivX: 38, defensivY: 68, umschaltX: 38, umschaltY: 54, speedKmh: 29.9, distanceKm: 11.9, duelSuccessPercent: 83, passAccuracyPercent: 90 },
       { id: '7', name: 'A. Boutagrat', number: '8', position: 'ZM', role: 'Dynamischer ZM', xPercent: 62, yPercent: 56, offensivX: 64, offensivY: 44, defensivX: 62, defensivY: 68, umschaltX: 62, umschaltY: 54, speedKmh: 30.4, distanceKm: 12.2, duelSuccessPercent: 80, passAccuracyPercent: 87 },
       { id: '8', name: 'F. Ritzenthaler', number: '3', position: 'LAV', role: 'Schienenspieler Links', xPercent: 88, yPercent: 52, offensivX: 92, offensivY: 25, defensivX: 85, defensivY: 72, umschaltX: 90, umschaltY: 44, speedKmh: 31.4, distanceKm: 12.3, duelSuccessPercent: 76, passAccuracyPercent: 84 },
-      { id: '9', name: 'B. Dischinger', number: '10', position: 'RF', role: 'Rechter FlÃ¼gelstÃ¼rmer', xPercent: 25, yPercent: 30, offensivX: 22, offensivY: 16, defensivX: 30, defensivY: 50, umschaltX: 25, umschaltY: 26, speedKmh: 29.1, distanceKm: 10.9, duelSuccessPercent: 76, passAccuracyPercent: 92 },
-      { id: '10', name: 'J. Akuegwu', number: '9', position: 'ST', role: 'Zentraler MittelstÃ¼rmer', xPercent: 50, yPercent: 20, offensivX: 50, offensivY: 8, defensivX: 50, defensivY: 42, umschaltX: 50, umschaltY: 16, speedKmh: 32.1, distanceKm: 10.5, duelSuccessPercent: 86, passAccuracyPercent: 82 },
-      { id: '11', name: 'J. Ehret', number: '11', position: 'LF', role: 'Linker FlÃ¼gelstÃ¼rmer', xPercent: 75, yPercent: 30, offensivX: 78, offensivY: 16, defensivX: 70, defensivY: 50, umschaltX: 75, umschaltY: 26, speedKmh: 33.2, distanceKm: 11.3, duelSuccessPercent: 71, passAccuracyPercent: 80 }
+      { id: '9', name: 'B. Dischinger', number: '10', position: 'RF', role: 'Rechter Flügelstürmer', xPercent: 25, yPercent: 30, offensivX: 22, offensivY: 16, defensivX: 30, defensivY: 50, umschaltX: 25, umschaltY: 26, speedKmh: 29.1, distanceKm: 10.9, duelSuccessPercent: 76, passAccuracyPercent: 92 },
+      { id: '10', name: 'J. Akuegwu', number: '9', position: 'ST', role: 'Zentraler Mittelstürmer', xPercent: 50, yPercent: 20, offensivX: 50, offensivY: 8, defensivX: 50, defensivY: 42, umschaltX: 50, umschaltY: 16, speedKmh: 32.1, distanceKm: 10.5, duelSuccessPercent: 86, passAccuracyPercent: 82 },
+      { id: '11', name: 'J. Ehret', number: '11', position: 'LF', role: 'Linker Flügelstürmer', xPercent: 75, yPercent: 30, offensivX: 78, offensivY: 16, defensivX: 70, defensivY: 50, umschaltX: 75, umschaltY: 26, speedKmh: 33.2, distanceKm: 11.3, duelSuccessPercent: 71, passAccuracyPercent: 80 }
     ]
   },
   '4-3-3': {
     name: '4-3-3 (Doppel-Achter & Sturm-Dreieck)',
     description: 'Mittelfeld-Trio mit defensiver 6 und zwei Achter, flexible 3er-Sturmreihe mit breiter Tiefe.',
-    strengths: ['Ãœberzahl im Zentrum', 'Variantenreicher FlÃ¼gelangriff Ã¼ber die Achter', 'Hohe Positionsrochade'],
-    weaknesses: ['Nach Ballverlust offen auf den FlÃ¼geln'],
+    strengths: ['Überzahl im Zentrum', 'Variantenreicher Flügelangriff über die Achter', 'Hohe Positionsrochade'],
+    weaknesses: ['Nach Ballverlust offen auf den Flügeln'],
     winRate: 81,
     xGAvg: 2.2,
     pressingSuccess: 79,
@@ -293,15 +293,15 @@ const FORMATION_PRESETS: Record<string, {
       { id: '7', name: 'A. Boutagrat', number: '8', position: 'ZM', role: 'Rechter Achter', xPercent: 32, yPercent: 42, offensivX: 28, offensivY: 26, defensivX: 35, defensivY: 60, umschaltX: 32, umschaltY: 40, speedKmh: 30.2, distanceKm: 12.1, duelSuccessPercent: 81, passAccuracyPercent: 88 },
       { id: '8', name: 'I. Valchuk', number: '7', position: 'ZM', role: 'Linker Achter', xPercent: 68, yPercent: 42, offensivX: 72, offensivY: 26, defensivX: 65, defensivY: 60, umschaltX: 68, umschaltY: 40, speedKmh: 32.4, distanceKm: 11.6, duelSuccessPercent: 77, passAccuracyPercent: 83 },
       { id: '9', name: 'B. Dischinger', number: '10', position: 'RA', role: 'Dribbler & Vorbereiter', xPercent: 18, yPercent: 28, offensivX: 15, offensivY: 15, defensivX: 25, defensivY: 50, umschaltX: 18, umschaltY: 24, speedKmh: 29.0, distanceKm: 11.0, duelSuccessPercent: 76, passAccuracyPercent: 90 },
-      { id: '10', name: 'J. Akuegwu', number: '9', position: 'ST', role: 'Zentrum-StÃ¼rmer', xPercent: 50, yPercent: 20, offensivX: 50, offensivY: 8, defensivX: 50, defensivY: 40, umschaltX: 50, umschaltY: 16, speedKmh: 31.9, distanceKm: 10.4, duelSuccessPercent: 85, passAccuracyPercent: 81 },
+      { id: '10', name: 'J. Akuegwu', number: '9', position: 'ST', role: 'Zentrum-Stürmer', xPercent: 50, yPercent: 20, offensivX: 50, offensivY: 8, defensivX: 50, defensivY: 40, umschaltX: 50, umschaltY: 16, speedKmh: 31.9, distanceKm: 10.4, duelSuccessPercent: 85, passAccuracyPercent: 81 },
       { id: '11', name: 'J. Ehret', number: '11', position: 'LA', role: 'Tiefensprinter', xPercent: 82, yPercent: 28, offensivX: 85, offensivY: 15, defensivX: 75, defensivY: 50, umschaltX: 82, umschaltY: 24, speedKmh: 33.1, distanceKm: 11.4, duelSuccessPercent: 69, passAccuracyPercent: 79 }
     ]
   },
   '3-5-2': {
-    name: '3-5-2 (Dreierkette & FÃ¼nfer-Mittelfeld)',
-    description: 'FÃ¼nfer-Mittelfeld mit Schienenspielern Ã¼berflÃ¼gelt die Ketten und unterstÃ¼tzt die Doppelspitze.',
-    strengths: ['Kompakte Mitte & Ãœberzahl im Zentrum', 'Schienenspieler erzeugen Breite', 'Doppelspitze in der Box'],
-    weaknesses: ['RÃ¤ume zwischen den Schienenspielern und der Dreierkette'],
+    name: '3-5-2 (Dreierkette & Fünfer-Mittelfeld)',
+    description: 'Fünfer-Mittelfeld mit Schienenspielern überflügelt die Ketten und unterstützt die Doppelspitze.',
+    strengths: ['Kompakte Mitte & Überzahl im Zentrum', 'Schienenspieler erzeugen Breite', 'Doppelspitze in der Box'],
+    weaknesses: ['Räume zwischen den Schienenspielern und der Dreierkette'],
     winRate: 79,
     xGAvg: 2.05,
     pressingSuccess: 75,
@@ -314,23 +314,23 @@ const FORMATION_PRESETS: Record<string, {
       { id: '6', name: 'Y. Kalchschmidt', number: '6', position: 'ZM', role: 'Strategischer ZM', xPercent: 50, yPercent: 56, offensivX: 50, offensivY: 44, defensivX: 50, defensivY: 68, umschaltX: 50, umschaltY: 54, speedKmh: 29.9, distanceKm: 11.9, duelSuccessPercent: 83, passAccuracyPercent: 90 },
       { id: '7', name: 'A. Boutagrat', number: '8', position: 'ZM', role: 'Dynamischer ZM', xPercent: 50, yPercent: 46, offensivX: 50, offensivY: 34, defensivX: 50, defensivY: 62, umschaltX: 50, umschaltY: 42, speedKmh: 30.4, distanceKm: 12.2, duelSuccessPercent: 81, passAccuracyPercent: 88 },
       { id: '8', name: 'F. Ritzenthaler', number: '3', position: 'LV', role: 'Schienenspieler Links', xPercent: 86, yPercent: 54, offensivX: 90, offensivY: 24, defensivX: 82, defensivY: 74, umschaltX: 88, umschaltY: 44, speedKmh: 31.4, distanceKm: 12.3, duelSuccessPercent: 76, passAccuracyPercent: 84 },
-      { id: '9', name: 'J. Akuegwu', number: '9', position: 'ST', role: 'StoÃŸstÃ¼rmer', xPercent: 38, yPercent: 22, offensivX: 36, offensivY: 10, defensivX: 40, defensivY: 44, umschaltX: 38, umschaltY: 20, speedKmh: 32.1, distanceKm: 10.5, duelSuccessPercent: 86, passAccuracyPercent: 82 },
-      { id: '10', name: 'B. Dischinger', number: '10', position: 'ST', role: 'HÃ¤ngende Spitze', xPercent: 62, yPercent: 28, offensivX: 66, offensivY: 16, defensivX: 62, defensivY: 50, umschaltX: 62, umschaltY: 28, speedKmh: 29.2, distanceKm: 10.9, duelSuccessPercent: 77, passAccuracyPercent: 91 },
+      { id: '9', name: 'J. Akuegwu', number: '9', position: 'ST', role: 'Stoßstürmer', xPercent: 38, yPercent: 22, offensivX: 36, offensivY: 10, defensivX: 40, defensivY: 44, umschaltX: 38, umschaltY: 20, speedKmh: 32.1, distanceKm: 10.5, duelSuccessPercent: 86, passAccuracyPercent: 82 },
+      { id: '10', name: 'B. Dischinger', number: '10', position: 'ST', role: 'Hängende Spitze', xPercent: 62, yPercent: 28, offensivX: 66, offensivY: 16, defensivX: 62, defensivY: 50, umschaltX: 62, umschaltY: 28, speedKmh: 29.2, distanceKm: 10.9, duelSuccessPercent: 77, passAccuracyPercent: 91 },
       { id: '11', name: 'J. Ehret', number: '11', position: 'LA', role: 'Tiefensprinter im Angriff', xPercent: 62, yPercent: 20, offensivX: 66, offensivY: 9, defensivX: 62, defensivY: 42, umschaltX: 62, umschaltY: 18, speedKmh: 33.2, distanceKm: 11.5, duelSuccessPercent: 71, passAccuracyPercent: 80 }
     ]
   }
 };
 
 const PREDEFINED_ROLES = [
-  '6er', '8er', '10er', 'AuÃŸenbahn', 'StoÃŸstÃ¼rmer', 
-  'Wandspieler', 'AbrÃ¤umer', 'Invertierter AV', 'Schienenspieler', 'FlÃ¼gelstÃ¼rmer'
+  '6er', '8er', '10er', 'Außenbahn', 'Stoßstürmer', 
+  'Wandspieler', 'Abräumer', 'Invertierter AV', 'Schienenspieler', 'Flügelstürmer'
 ];
 
 const PREDEFINED_ZONES = [
   { name: 'Keine', color: 'transparent' },
   { name: 'Pressing-Zone', color: 'rgba(239, 68, 68, 0.25)' },
   { name: 'Halbraum', color: 'rgba(245, 158, 11, 0.25)' },
-  { name: 'FlÃ¼gel-Ãœberladung', color: 'rgba(59, 130, 246, 0.25)' },
+  { name: 'Flügel-Überladung', color: 'rgba(59, 130, 246, 0.25)' },
   { name: 'Sturmbox', color: 'rgba(16, 185, 129, 0.25)' }
 ];
 
@@ -402,9 +402,9 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
     setBallPositions(init);
   };
 
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ═══════════════════════════════════════════════════════════════
   // SIMULATION: Gegner + Freihand-Laufwege + Abspielen-Animation
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ═══════════════════════════════════════════════════════════════
   const defaultOpponents = [
     { id: 'opp_tw', number: '1', name: 'GK', x: 92, y: 50 },
     { id: 'opp_rv', number: '2', name: 'RV', x: 72, y: 15 },
@@ -437,7 +437,7 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
   const animRef = useRef<number | null>(null);
   const animProgressRef = useRef(0);
   const animLastTimeRef = useRef<number>(0);
-  // Eigenes Spieler-Moving overlay wÃ¤hrend der Freihand-Pfad-Animation
+  // Eigenes Spieler-Moving overlay während der Freihand-Pfad-Animation
   const [animatedPlayerPositions, setAnimatedPlayerPositions] = useState<Record<string, { x: number; y: number }>>({});
 
   // STUFE 4: Passstafette (Pass-Sequenz)
@@ -457,9 +457,9 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
   const seqOrderRef = useRef<Array<'lauf' | 'pass' | 'alles'>>([]);
   const seqIdxRef = useRef(0);
 
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-  // CHAMPIONS LEAGUE-AUFFÃœHRUNG: Spieler-Karten fahren nacheinander ein
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ═══════════════════════════════════════════════════════════════
+  // CHAMPIONS LEAGUE-AUFFÜHRUNG: Spieler-Karten fahren nacheinander ein
+  // ═══════════════════════════════════════════════════════════════
   const [showChampionsAnimation, setShowChampionsAnimation] = useState(false);
   const [championsStarted, setChampionsStarted] = useState(false);
   const [championsActiveCount, setChampionsActiveCount] = useState(0);
@@ -470,17 +470,17 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
 
   // Positionsspezifische Trainer-Notiz (Anweisung: was der Spieler machen muss / nicht darf)
   const champInstruction: Record<string, string> = {
-    TW: 'Spielaufbau via kurze PÃ¤sse auf die IV. Nicht lang schlagen auÃŸer unter Pressingdruck. Stets als letzter Mann Position halten.',
-    IV: 'Kompakte Kette, Innenbahn schlieÃŸen. Nicht zu frÃ¼h aussteigen â€” nur mit Absicherung ins Zweikampf gehen. Aufbau unterstÃ¼tzen.',
-    RV: 'Schneller VorstoÃŸ bei Ballbesitz, hohe Position. Bei Ballverlust sofort zurÃ¼ck in die Zone vor die Kette.',
-    LV: 'Invers einrÃ¼cken. BÃ¤lle von auÃŸen nach innen spielen, nicht den FlÃ¼gel allein lassen.',
-    DM: 'Balance zwischen Absicherung und Anspielstation. Kein Ballverlust im Aufbau â€” Gefahr von Kontern.',
+    TW: 'Spielaufbau via kurze Pässe auf die IV. Nicht lang schlagen außer unter Pressingdruck. Stets als letzter Mann Position halten.',
+    IV: 'Kompakte Kette, Innenbahn schließen. Nicht zu früh aussteigen — nur mit Absicherung ins Zweikampf gehen. Aufbau unterstützen.',
+    RV: 'Schneller Vorstoß bei Ballbesitz, hohe Position. Bei Ballverlust sofort zurück in die Zone vor die Kette.',
+    LV: 'Invers einrücken. Bälle von außen nach innen spielen, nicht den Flügel allein lassen.',
+    DM: 'Balance zwischen Absicherung und Anspielstation. Kein Ballverlust im Aufbau — Gefahr von Kontern.',
     ZM: 'Zwischen den Linien anbieten, Halbraum besetzen. Tempo-Wechsel forcieren, entscheidender letzter Pass.',
-    OM: 'Zwischen den Linien, Drehungen in die Tiefe. RÃ¤ume zwischen gegnerischem Mittelfeld und Abwehr nutzen.',
-    RA: 'Ãœberlaufen des AuÃŸenverteidigers, frÃ¼h flanken oder in die Box ziehen. Bei Verlust sofort Gegenpressing.',
-    LA: 'Invers ins Zentrum, Abschluss aus der zweiten Reihe. Den schwachen FuÃŸ des Gegners ausnutzen.',
-    ST: 'Gegnerische IV binden, RÃ¤ume durch TiefenlÃ¤ufe Ã¶ffnen. Abschluss aus der Box, nicht abwartend.',
-    ETW: 'Ersatztorwart â€” warm bleiben, defensiv helfen bei Standards.',
+    OM: 'Zwischen den Linien, Drehungen in die Tiefe. Räume zwischen gegnerischem Mittelfeld und Abwehr nutzen.',
+    RA: 'Überlaufen des Außenverteidigers, früh flanken oder in die Box ziehen. Bei Verlust sofort Gegenpressing.',
+    LA: 'Invers ins Zentrum, Abschluss aus der zweiten Reihe. Den schwachen Fuß des Gegners ausnutzen.',
+    ST: 'Gegnerische IV binden, Räume durch Tiefenläufe öffnen. Abschluss aus der Box, nicht abwartend.',
+    ETW: 'Ersatztorwart — warm bleiben, defensiv helfen bei Standards.',
   };
   const champInstructionFor = (p: any) =>
     champInstruction[(p.position || p.role || '').toUpperCase()] ||
@@ -488,7 +488,7 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
 
   const championFocusIndex = championsActiveCount;
 
-  // Ablauf pro Spieler: von oben groÃŸ runter (max. 3s) â†’ Trainer-Notiz (max. 3s) â†’ klein auf Position
+  // Ablauf pro Spieler: von oben groß runter (max. 3s) → Trainer-Notiz (max. 3s) → klein auf Position
   useEffect(() => {
     if (!showChampionsAnimation) return;
     if (championsActiveCount >= championsTotal) return;
@@ -496,16 +496,16 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
 
     let t: ReturnType<typeof setTimeout> | undefined;
     if (champPhase === 'big') {
-      // GroÃŸes Bild von oben in die Mitte lassen (falls Trainer nicht vorher â€žWeiterâ€œ drÃ¼ckt)
+      // Großes Bild von oben in die Mitte lassen (falls Trainer nicht vorher „Weiter“ drückt)
       t = setTimeout(() => setChampPhase('note'), 3000);
     } else if (champPhase === 'note') {
-      // Notiz anzeigen; falls Trainer nicht vorher weiterdrÃ¼ckt, automatisch nach max. 3s platzieren
+      // Notiz anzeigen; falls Trainer nicht vorher weiterdrückt, automatisch nach max. 3s platzieren
       t = setTimeout(() => {
         setChampNoteOpen(false);
         setChampPhase('place');
       }, 3000);
     } else if (champPhase === 'place') {
-      // Spieler wird klein auf seiner Position platziert, dann nÃ¤chster Spieler
+      // Spieler wird klein auf seiner Position platziert, dann nächster Spieler
       t = setTimeout(() => {
         setChampionsActiveCount((c) => c + 1);
         setChampPhase('big');
@@ -631,8 +631,8 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
         return (isNaN(db) ? 0 : db) - (isNaN(da) ? 0 : da) || String(b.id || '').localeCompare(String(a.id || ''));
       })[0];
 
-    // Startelf-NAMEN direkt aus dem Spielbericht in Spielbericht-Reihenfolge (TW â†’ ST).
-    // Namensmatch gegen Kader nÃ¼tzt Foto/Nummer; ohne Match wird der Spielbericht-Name trotzdem angezeigt.
+    // Startelf-NAMEN direkt aus dem Spielbericht in Spielbericht-Reihenfolge (TW → ST).
+    // Namensmatch gegen Kader nützt Foto/Nummer; ohne Match wird der Spielbericht-Name trotzdem angezeigt.
     const reportEntries: Array<{ rawName: string; player: Player | null }> = [];
     if (latestReport) {
       const usedInReport = new Set<string>();
@@ -646,7 +646,7 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
 
     const pickFor = (targetPos: string) => {
       const tp = targetPos.toUpperCase();
-      const noTw = (p: any) => !String(p.position || '').toUpperCase().replace(/[^A-ZÃ„Ã–Ãœ]/g, '').includes('TW');
+      const noTw = (p: any) => !String(p.position || '').toUpperCase().replace(/[^A-ZÄÖÜ]/g, '').includes('TW');
       const exact = squad.find((p: any) => !used.has(p.id) && !reportIds.has(p.id) && noTw(p) && (p.position || '').toUpperCase() === tp);
       if (exact) { used.add(exact.id); return exact; }
       const contains = squad.find((p: any) => !used.has(p.id) && !reportIds.has(p.id) && noTw(p) && (p.position || '').toUpperCase().includes(tp));
@@ -670,7 +670,7 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
     };
 
     const result: typeof FORMATION_PRESETS = {};
-    const twOf = (pos: string) => String(pos || '').toUpperCase().replace(/[^A-ZÃ„Ã–Ãœ]/g, '').includes('TW');
+    const twOf = (pos: string) => String(pos || '').toUpperCase().replace(/[^A-ZÄÖÜ]/g, '').includes('TW');
     for (const [key, preset] of Object.entries(FORMATION_PRESETS)) {
       used.clear();
       const positions = posOrder[key] || [];
@@ -682,7 +682,7 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
         return queue[idx];
       };
       const posMatchQ = (p: any, tp: string) => {
-        const pp = (p.position || '').toUpperCase().replace(/[^A-ZÃ„Ã–Ãœ]/g, '');
+        const pp = (p.position || '').toUpperCase().replace(/[^A-ZÄÖÜ]/g, '');
         return pp === tp || pp.includes(tp) || tp.includes(pp);
       };
       const buildNode = (node: any, src: { rawName: string; player: Player | null } | null, fallbackPlayer: any) => {
@@ -711,7 +711,7 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
           if (twFromSquad) return buildNode(node, null, twFromSquad);
           return node;
         }
-        // Nicht-TW-Slots: keine TorhÃ¼ter aus dem Spielbericht aufs Feld (die gehÃ¶ren auf die Bank)
+        // Nicht-TW-Slots: keine Torhüter aus dem Spielbericht aufs Feld (die gehören auf die Bank)
         const matchQ = takeFromQueue((e: any) => e.player && !twOf((e.player as any).position) && posMatchQ(e.player, tp));
         if (matchQ) return buildNode(node, matchQ, null);
         const anyQ = takeFromQueue((e: any) => !e.player || !twOf((e.player as any).position));
@@ -725,9 +725,9 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
     return result;
   }, [players, activeClub.id, matchAnalyses]);
 
-  // Quellen-Stempel der Startelf: Ã„ndert sich der Startelf-Inhalt des Spielberichts (auch im selben
-// Bericht, z. B. Spieler geÃ¤ndert) oder die Aufstellungs-Logik (Version-Bump), wird die gespeicherte
-// PrÃ¤sentations-Startelf beim nÃ¤chsten Sync frisch vom Board Ã¼bernommen.
+  // Quellen-Stempel der Startelf: Ändert sich der Startelf-Inhalt des Spielberichts (auch im selben
+// Bericht, z. B. Spieler geändert) oder die Aufstellungs-Logik (Version-Bump), wird die gespeicherte
+// Präsentations-Startelf beim nächsten Sync frisch vom Board übernommen.
   const LINEUP_SRC_VERSION = 'v-twguard-1';
   const reportSrcId = useMemo(() => {
     const latest = [...(matchAnalyses || [])]
@@ -742,9 +742,9 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
     return sig;
   }, [matchAnalyses]);
 
-  // Aktuelle Startelf (editierbar Ã¼ber Bank-Wechsel) â€” Board als Quelle beim Start, danach User-Wechsel.
-  // Persistiert in localStorage, damit Wechsel/Positionen nicht beim erneuten Laden "zurÃ¼ckspringen".
-  // Trackt welche Positionen vom User manuell getauscht wurden (Index â†’ true)
+  // Aktuelle Startelf (editierbar über Bank-Wechsel) — Board als Quelle beim Start, danach User-Wechsel.
+  // Persistiert in localStorage, damit Wechsel/Positionen nicht beim erneuten Laden "zurückspringen".
+  // Trackt welche Positionen vom User manuell getauscht wurden (Index → true)
   const swappedPositionsRef = useRef<Set<number>>(new Set());
   const [presentationLineup, setPresentationLineup] = useState<Array<any>>(() => {
     try {
@@ -754,8 +754,8 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
         if (Array.isArray(arr) && arr.length > 0) {
           const savedSrc = localStorage.getItem('fca_presentationLineup_src') || '';
           const sourceUnchanged = savedSrc === reportSrcId;
-          // Nur bei unverÃ¤nderter Quelle als 'manuell getauscht' schÃ¼tzen;
-          // neuer/aktualisierter Spielbericht â‡’ frische Ãœbernahme vom Board.
+          // Nur bei unveränderter Quelle als 'manuell getauscht' schützen;
+          // neuer/aktualisierter Spielbericht ⇒ frische Übernahme vom Board.
           if (sourceUnchanged) {
             arr.forEach((_: any, i: number) => swappedPositionsRef.current.add(i));
           }
@@ -767,7 +767,7 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
   });
   const [lineupSwapTarget, setLineupSwapTarget] = useState<number | null>(null);
 
-  // Sync-Funktion: Board-Aufstellung in PrÃ¤sentation Ã¼bernehmen (mit Bildern)
+  // Sync-Funktion: Board-Aufstellung in Präsentation übernehmen (mit Bildern)
   const syncLineupFromBoard = useCallback(() => {
     const preset = liveFormations['4-2-3-1']?.nodes || [];
     const withImages = preset.map((n: any) => {
@@ -782,20 +782,20 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
     swappedPositionsRef.current = new Set();
   }, [liveFormations, players]);
 
-  // â”€â”€ Startelf aus dem AUFSTELLUNG-BILD des letzten Spielberichts per KI-Bilderkennung â”€â”€
+  // ── Startelf aus dem AUFSTELLUNG-BILD des letzten Spielberichts per KI-Bilderkennung ──
   const [analyzingLineupFromImage, setAnalyzingLineupFromImage] = useState(false);
   const loadStartelfFromLineupImages = useCallback(async () => {
     const report = [...(matchAnalyses || [])]
       .filter((a: any) => a && ((Array.isArray(a.lineupImages) && a.lineupImages.length > 0) || (a.lineupImage && String(a.lineupImage).length > 0)))
       .sort((a: any, b: any) => String(b.date || b.createdAt || '').localeCompare(String(a.date || a.createdAt || '')))[0];
     if (!report) {
-      notify('Kein Spielbericht mit AUFSTELLUNG-Bild â€“ bitte zuerst im Spielbericht ein Aufstellungs-Bild hinterlegen.');
+      notify('Kein Spielbericht mit AUFSTELLUNG-Bild – bitte zuerst im Spielbericht ein Aufstellungs-Bild hinterlegen.');
       return;
     }
     const images = ((Array.isArray(report.lineupImages) ? report.lineupImages : []) as string[]).concat(report.lineupImage ? [report.lineupImage] : []).filter(Boolean);
     if (images.length === 0) return;
     setAnalyzingLineupFromImage(true);
-    notify(`Startelf wird aus dem Aufstellungs-Bild erkannt (${report.opponent || 'Spielbericht'})â€¦`);
+    notify(`Startelf wird aus dem Aufstellungs-Bild erkannt (${report.opponent || 'Spielbericht'})…`);
     try {
       const resp: any = await apiFetch('/api/analyze-lineup', {
         method: 'POST',
@@ -835,12 +835,12 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
 
       const order = ['TW', 'RV', 'IV', 'IV', 'LV', 'DM', 'ZM', 'RA', 'OM', 'LA', 'ST'];
       const slots = liveFormations['4-2-3-1']?.nodes || [];
-      if (slots.length === 0) throw new Error('Formation nicht verfÃ¼gbar');
+      if (slots.length === 0) throw new Error('Formation nicht verfügbar');
       const usedReport = new Set<string>();
       const usedSquad = new Set<string>();
-      const twOf = (p: any) => String(p?.position || '').toUpperCase().replace(/[^A-ZÃ„ÃœÃ–]/g, '').includes('TW');
+      const twOf = (p: any) => String(p?.position || '').toUpperCase().replace(/[^A-ZÄÜÖ]/g, '').includes('TW');
       const posMatch = (p: any, tp: string) => {
-        const pp = (p.position || '').toUpperCase().replace(/[^A-ZÃ„ÃœÃ–]/g, '');
+        const pp = (p.position || '').toUpperCase().replace(/[^A-ZÄÜÖ]/g, '');
         return pp === tp || pp.includes(tp) || tp.includes(pp);
       };
       const nextLineup = slots.map((node: any, i: number) => {
@@ -862,7 +862,7 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
           }
           return node;
         }
-        // Nicht-TW-Slots: keine TorhÃ¼ter aufs Feld
+        // Nicht-TW-Slots: keine Torhüter aufs Feld
         const fromReport =
           resolved.find((r) => r.player && !usedReport.has(r.player.id) && !twOf(r.player) && posMatch(r.player, tp)) ||
           resolved.find((r) => r.player && !usedReport.has(r.player.id) && !twOf(r.player));
@@ -888,16 +888,16 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
 
       setPresentationLineup(nextLineup);
       swappedPositionsRef.current = new Set();
-      notify(`âœ… Startelf aus Aufstellungs-Bild Ã¼bernommen: ${usedReport.size} von ${order.length} Spielern erkannt & eingesetzt`);
+      notify(`✅ Startelf aus Aufstellungs-Bild übernommen: ${usedReport.size} von ${order.length} Spielern erkannt & eingesetzt`);
     } catch (err: any) {
       console.error('[Analyze-Lineup Client]', err);
-      notify(`âŒ Startelf-Erkennung fehlgeschlagen: ${err?.message || 'Unbekannter Fehler'}`);
+      notify(`❌ Startelf-Erkennung fehlgeschlagen: ${err?.message || 'Unbekannter Fehler'}`);
     } finally {
       setAnalyzingLineupFromImage(false);
     }
   }, [liveFormations, matchAnalyses, players]);
 
-  // Startelf persistieren (Wechsel, Positionen) â†’ kein ZurÃ¼ckspringen nach Reload
+  // Startelf persistieren (Wechsel, Positionen) → kein Zurückspringen nach Reload
   useEffect(() => {
     if (presentationLineup.length > 0) {
       try {
@@ -912,7 +912,7 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
     const preset = liveFormations['4-2-3-1']?.nodes || [];
     if (preset.length === 0) return;
     setPresentationLineup((prev) => {
-      // Erstes Mal: direkt Ã¼bernehmen
+      // Erstes Mal: direkt übernehmen
       if (prev.length === 0) {
         return preset.map((n: any) => {
           if (n.image) return n;
@@ -927,14 +927,14 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
       const prevJson = JSON.stringify(prev);
       const nextJson = JSON.stringify(preset);
       if (prevJson === nextJson) return prev;
-      // Positionen die getauscht wurden nicht Ã¼berschreiben
+      // Positionen die getauscht wurden nicht überschreiben
       const merged = prev.map((node: any, i: number) => {
         if (swappedPositionsRef.current.has(i)) return node;
         const boardNode = preset[i];
         if (!boardNode) return node;
-        // PrÃ¼fe ob sich der Board-Knoten geÃ¤ndert hat
+        // Prüfe ob sich der Board-Knoten geändert hat
         if (JSON.stringify(node) === JSON.stringify(boardNode)) return node;
-        // Board-Daten Ã¼bernehmen (mit Bild)
+        // Board-Daten übernehmen (mit Bild)
         if (boardNode.image) return boardNode;
         const matched = players.find((p: any) => {
           const full = `${p.firstName || ''} ${p.lastName || p.name || ''}`.trim().toLowerCase();
@@ -948,23 +948,23 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
 
   const swapStartelfWithSub = (subIdx: number, startIdx: number | null = null) => {
     if (subIdx < 0 || subIdx >= (presentationSubstitutes?.length ?? 0)) {
-      notify('Keine Auswechslung mÃ¶glich');
+      notify('Keine Auswechslung möglich');
       return;
     }
     const targetIdx = startIdx ?? lineupSwapTarget;
     if (targetIdx === null || targetIdx < 0 || targetIdx >= presentationLineup.length) {
-      notify('Bitte zuerst einen Startelf-Spieler zum Ersetzen auswÃ¤hlen');
+      notify('Bitte zuerst einen Startelf-Spieler zum Ersetzen auswählen');
       return;
     }
     const sub = presentationSubstitutes[subIdx];
     const starter = presentationLineup[targetIdx];
-    // TW-Hinweis (kein Block mehr): Wechsel wird durchgefÃ¼hrt, nur informieren
+    // TW-Hinweis (kein Block mehr): Wechsel wird durchgeführt, nur informieren
     const twOf = (pos: string) => String(pos || '').toUpperCase().includes('TW');
     if (twOf(starter.position) && !twOf(sub.pos)) {
-      notify('Hinweis: Du tauschst den Torwart gegen einen Feldspieler â€“ danach steht kein Torwart in der Startelf.');
+      notify('Hinweis: Du tauschst den Torwart gegen einen Feldspieler – danach steht kein Torwart in der Startelf.');
     }
     if (twOf(sub.pos) && !twOf(starter.position)) {
-      notify('Hinweis: Du holst einen Torwart fÃ¼r einen Feldspieler aufs Feld.');
+      notify('Hinweis: Du holst einen Torwart für einen Feldspieler aufs Feld.');
     }
     const subPlayer = players.find((p: any) => {
       const fullName = `${p.firstName || ''} ${p.lastName || p.name || ''}`.trim().toLowerCase();
@@ -996,10 +996,10 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
       return next;
     });
     setLineupSwapTarget(null);
-    notify(`Wechsel: ${sub.name} â†” ${starter.name} â€” ${sub.name} ist jetzt in der Startelf`);
+    notify(`Wechsel: ${sub.name} ↔ ${starter.name} — ${sub.name} ist jetzt in der Startelf`);
   };
 
-  // â”€â”€ STARTELF MANUELL BEARBEITEN (Button-Modus): Spieler ergÃ¤nzen/Ã¤ndern, wird automatisch gespeichert â”€â”€
+  // ── STARTELF MANUELL BEARBEITEN (Button-Modus): Spieler ergänzen/ändern, wird automatisch gespeichert ──
   const [startelfEditMode, setStartelfEditMode] = useState(false);
   const squadForLineupEdit = useMemo(() => (players || []).filter((p: any) => p.category === 'player'), [players]);
   const shortNameOf = (p: any) => {
@@ -1009,9 +1009,9 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
   };
   const replaceStartelfRow = (idx: number, player: any) => {
     if (!player) return;
-    const twOf = (pos: string) => String(pos || '').toUpperCase().replace(/[^A-ZÃ„Ã–Ãœ]/g, '').includes('TW');
+    const twOf = (pos: string) => String(pos || '').toUpperCase().replace(/[^A-ZÄÖÜ]/g, '').includes('TW');
     if (idx === 0 && !twOf(player.position)) {
-      notify('Hinweis: Kein Torwart auf der Torwart-Position gewÃ¤hlt (du kannst es trotzdem machen).');
+      notify('Hinweis: Kein Torwart auf der Torwart-Position gewählt (du kannst es trotzdem machen).');
     }
     if (idx !== 0 && twOf(player.position)) {
       notify('Hinweis: Torwart auf eine Feld-Position gesetzt.');
@@ -1023,7 +1023,7 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
       return next;
     });
     swappedPositionsRef.current.add(idx);
-    notify(`Startelf: ${shortNameOf(player)} gesetzt (automatisch gespeichert âœ“)`);
+    notify(`Startelf: ${shortNameOf(player)} gesetzt (automatisch gespeichert ✓)`);
   };
   const clearStartelfRow = (idx: number) => {
     setPresentationLineup((prev) => {
@@ -1033,7 +1033,7 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
       return next;
     });
     swappedPositionsRef.current.add(idx);
-    notify('Position in der Startelf geleert (automatisch gespeichert âœ“)');
+    notify('Position in der Startelf geleert (automatisch gespeichert ✓)');
   };
   const addPlayerToBank = (player: any) => {
     if (!player) return;
@@ -1041,21 +1041,21 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
       if (prev.some((s) => s.name === shortNameOf(player) && String(s.num) === String(player.number || ''))) return prev;
       return [...prev, { num: String(player.number || ''), name: shortNameOf(player), pos: player.position || '', note: '', image: player.image }];
     });
-    notify(`Bank: ${shortNameOf(player)} hinzugefÃ¼gt (automatisch gespeichert âœ“)`);
+    notify(`Bank: ${shortNameOf(player)} hinzugefügt (automatisch gespeichert ✓)`);
   };
   const removePlayerFromBank = (idx: number) => {
     setPresentationSubstitutes((prev) => prev.filter((_, i) => i !== idx));
-    notify('Spieler von der Bank entfernt (automatisch gespeichert âœ“)');
+    notify('Spieler von der Bank entfernt (automatisch gespeichert ✓)');
   };
 
-  // ZurÃ¼cksetzen: System wieder auf 4-2-3-1, Startelf & Bank zurÃ¼ck auf Ursprung, alle Wechsel gelÃ¶scht
+  // Zurücksetzen: System wieder auf 4-2-3-1, Startelf & Bank zurück auf Ursprung, alle Wechsel gelöscht
   const resetStartelf = useCallback(() => {
     setSelectedFormation('4-2-3-1');
     setPresentationLineup((liveFormations['4-2-3-1']?.nodes || []).map(n => ({ ...n })));
     const defaultSubs = [
       { num: '12', name: 'M. Lais', pos: 'ETW', note: 'Ersatztorwart' },
       { num: '13', name: 'N. Asal', pos: 'IV', note: 'Zweikampf-Option' },
-      { num: '14', name: 'T. Bacelic', pos: 'ZM', note: 'Mittelfeld-StabilitÃ¤t' },
+      { num: '14', name: 'T. Bacelic', pos: 'ZM', note: 'Mittelfeld-Stabilität' },
       { num: '15', name: 'S. Saur', pos: 'RA', note: 'Tempo-Joker' },
       { num: '16', name: 'M. Bischoff', pos: 'ST', note: 'Strafraum-Brecher' }
     ];
@@ -1071,10 +1071,10 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
     swappedPositionsRef.current = new Set();
     localStorage.removeItem('fca_presentationSubstitutes');
     localStorage.removeItem('fca_presentationLineup');
-    notify('Aufstellung zurÃ¼ckgesetzt: System 4-2-3-1, Startelf & Bank wie zuvor');
+    notify('Aufstellung zurückgesetzt: System 4-2-3-1, Startelf & Bank wie zuvor');
   }, [liveFormations, players]);
 
-  // Formation-Karten fÃ¼r die Champions-Aufstellung (aktuelle Aufstellung)
+  // Formation-Karten für die Champions-Aufstellung (aktuelle Aufstellung)
   const championsCards = useMemo(() => {
     const preset = liveFormations[selectedFormation] || liveFormations['4-2-3-1'];
     const nodes = (presentationLineup?.length === 11 ? presentationLineup : preset?.nodes || []).slice(0, championsTotal);
@@ -1089,7 +1089,7 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
     }));
   }, [liveFormations, selectedFormation, presentationLineup]);
 
-  // Aktuell prÃ¤sentierter Spieler (groÃŸes Bild) fÃ¼r die Champions-Aufstellung
+  // Aktuell präsentierter Spieler (großes Bild) für die Champions-Aufstellung
   const focusCard = championFocusIndex < championsTotal ? championsCards[championFocusIndex] : null;
 
   useEffect(() => {
@@ -1102,14 +1102,14 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isPitchOnlyFullscreen]);
   const [activeTabSub, setActiveTabSub] = useState<'board' | 'comparison' | 'standards' | 'presentation' | 'scenarios'>('board');
-  // Aktives 1:1-Szenario (Spielsystem / Standard) â€” geteilt zwischen Taktiktafel & PrÃ¤sentation
+  // Aktives 1:1-Szenario (Spielsystem / Standard) — geteilt zwischen Taktiktafel & Präsentation
   const [activeScenarioId, setActiveScenarioId] = useState<string>('sys-4231');
   const activeScenario = ALL_SCENARIOS.find((s) => s.id === activeScenarioId) || ALL_SCENARIOS[0];
   const [scenarioCatFilter, setScenarioCatFilter] = useState<'spielsystem' | 'standard'>('spielsystem');
   const [showTrainerPhasePanelOnBoard, setShowTrainerPhasePanelOnBoard] = useState<boolean>(false);
   const [showAllPhasesExpanded, setShowAllPhasesExpanded] = useState<boolean>(false);
   
-  // DYNAMISCHE PFLICHTSPIELE-VERKNÃœPFUNG (LIVE SYNC MIT DATENBANK & SPIELPLAN)
+  // DYNAMISCHE PFLICHTSPIELE-VERKNÜPFUNG (LIVE SYNC MIT DATENBANK & SPIELPLAN)
   const allCompetitiveMatches = useMemo(() => {
     const list = (competitiveMatches && competitiveMatches.length > 0) 
       ? competitiveMatches 
@@ -1121,12 +1121,12 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
     });
   }, [competitiveMatches]);
 
-  // AUTOMATISCHE ERKENNUNG DES NÃ„CHSTEN PFLICHTSPIELS
+  // AUTOMATISCHE ERKENNUNG DES NÄCHSTEN PFLICHTSPIELS
   const nextUpcomingMatch = useMemo(() => {
     if (!allCompetitiveMatches || allCompetitiveMatches.length === 0) return null;
     const todayStr = new Date().toISOString().split('T')[0];
     
-    // 1. Suche nach dem nÃ¤chsten offenen Pflichtspiel ab heute
+    // 1. Suche nach dem nächsten offenen Pflichtspiel ab heute
     const upcoming = allCompetitiveMatches.find(m => {
       const isFutureOrToday = (m.date || '') >= todayStr;
       const hasNoResult = !m.result || m.result.trim() === '' || m.result === '-:-' || m.result === 'vs';
@@ -1146,13 +1146,13 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
     return allCompetitiveMatches[0];
   }, [allCompetitiveMatches]);
 
-  // SpieltagsprÃ¤sentation State â€“ initialisiert mit dem nÃ¤chsten Pflichtspiel
+  // Spieltagspräsentation State – initialisiert mit dem nächsten Pflichtspiel
   const [presentationSlideIndex, setPresentationSlideIndex] = useState<number>(0);
   const [selectedPresentationMatchId, setSelectedPresentationMatchId] = useState<string>(() => {
     return nextUpcomingMatch?.id ? String(nextUpcomingMatch.id) : 'm_5';
   });
 
-  // Gegner-Top-3 (3 beste Gegner-Spieler mit Bild, Position, Note) â€“ manuell eintragbar, per Gegner persistiert
+  // Gegner-Top-3 (3 beste Gegner-Spieler mit Bild, Position, Note) – manuell eintragbar, per Gegner persistiert
   const [opponentTop3, setOpponentTop3] = useState<Array<{ name: string; position: string; imageUrl: string; note: string }>>([
     { name: '', position: '', imageUrl: '', note: '' },
     { name: '', position: '', imageUrl: '', note: '' },
@@ -1160,7 +1160,7 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
   ]);
   const [top3Saved, setTop3Saved] = useState(false);
 
-  // Auto-Synchronisierung: Wenn nÃ¤chstes Pflichtspiel lÃ¤dt oder neu gesetzt wird
+  // Auto-Synchronisierung: Wenn nächstes Pflichtspiel lädt oder neu gesetzt wird
   useEffect(() => {
     if (nextUpcomingMatch?.id && (!selectedPresentationMatchId || selectedPresentationMatchId === 'm_5')) {
       setSelectedPresentationMatchId(String(nextUpcomingMatch.id));
@@ -1187,9 +1187,9 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
       time: m.time || m.kickOff || '15:30',
       meetingTime: m.meetingTime || m.treffpunkt || '14:00 Uhr',
       isHome: isHome,
-      homeAway: isHome ? 'Heim' : 'AuswÃ¤rts',
-      location: m.location || (isHome ? 'Lettenpark Stadion Auggen' : `AuswÃ¤rts (${m.opponent || 'Gegner'})`),
-      competition: m.competition || 'Verbandsliga SÃ¼dbaden',
+      homeAway: isHome ? 'Heim' : 'Auswärts',
+      location: m.location || (isHome ? 'Lettenpark Stadion Auggen' : `Auswärts (${m.opponent || 'Gegner'})`),
+      competition: m.competition || 'Verbandsliga Südbaden',
       matchday: m.matchday || m.spieltag || 1,
       readiness: 100,
       tacticNotes: m.tactics || m.notes || '',
@@ -1203,7 +1203,7 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
   // Laden der Gegner-Top-3-Daten aus Firestore beim Spieltag/Match-Wechsel
   useEffect(() => {
     const opponent = selectedMatchObj?.opponent || 'Gegner';
-    const slug = opponent.toLowerCase().replace(/[^a-z0-9Ã¤Ã¶Ã¼]/g, '-');
+    const slug = opponent.toLowerCase().replace(/[^a-z0-9äöü]/g, '-');
     let active = true;
     (async () => {
       try {
@@ -1225,7 +1225,7 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
 
   const saveOpponentTop3 = async () => {
     const opponent = selectedMatchObj?.opponent || 'Gegner';
-    const slug = opponent.toLowerCase().replace(/[^a-z0-9Ã¤Ã¶Ã¼]/g, '-');
+    const slug = opponent.toLowerCase().replace(/[^a-z0-9äöü]/g, '-');
     try {
       await setDoc(doc(db, 'opponent_top3', slug), {
         clubShortName: activeClub.shortName || 'FC AUGGEN',
@@ -1241,11 +1241,11 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
     }
   };
   const [presentationCoachingPoints, setPresentationCoachingPoints] = useState<string[]>([
-    'âš¡ 1. Maximale ZweikampfhÃ¤rte & Gegenpressing-IntensitÃ¤t ab Minute 1.',
-    'ðŸ§  2. Hohe SpielschÃ¤rfe im Mittelfeldzirkel & sauberes Andribbeln der Sechser.',
-    'ðŸŽ¯ 3. Gezielte TiefenlÃ¤ufe von Akuegwu in die Schnittstellen der Abwehrkette.',
-    'ðŸ›¡ï¸ 4. Disziplinierte Restverteidigung (3er-Sicherung) bei eigenen Angrifswellen.',
-    'ðŸ”¥ 5. Konsequente Ausnutzung der einstudierten Standard-Varianten (Sweden & Charles).'
+    '⚡ 1. Maximale Zweikampfhärte & Gegenpressing-Intensität ab Minute 1.',
+    '🧠 2. Hohe Spielschärfe im Mittelfeldzirkel & sauberes Andribbeln der Sechser.',
+    '🎯 3. Gezielte Tiefenläufe von Akuegwu in die Schnittstellen der Abwehrkette.',
+    '🛡️ 4. Disziplinierte Restverteidigung (3er-Sicherung) bei eigenen Angrifswellen.',
+    '🔥 5. Konsequente Ausnutzung der einstudierten Standard-Varianten (Sweden & Charles).'
   ]);
   const [editingCoachingPointText, setEditingCoachingPointText] = useState<string>('');
   const [showEditCoachingModal, setShowEditCoachingModal] = useState<boolean>(false);
@@ -1256,19 +1256,19 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
       aufbauhoehe: 'mittelhoch', // tief | mittelhoch | hoch
       ueberzahlzonen: '6er', // IV | 6er | Halbraum
       progression: 'Kurzpass', // Kurzpass | Direktspiel | Verlagerung
-      halbraumnutzung: 'Zehner', // Achter | Zehner | inverser FlÃ¼gel
-      offensivfokus: 'FlÃ¼gel', // FlÃ¼gel | Zentrum | Umschaltspiel
+      halbraumnutzung: 'Zehner', // Achter | Zehner | inverser Flügel
+      offensivfokus: 'Flügel', // Flügel | Zentrum | Umschaltspiel
     },
     defensiv: {
       pressinghoehe: 'mittel', // hoch | mittel | tief
-      pressinglenkung: 'AuÃŸenbahn', // AuÃŸenbahn | schwacher FuÃŸ | Pressingfalle
+      pressinglenkung: 'Außenbahn', // Außenbahn | schwacher Fuß | Pressingfalle
       kompaktheit: 'eng', // eng | breit | mittig
       mannorientierung: 'situativ', // ja | nein | situativ
     },
     umschaltenOffensiv: {
-      zielzone: 'FlÃ¼gel', // FlÃ¼gel | Zentrum
+      zielzone: 'Flügel', // Flügel | Zentrum
       tempo: 'schnell', // schnell | kontrolliert
-      fokusspieler: 'StÃ¼rmer', // StÃ¼rmer | Zehner | FlÃ¼gel
+      fokusspieler: 'Stürmer', // Stürmer | Zehner | Flügel
       muster: 'Tiefgang', // Steil-Klatsch | Tiefgang | Direktspiel
     },
     umschaltenDefensiv: {
@@ -1279,7 +1279,7 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
     }
   });
   const [customTrainerNotes, setCustomTrainerNotes] = useState<string>(
-    'Matchplan: Gegenpressing im 1. Halbraum auslÃ¶sen.'
+    'Matchplan: Gegenpressing im 1. Halbraum auslösen.'
   );
 
   // Dynamisch Formation-Notizen & Bank beim Vereinswechsel aktualisieren
@@ -1328,10 +1328,10 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
     const attParts = [ra, om, la].filter(Boolean).map(p => `${fw(p)} (${p!.position})`);
 
     setFormationNotes({
-      defenseLine: defParts.length ? `${defParts.join(', ')}. Asymmetrisches EinrÃ¼cken bei Ballbesitz.` : 'Aufbau mit Viererkette.',
+      defenseLine: defParts.length ? `${defParts.join(', ')}. Asymmetrisches Einrücken bei Ballbesitz.` : 'Aufbau mit Viererkette.',
       doublePivot: midParts.length ? `${midParts.join(' + ')}. Absicherung des 1. Halbraums.` : 'Doppel-Sechs im Mittelfeld.',
       attackingRow: attParts.length ? `${attParts.join(' + ')}.` : 'Offensive Reihe im Aufbau.',
-      striker: st ? `${fw(st)}. Bindet gegnerische IV und erzeugt Raum.` : 'StÃ¼rmer gesucht.'
+      striker: st ? `${fw(st)}. Bindet gegnerische IV und erzeugt Raum.` : 'Stürmer gesucht.'
     });
 
     // Bank: alle Spieler die NICHT in der Startelf stehen
@@ -1342,20 +1342,20 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
         num: String(p.number || 12 + i),
         name: short(p),
         pos: p.position || '-',
-        note: i === 0 ? 'Ersatztorwart' : i === 1 ? 'Zweikampf-Option' : i === 2 ? 'Mittelfeld-StabilitÃ¤t' : i === 3 ? 'Tempo-Joker' : 'ErgÃ¤nzung',
+        note: i === 0 ? 'Ersatztorwart' : i === 1 ? 'Zweikampf-Option' : i === 2 ? 'Mittelfeld-Stabilität' : i === 3 ? 'Tempo-Joker' : 'Ergänzung',
         image: p.image
       })));
     }
 
     const pivotNames = [dm, zm].filter(Boolean).map(fw).join(' & ');
     const omName = om ? fw(om) : 'Zehner';
-    const stName = st ? fw(st) : 'StÃ¼rmer';
-    const laName = la ? fw(la) : 'FlÃ¼gel';
-    const raName = ra ? fw(ra) : 'FlÃ¼gel';
+    const stName = st ? fw(st) : 'Stürmer';
+    const laName = la ? fw(la) : 'Flügel';
+    const raName = ra ? fw(ra) : 'Flügel';
 
     setDefensiveRulesList([
-      `Anpress-Trigger: Pass auf den schwachen AuÃŸenverteidiger lÃ¶st hohes NachrÃ¼cken aus.`,
-      `Zentrum schlieÃŸen: ${pivotNames || 'Mittelfeld'} doppeln die Schnittstelle.`,
+      `Anpress-Trigger: Pass auf den schwachen Außenverteidiger löst hohes Nachrücken aus.`,
+      `Zentrum schließen: ${pivotNames || 'Mittelfeld'} doppeln die Schnittstelle.`,
       `Restverteidigung: 3er-Sicherung hinter dem Ball zur Absicherung gegen Konter.`
     ]);
 
@@ -1365,15 +1365,15 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
     ]);
 
     setCustomTrainerNotes(
-      `Matchplan: Gegenpressing im 1. Halbraum auslÃ¶sen. Sobald ${omName} den Ball festmacht, startet ${stName} den tiefen Run.`
+      `Matchplan: Gegenpressing im 1. Halbraum auslösen. Sobald ${omName} den Ball festmacht, startet ${stName} den tiefen Run.`
     );
 
     setPresentationCoachingPoints([
-      `âš¡ 1. Maximale ZweikampfhÃ¤rte & Gegenpressing-IntensitÃ¤t ab Minute 1.`,
-      `ðŸ§  2. Hohe SpielschÃ¤rfe im Mittelfeldzirkel & sauberes Andribbeln der Sechser.`,
-      `ðŸŽ¯ 3. Gezielte TiefenlÃ¤ufe von ${stName} in die Schnittstellen der Abwehrkette.`,
-      `ðŸ›¡ï¸ 4. Disziplinierte Restverteidigung (3er-Sicherung) bei eigenen Angriffswellen.`,
-      `ðŸ”¥ 5. Konsequente Ausnutzung der einstudierten Standard-Varianten.`
+      `⚡ 1. Maximale Zweikampfhärte & Gegenpressing-Intensität ab Minute 1.`,
+      `🧠 2. Hohe Spielschärfe im Mittelfeldzirkel & sauberes Andribbeln der Sechser.`,
+      `🎯 3. Gezielte Tiefenläufe von ${stName} in die Schnittstellen der Abwehrkette.`,
+      `🛡️ 4. Disziplinierte Restverteidigung (3er-Sicherung) bei eigenen Angriffswellen.`,
+      `🔥 5. Konsequente Ausnutzung der einstudierten Standard-Varianten.`
     ]);
   }, [activeClub.id, players]);
 
@@ -1427,7 +1427,7 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
     setScenarioEdits((prev) => ({ ...prev, [scenarioId]: { zones, players } }));
   }, []);
 
-  // Aktuelle Startelf auf jedes Szenario-Diagramm Ã¼bertragen (Nummern/Positionen) â€”
+  // Aktuelle Startelf auf jedes Szenario-Diagramm übertragen (Nummern/Positionen) —
   // manuelle Draft-Anpassungen des Users haben Vorrang.
   const scPlayersFor = useCallback((scenarioId: string): ScenarioPlayer[] | undefined => {
     const draft = scenarioEdits[scenarioId];
@@ -1438,14 +1438,14 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
     if (lineup.length === 0) return undefined;
     const byPos: Record<string, Array<any>> = {};
     lineup.forEach((n: any) => {
-      const pp = String(n.position || '').toUpperCase().replace(/[^A-ZÃ„Ã–Ãœ]/g, '');
+      const pp = String(n.position || '').toUpperCase().replace(/[^A-ZÄÖÜ]/g, '');
       const key = (pp.split('/')[0] || 'ST').trim();
       (byPos[key] = byPos[key] || []).push(n);
     });
     const usedIdx: Record<string, number> = {};
     return sc.players.map((p) => {
       if (p.team !== 'own' && p.team !== 'gk') return p;
-      const pp = String(p.pos || '').toUpperCase().replace(/[^A-ZÃ„Ã–Ãœ]/g, '');
+      const pp = String(p.pos || '').toUpperCase().replace(/[^A-ZÄÖÜ]/g, '');
       const key = (pp.split('/')[0] || (p.team === 'gk' ? 'TW' : 'ST')).trim();
       const arr = byPos[key] || [];
       const idx = usedIdx[key] = (usedIdx[key] || 0);
@@ -1482,7 +1482,7 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
     try { localStorage.setItem('fca_presentation_top3_chips', JSON.stringify(next)); } catch { /* ignore */ }
   };
   useEffect(() => {
-    // Beim ersten Ã–ffnen: Startelf-Chips initial verteilen (falls noch nicht gesetzt)
+    // Beim ersten Öffnen: Startelf-Chips initial verteilen (falls noch nicht gesetzt)
     if (ownTop3Chips.length === 0 && presentationLineup.length >= 11) {
       const positions = [
         { x: 14, y: 14 }, { x: 32, y: 10 }, { x: 50, y: 10 }, { x: 68, y: 10 }, { x: 86, y: 14 },
@@ -1519,15 +1519,15 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
   // Slide 0: Titel & Match
   const [matchNotes, setMatchNotes] = useState({
     home: 'Stamm-System 4-2-3-1 mit doppelter Sechs und variabler Offensive.',
-    opponent: 'Aggressives Anpressen. AnfÃ¤llig gegen schnelle Verlagerungen.',
+    opponent: 'Aggressives Anpressen. Anfällig gegen schnelle Verlagerungen.',
     focus: 'Pressing HOCH, Aufbau MITTELHOCH.'
   });
 
-  // Slide 1: Aufstellung & Bank â€” Lade aus localStorage wenn vorhanden
+  // Slide 1: Aufstellung & Bank — Lade aus localStorage wenn vorhanden
   const defaultSubs = [
     { num: '12', name: 'M. Lais', pos: 'ETW', note: 'Ersatztorwart' },
     { num: '13', name: 'N. Asal', pos: 'IV', note: 'Zweikampf-Option' },
-    { num: '14', name: 'T. Bacelic', pos: 'ZM', note: 'Mittelfeld-StabilitÃ¤t' },
+    { num: '14', name: 'T. Bacelic', pos: 'ZM', note: 'Mittelfeld-Stabilität' },
     { num: '15', name: 'S. Saur', pos: 'RA', note: 'Tempo-Joker' },
     { num: '16', name: 'M. Bischoff', pos: 'ST', note: 'Strafraum-Brecher' }
   ];
@@ -1536,7 +1536,7 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
     return defaultSubs;
   });
 
-  // Auto-Save: Bank in localStorage bei jeder Ã„nderung (Startelf kommt immer vom Board)
+  // Auto-Save: Bank in localStorage bei jeder Änderung (Startelf kommt immer vom Board)
   useEffect(() => {
     if (presentationSubstitutes.length > 0) {
       localStorage.setItem('fca_presentationSubstitutes', JSON.stringify(presentationSubstitutes));
@@ -1558,16 +1558,16 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
 
   // Slide 2: Formation
   const [formationNotes, setFormationNotes] = useState({
-    defenseLine: 'Tiedemann (RV), Paolillo (IV), Klett (IV), Ritzenthaler (LV). Asymmetrisches EinrÃ¼cken bei Ballbesitz.',
-    doublePivot: 'Kalchschmidt (AbrÃ¤umer) + Boutagrat (Box-to-Box Antreiber). Absicherung des 1. Halbraums.',
+    defenseLine: 'Tiedemann (RV), Paolillo (IV), Klett (IV), Ritzenthaler (LV). Asymmetrisches Einrücken bei Ballbesitz.',
+    doublePivot: 'Kalchschmidt (Abräumer) + Boutagrat (Box-to-Box Antreiber). Absicherung des 1. Halbraums.',
     attackingRow: 'Valchuk (RA) + Dischinger (OM im Halbraum) + Ehret (LA invers).',
-    striker: 'Akuegwu (ST). Bindet gegnerische Innenverteidiger und erzeugt Raum durch TiefenlÃ¤ufe.'
+    striker: 'Akuegwu (ST). Bindet gegnerische Innenverteidiger und erzeugt Raum durch Tiefenläufe.'
   });
 
   // Slide 3: Defensiv
   const [defensiveRulesList, setDefensiveRulesList] = useState<string[]>([
-    'Anpress-Trigger: Pass auf den schwachen AuÃŸenverteidiger lÃ¶st hohes NachrÃ¼cken aus.',
-    'Zentrum schlieÃŸen: Kalchschmidt & Boutagrat doppeln die Schnittstelle.',
+    'Anpress-Trigger: Pass auf den schwachen Außenverteidiger löst hohes Nachrücken aus.',
+    'Zentrum schließen: Kalchschmidt & Boutagrat doppeln die Schnittstelle.',
     'Restverteidigung: 3er-Sicherung hinter dem Ball zur Absicherung gegen Konter.'
   ]);
 
@@ -1591,7 +1591,7 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
   const [newSlideStandardInput, setNewSlideStandardInput] = useState({ name: '', description: '', successRate: 75 });
   const [newCoachingPointInput, setNewCoachingPointInput] = useState<string>('');
 
-  // Slide 10: SchlÃ¼sselspieler (Blanko) â€“ 3 PlÃ¤tze mit Notiz
+  // Slide 10: Schlüsselspieler (Blanko) – 3 Plätze mit Notiz
   const [keyPlayers, setKeyPlayers] = useState<Array<{ name: string; note: string }>>([
     { name: '', note: '' },
     { name: '', note: '' },
@@ -1615,43 +1615,43 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
         type: 'ecke_offensiv',
         executor: 'B. Dischinger / I. Valchuk',
         keyPlayers: 'Dischinger, Valchuk, Paolillo',
-        description: 'Kurze Ãœbergabe an der Eckfahne mit Hinterlaufen durch Valchuk. Dischinger zieht nach innen und schlenzt den Ball mit Bogenlampe auf den 2. Pfosten auf Paolillo.',
+        description: 'Kurze Übergabe an der Eckfahne mit Hinterlaufen durch Valchuk. Dischinger zieht nach innen und schlenzt den Ball mit Bogenlampe auf den 2. Pfosten auf Paolillo.',
         successRate: 88,
-        aiTacticNotes: 'Ãœberwindet gegnerische Raumdeckung durch Erzeugung eines 2v1 Ãœberzahlmoments an der Eckfahne.',
+        aiTacticNotes: 'Überwindet gegnerische Raumdeckung durch Erzeugung eines 2v1 Überzahlmoments an der Eckfahne.',
         positions: [
           { id: '1', name: 'L. Schneider', number: '1', role: 'Absicherung', xPercent: 50, yPercent: 85 },
           { id: '2', name: 'J. Tiedemann', role: 'Konterabsicherung', xPercent: 30, yPercent: 65, number: '2' },
           { id: '3', name: 'M. Paolillo', role: 'Kopfball 2. Pfosten', xPercent: 70, yPercent: 8, number: '4' },
           { id: '4', name: 'S. Klett', role: 'Sperre gegnerischer IV', xPercent: 45, yPercent: 12, number: '5' },
-          { id: '5', name: 'F. Ritzenthaler', role: 'RÃ¼ckraum 16er', xPercent: 50, yPercent: 35, number: '3' },
+          { id: '5', name: 'F. Ritzenthaler', role: 'Rückraum 16er', xPercent: 50, yPercent: 35, number: '3' },
           { id: '6', name: 'Y. Kalchschmidt', role: '2. Ball Rebound', xPercent: 42, yPercent: 28, number: '6' },
-          { id: '7', name: 'A. Boutagrat', role: 'FlÃ¼gel-Sicherung', xPercent: 20, yPercent: 20, number: '8' },
-          { id: '8', name: 'I. Valchuk', role: 'HinterlÃ¤ufer Eckfahne', xPercent: 12, yPercent: 6, number: '7' },
-          { id: '9', name: 'B. Dischinger', role: 'AusfÃ¼hrer Kurzpass', xPercent: 5, yPercent: 2, number: '10' },
+          { id: '7', name: 'A. Boutagrat', role: 'Flügel-Sicherung', xPercent: 20, yPercent: 20, number: '8' },
+          { id: '8', name: 'I. Valchuk', role: 'Hinterläufer Eckfahne', xPercent: 12, yPercent: 6, number: '7' },
+          { id: '9', name: 'B. Dischinger', role: 'Ausführer Kurzpass', xPercent: 5, yPercent: 2, number: '10' },
           { id: '10', name: 'J. Ehret', role: 'Mauer-Finte', xPercent: 35, yPercent: 10, number: '11' },
-          { id: '11', name: 'J. Akuegwu', role: 'EinlÃ¤ufer 1. Pfosten', xPercent: 40, yPercent: 14, number: '9' }
+          { id: '11', name: 'J. Akuegwu', role: 'Einläufer 1. Pfosten', xPercent: 40, yPercent: 14, number: '9' }
         ],
         createdAt: new Date().toISOString()
       },
       {
         id: 'std_charles',
-        name: 'Halbfeld-FreistoÃŸ: Spezial-Variante "Charles"',
+        name: 'Halbfeld-Freistoß: Spezial-Variante "Charles"',
         type: 'freistoss_halbfeld',
         executor: 'Y. Kalchschmidt',
         keyPlayers: 'Kalchschmidt, Dischinger, Boutagrat',
-        description: 'AntÃ¤uschen einer Bogenflanke in den 16er, stattdessen versteckter flacher Pass rÃ¼ckwÃ¤rts an den Strafraumkreis fÃ¼r Dischingers direkten Distanzschuss.',
+        description: 'Antäuschen einer Bogenflanke in den 16er, stattdessen versteckter flacher Pass rückwärts an den Strafraumkreis für Dischingers direkten Distanzschuss.',
         successRate: 82,
-        aiTacticNotes: 'Perfekt gegen tief stehende Ketten, die frÃ¼h zurÃ¼ckweichen und den RÃ¼ckraum verwaist lassen.',
+        aiTacticNotes: 'Perfekt gegen tief stehende Ketten, die früh zurückweichen und den Rückraum verwaist lassen.',
         positions: [
           { id: '1', name: 'L. Schneider', number: '1', role: 'Absicherung', xPercent: 50, yPercent: 85 },
           { id: '2', name: 'J. Tiedemann', role: 'Zielspieler 2. Pfosten', xPercent: 75, yPercent: 12, number: '2' },
-          { id: '3', name: 'M. Paolillo', role: 'EinlÃ¤ufer Zentrum', xPercent: 50, yPercent: 15, number: '4' },
+          { id: '3', name: 'M. Paolillo', role: 'Einläufer Zentrum', xPercent: 50, yPercent: 15, number: '4' },
           { id: '4', name: 'S. Klett', role: 'Sperre gegnerischer IV', xPercent: 45, yPercent: 18, number: '5' },
           { id: '5', name: 'F. Ritzenthaler', role: 'Konterabsicherung LV', xPercent: 80, yPercent: 55, number: '3' },
-          { id: '6', name: 'Y. Kalchschmidt', role: 'Passgeber RÃ¼ckraum', xPercent: 30, yPercent: 40, number: '6' },
-          { id: '7', name: 'A. Boutagrat', role: 'Abschirmung SchÃ¼tze', xPercent: 48, yPercent: 28, number: '8' },
+          { id: '6', name: 'Y. Kalchschmidt', role: 'Passgeber Rückraum', xPercent: 30, yPercent: 40, number: '6' },
+          { id: '7', name: 'A. Boutagrat', role: 'Abschirmung Schütze', xPercent: 48, yPercent: 28, number: '8' },
           { id: '8', name: 'I. Valchuk', role: 'Ablenkung rechts', xPercent: 20, yPercent: 20, number: '7' },
-          { id: '9', name: 'B. Dischinger', role: 'SchÃ¼tze 16er-Kreis', xPercent: 50, yPercent: 30, number: '10' },
+          { id: '9', name: 'B. Dischinger', role: 'Schütze 16er-Kreis', xPercent: 50, yPercent: 30, number: '10' },
           { id: '10', name: 'J. Ehret', role: 'Lauflinie links', xPercent: 85, yPercent: 16, number: '11' },
           { id: '11', name: 'J. Akuegwu', role: 'Zentrum Bindung', xPercent: 52, yPercent: 10, number: '9' }
         ],
@@ -1663,20 +1663,20 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
         type: 'ecke_offensiv',
         executor: 'B. Dischinger',
         keyPlayers: 'Akuegwu, Klett, Paolillo, Tiedemann',
-        description: 'Alle 5 Kopfballspieler starten gestaffelt von der 16er-Linie und laufen im HÃ¶chsttempo ("Zug zum Tor") synchron bei Ballabgabe ein.',
+        description: 'Alle 5 Kopfballspieler starten gestaffelt von der 16er-Linie und laufen im Höchsttempo ("Zug zum Tor") synchron bei Ballabgabe ein.',
         successRate: 90,
-        aiTacticNotes: 'Unverteidigbar in Manndeckung durch Tempovorteil im Anlauf gegenÃ¼ber stehenden Verteidigern.',
+        aiTacticNotes: 'Unverteidigbar in Manndeckung durch Tempovorteil im Anlauf gegenüber stehenden Verteidigern.',
         positions: [
           { id: '1', name: 'L. Schneider', number: '1', role: 'Absicherung', xPercent: 50, yPercent: 85 },
-          { id: '2', name: 'J. Tiedemann', role: 'Zug-EinlÃ¤ufer 3', xPercent: 30, yPercent: 25, number: '2' },
-          { id: '3', name: 'M. Paolillo', role: 'Zug-EinlÃ¤ufer 1', xPercent: 45, yPercent: 25, number: '4' },
-          { id: '4', name: 'S. Klett', role: 'Zug-EinlÃ¤ufer 2', xPercent: 55, yPercent: 25, number: '5' },
-          { id: '5', name: 'F. Ritzenthaler', role: 'RÃ¼ckraum', xPercent: 50, yPercent: 40, number: '3' },
+          { id: '2', name: 'J. Tiedemann', role: 'Zug-Einläufer 3', xPercent: 30, yPercent: 25, number: '2' },
+          { id: '3', name: 'M. Paolillo', role: 'Zug-Einläufer 1', xPercent: 45, yPercent: 25, number: '4' },
+          { id: '4', name: 'S. Klett', role: 'Zug-Einläufer 2', xPercent: 55, yPercent: 25, number: '5' },
+          { id: '5', name: 'F. Ritzenthaler', role: 'Rückraum', xPercent: 50, yPercent: 40, number: '3' },
           { id: '6', name: 'Y. Kalchschmidt', role: 'Rebound 16er', xPercent: 50, yPercent: 32, number: '6' },
-          { id: '7', name: 'A. Boutagrat', role: 'Zug-EinlÃ¤ufer 4', xPercent: 65, yPercent: 25, number: '8' },
+          { id: '7', name: 'A. Boutagrat', role: 'Zug-Einläufer 4', xPercent: 65, yPercent: 25, number: '8' },
           { id: '8', name: 'I. Valchuk', role: 'Kurze Option', xPercent: 15, yPercent: 10, number: '7' },
           { id: '9', name: 'B. Dischinger', role: 'Scharfe Flanke', xPercent: 5, yPercent: 2, number: '10' },
-          { id: '10', name: 'J. Ehret', role: 'Zug-EinlÃ¤ufer 5', xPercent: 75, yPercent: 25, number: '11' },
+          { id: '10', name: 'J. Ehret', role: 'Zug-Einläufer 5', xPercent: 75, yPercent: 25, number: '11' },
           { id: '11', name: 'J. Akuegwu', role: 'Zug-Spitze 5m', xPercent: 50, yPercent: 12, number: '9' }
         ],
         createdAt: new Date().toISOString()
@@ -1687,18 +1687,18 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
         type: 'ecke_offensiv',
         executor: 'I. Valchuk / B. Dischinger',
         keyPlayers: 'Akuegwu, Ehret, Valchuk',
-        description: 'Scharfe, flache, geschneidert geschossene Hereingabe an den kurzen Pfosten. Akuegwu chipt den Ball mit der Hacke Ã¼ber den Torwart.',
+        description: 'Scharfe, flache, geschneidert geschossene Hereingabe an den kurzen Pfosten. Akuegwu chipt den Ball mit der Hacke über den Torwart.',
         successRate: 84,
-        aiTacticNotes: 'Ãœberraschungseffekt in der Anfangsphase. Erfordert exaktes Timing zwischen SchÃ¼tze und Akuegwu.',
+        aiTacticNotes: 'Überraschungseffekt in der Anfangsphase. Erfordert exaktes Timing zwischen Schütze und Akuegwu.',
         positions: [
           { id: '1', name: 'L. Schneider', number: '1', role: 'Absicherung', xPercent: 50, yPercent: 85 },
           { id: '2', name: 'J. Tiedemann', role: 'Konterabsicherung', xPercent: 30, yPercent: 65, number: '2' },
           { id: '3', name: 'M. Paolillo', role: 'Zentrum Bindung', xPercent: 45, yPercent: 15, number: '4' },
           { id: '4', name: 'S. Klett', role: '2. Pfosten Lauer', xPercent: 65, yPercent: 10, number: '5' },
-          { id: '5', name: 'F. Ritzenthaler', role: 'RÃ¼ckraum', xPercent: 50, yPercent: 35, number: '3' },
+          { id: '5', name: 'F. Ritzenthaler', role: 'Rückraum', xPercent: 50, yPercent: 35, number: '3' },
           { id: '6', name: 'Y. Kalchschmidt', role: 'Rebound', xPercent: 42, yPercent: 28, number: '6' },
           { id: '7', name: 'A. Boutagrat', role: 'Sicherung', xPercent: 20, yPercent: 20, number: '8' },
-          { id: '8', name: 'I. Valchuk', role: 'Scharfer AusfÃ¼hrer', xPercent: 5, yPercent: 2, number: '7' },
+          { id: '8', name: 'I. Valchuk', role: 'Scharfer Ausführer', xPercent: 5, yPercent: 2, number: '7' },
           { id: '9', name: 'B. Dischinger', role: 'Kurze Anspielstation', xPercent: 15, yPercent: 8, number: '10' },
           { id: '10', name: 'J. Ehret', role: 'Keeper Block', xPercent: 45, yPercent: 6, number: '11' },
           { id: '11', name: 'J. Akuegwu', role: 'Hacken-Chipper 1. Pfosten', xPercent: 38, yPercent: 8, number: '9' }
@@ -1707,21 +1707,21 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
       },
       {
         id: 'std_2',
-        name: 'Halbfeld-FreistoÃŸ: Chipper & 2. Ball',
+        name: 'Halbfeld-Freistoß: Chipper & 2. Ball',
         type: 'freistoss_halbfeld',
         executor: 'Y. Kalchschmidt',
         keyPlayers: 'Tiedemann, Boutagrat, Klett',
-        description: 'Flanke auf den 2. Pfosten auf Tiedemann, welcher den Ball quer in den RÃ¼ckraum legt fÃ¼r den aufrÃ¼ckenden Boutagrat.',
+        description: 'Flanke auf den 2. Pfosten auf Tiedemann, welcher den Ball quer in den Rückraum legt für den aufrückenden Boutagrat.',
         successRate: 78,
         aiTacticNotes: 'Erzeugt Verwirrung in der gegnerischen Raumdeckung. Wichtig: Dischinger blockt den zentralen IV.',
         positions: [
           { id: '1', name: 'L. Schneider', number: '1', role: 'Absicherung', xPercent: 50, yPercent: 85 },
           { id: '2', name: 'J. Tiedemann', role: 'Zielspieler 2. Pfosten', xPercent: 75, yPercent: 12, number: '2' },
-          { id: '3', name: 'M. Paolillo', role: 'EinlÃ¤ufer Zentrum', xPercent: 50, yPercent: 15, number: '4' },
+          { id: '3', name: 'M. Paolillo', role: 'Einläufer Zentrum', xPercent: 50, yPercent: 15, number: '4' },
           { id: '4', name: 'S. Klett', role: 'Sperre gegnerischer IV', xPercent: 45, yPercent: 18, number: '5' },
           { id: '5', name: 'F. Ritzenthaler', role: 'Konterabsicherung LV', xPercent: 80, yPercent: 55, number: '3' },
-          { id: '6', name: 'Y. Kalchschmidt', role: 'FreistoÃŸ-AusfÃ¼hrer', xPercent: 30, yPercent: 40, number: '6' },
-          { id: '7', name: 'A. Boutagrat', role: 'SchÃ¼tze 2. Ball', xPercent: 50, yPercent: 25, number: '8' },
+          { id: '6', name: 'Y. Kalchschmidt', role: 'Freistoß-Ausführer', xPercent: 30, yPercent: 40, number: '6' },
+          { id: '7', name: 'A. Boutagrat', role: 'Schütze 2. Ball', xPercent: 50, yPercent: 25, number: '8' },
           { id: '8', name: 'I. Valchuk', role: 'Ablenkung rechts', xPercent: 20, yPercent: 20, number: '7' },
           { id: '9', name: 'B. Dischinger', role: 'Mauer-Sichtschutz', xPercent: 35, yPercent: 30, number: '10' },
           { id: '10', name: 'J. Ehret', role: 'Lauflinie links', xPercent: 85, yPercent: 16, number: '11' },
@@ -1735,7 +1735,7 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
         type: 'einwurf_weit',
         executor: 'F. Ritzenthaler / J. Tiedemann',
         keyPlayers: 'Ritzenthaler, Akuegwu, Ehret',
-        description: 'Ritzenthaler wirft mit voller Wucht weit an die 16er-Kante, Akuegwu verlÃ¤ngert per Kopf in den Lauf von Ehret.',
+        description: 'Ritzenthaler wirft mit voller Wucht weit an die 16er-Kante, Akuegwu verlängert per Kopf in den Lauf von Ehret.',
         successRate: 72,
         aiTacticNotes: 'Wirkt wie ein Eckball aus dem Halbfeld. Kalchschmidt muss den 2. Ball am 16er-Bogen sichern.',
         positions: [
@@ -1744,12 +1744,12 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
           { id: '3', name: 'M. Paolillo', role: 'Kopfball-Absicherung', xPercent: 45, yPercent: 45, number: '4' },
           { id: '4', name: 'S. Klett', role: 'Zentrum Rebound', xPercent: 55, yPercent: 35, number: '5' },
           { id: '5', name: 'F. Ritzenthaler', role: 'Einwerfer (Seitenlinie)', xPercent: 98, yPercent: 25, number: '3' },
-          { id: '6', name: 'Y. Kalchschmidt', role: 'RÃ¼ckraum 16er-Bogen', xPercent: 60, yPercent: 30, number: '6' },
+          { id: '6', name: 'Y. Kalchschmidt', role: 'Rückraum 16er-Bogen', xPercent: 60, yPercent: 30, number: '6' },
           { id: '7', name: 'A. Boutagrat', role: 'Entgegenkommen Finte', xPercent: 85, yPercent: 28, number: '8' },
-          { id: '8', name: 'I. Valchuk', role: 'AbfÃ¤lschen 2. Pfosten', xPercent: 30, yPercent: 12, number: '7' },
+          { id: '8', name: 'I. Valchuk', role: 'Abfälschen 2. Pfosten', xPercent: 30, yPercent: 12, number: '7' },
           { id: '9', name: 'B. Dischinger', role: 'Verwirrung 5m', xPercent: 50, yPercent: 15, number: '10' },
           { id: '10', name: 'J. Ehret', role: 'Abschlusspieler 2. Pfosten', xPercent: 40, yPercent: 11, number: '11' },
-          { id: '11', name: 'J. Akuegwu', role: 'VerlÃ¤ngerer 1. Pfosten', xPercent: 70, yPercent: 18, number: '9' }
+          { id: '11', name: 'J. Akuegwu', role: 'Verlängerer 1. Pfosten', xPercent: 70, yPercent: 18, number: '9' }
         ],
         createdAt: new Date().toISOString()
       }
@@ -1868,41 +1868,41 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
         const response = await ai.models.generateContent({
           model: 'gemini-3.6-flash',
           contents: `Du bist der Chef-Taktiker des Verbandsligisten ${activeClub.name}.
-Analysiere und optimiere folgende Standard-Situation (Ecke / FreistoÃŸ / Einwurf):
+Analysiere und optimiere folgende Standard-Situation (Ecke / Freistoß / Einwurf):
 Name: ${standard.name}
 Typ: ${standard.type}
-AusfÃ¼hrer: ${standard.executor}
-SchlÃ¼sselspieler: ${standard.keyPlayers}
+Ausführer: ${standard.executor}
+Schlüsselspieler: ${standard.keyPlayers}
 Beschreibung: ${standard.description}
 
 Gib mir in 3 kurzen, klaren Bullet Points:
 1. Taktische Optimierung (Laufwege, Sperren, Ablenkung)
 2. Absicherung gegen gegnerische Konter
-3. Erfolgsquote & Empfehlungen fÃ¼r den Trainer.`
+3. Erfolgsquote & Empfehlungen für den Trainer.`
         });
 
         const text = response.text;
         if (text) {
           setStandardsList(prev => prev.map(s => s.id === standard.id ? { ...s, aiTacticNotes: text, successRate: Math.min(98, s.successRate + 5) } : s));
-          setNotification(`Taktik-Analyse fÃ¼r "${standard.name}" erfolgreich generiert!`);
+          setNotification(`Taktik-Analyse für "${standard.name}" erfolgreich generiert!`);
           setTimeout(() => setNotification(null), 3500);
         }
       } else {
         const text = `Taktische Optimierung (${activeClub.name} Taktik-Engine):
-â€¢ Laufweg-Anpassung: ${standard.executor} setzt eine 0.5s Finte vor dem Anlauf. EinlÃ¤ufer ${standard.keyPlayers} binden die gegnerischen Innenverteidiger am 1. Pfosten.
-â€¢ Konterabsicherung: Kalchschmidt + Ritzenthaler bleiben strikt hinter dem 16er-Bogen (rest-defense).
-â€¢ Erwartete Tor-Chance (xG): High Impact (+12% Effizienz).`;
+• Laufweg-Anpassung: ${standard.executor} setzt eine 0.5s Finte vor dem Anlauf. Einläufer ${standard.keyPlayers} binden die gegnerischen Innenverteidiger am 1. Pfosten.
+• Konterabsicherung: Kalchschmidt + Ritzenthaler bleiben strikt hinter dem 16er-Bogen (rest-defense).
+• Erwartete Tor-Chance (xG): High Impact (+12% Effizienz).`;
         setStandardsList(prev => prev.map(s => s.id === standard.id ? { ...s, aiTacticNotes: text, successRate: Math.min(95, s.successRate + 4) } : s));
-        setNotification(`Taktik-Analyse fÃ¼r "${standard.name}" aktualisiert!`);
+        setNotification(`Taktik-Analyse für "${standard.name}" aktualisiert!`);
         setTimeout(() => setNotification(null), 3500);
       }
     } catch (err: any) {
       console.warn("Standard analysis fallback:", err);
       const text = `Taktik-Empfehlung ${activeClub.name}:
-â€¢ Raumdeckung des Gegners durch gezieltes Anlaufen des 1. Pfostens aufbrechen.
-â€¢ Zweiter Ball im RÃ¼ckraum durch Kalchschmidt/Boutagrat direkt aufs Tor abschlieÃŸen.`;
+• Raumdeckung des Gegners durch gezieltes Anlaufen des 1. Pfostens aufbrechen.
+• Zweiter Ball im Rückraum durch Kalchschmidt/Boutagrat direkt aufs Tor abschließen.`;
       setStandardsList(prev => prev.map(s => s.id === standard.id ? { ...s, aiTacticNotes: text } : s));
-      setNotification(`Taktik-Empfehlung fÃ¼r "${standard.name}" aktualisiert.`);
+      setNotification(`Taktik-Empfehlung für "${standard.name}" aktualisiert.`);
       setTimeout(() => setNotification(null), 3500);
     } finally {
       setIsAiAnalyzingStandard(false);
@@ -1993,7 +1993,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
     setStandardsList(prev => prev.map(s => s.id === editingStandard.id ? { ...s, positions: editingPositions } : s));
     setShowEditPositionsModal(false);
     setEditingStandard(null);
-    setNotification("Spieler-Positionen fÃ¼r Standard erfolgreich aktualisiert!");
+    setNotification("Spieler-Positionen für Standard erfolgreich aktualisiert!");
     setTimeout(() => setNotification(null), 3000);
   };
 
@@ -2008,7 +2008,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
 
   const handleDeleteStandard = (id: string) => {
     setStandardsList(prev => prev.filter(s => s.id !== id));
-    setNotification("Standard-Variante gelÃ¶scht.");
+    setNotification("Standard-Variante gelöscht.");
     setTimeout(() => setNotification(null), 3000);
   };
 
@@ -2054,11 +2054,11 @@ Gib mir in 3 kurzen, klaren Bullet Points:
       const text = a.standardsOwn || '';
       const types: string[] = [];
       if (/ecke|corner/i.test(text)) types.push('Ecke');
-      if (/freistoÃŸ|freistoss/i.test(text)) types.push('FreistoÃŸ');
+      if (/freistoß|freistoss/i.test(text)) types.push('Freistoß');
       if (/elfmeter|penalty/i.test(text)) types.push('Elfmeter');
       if (/einwurf/i.test(text)) types.push('Einwurf');
-      if (/abstoÃŸ|abstoss/i.test(text)) types.push('AbstoÃŸ');
-      const playerNames = (text.match(/\b(Joni|Jonathan|Juli|Julian|Bao|Nguyen|Scalli|Giuliano|Steffen|Reinecker|Timm|Podlich|Said|SouleymanÃ©|Yanik|Roth|Matti|Roth|Jesse|Agbozo|Max|Disch|Jakob|Fangmeier|Lenny|Reichert|David|Valchuk|Tim|Tiedemann|Tschira|Daniels|Ontuzans|Lucie|Misic|Fabian|Rufer|Dada)\b/gi) || []);
+      if (/abstoß|abstoss/i.test(text)) types.push('Abstoß');
+      const playerNames = (text.match(/\b(Joni|Jonathan|Juli|Julian|Bao|Nguyen|Scalli|Giuliano|Steffen|Reinecker|Timm|Podlich|Said|Souleymané|Yanik|Roth|Matti|Roth|Jesse|Agbozo|Max|Disch|Jakob|Fangmeier|Lenny|Reichert|David|Valchuk|Tim|Tiedemann|Tschira|Daniels|Ontuzans|Lucie|Misic|Fabian|Rufer|Dada)\b/gi) || []);
       const images: string[] = [];
       if (a.standardsOwnImages && Array.isArray(a.standardsOwnImages)) {
         images.push(...a.standardsOwnImages);
@@ -2124,8 +2124,8 @@ Gib mir in 3 kurzen, klaren Bullet Points:
       if (saved) return JSON.parse(saved);
     } catch (e) {}
     return [
-      { id: '1', title: 'Matchplan-ErfÃ¼llung', value: '92%', description: 'Hohes Pressing & FlÃ¼gelÃ¼berladung exzellent umgesetzt' },
-      { id: '2', title: 'Erfolgreiche Standards', value: '4 Tore', description: 'GefÃ¤hrliche Ecken an den 1. Pfosten' },
+      { id: '1', title: 'Matchplan-Erfüllung', value: '92%', description: 'Hohes Pressing & Flügelüberladung exzellent umgesetzt' },
+      { id: '2', title: 'Erfolgreiche Standards', value: '4 Tore', description: 'Gefährliche Ecken an den 1. Pfosten' },
       { id: '3', title: 'Spieler des Spiels', value: '-', description: 'Wird nach dem Spiel vergeben' },
       { id: '4', title: 'System-Effizienz', value: '9.1 / 10', description: '4-2-3-1 Formation funktionierte reibungslos' }
     ];
@@ -2165,7 +2165,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
         description: editingAuditCard.description
       };
       setAuditCards(prev => [...prev, newCard]);
-      setNotification("Neuer Audit-Punkt erfolgreich hinzugefÃ¼gt!");
+      setNotification("Neuer Audit-Punkt erfolgreich hinzugefügt!");
     }
 
     setShowAuditModal(false);
@@ -2175,7 +2175,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
 
   const handleDeleteAuditCard = (id: string) => {
     setAuditCards(prev => prev.filter(c => c.id !== id));
-    setNotification("Audit-Punkt gelÃ¶scht.");
+    setNotification("Audit-Punkt gelöscht.");
     setTimeout(() => setNotification(null), 3000);
   };
 
@@ -2307,7 +2307,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
       setCustomRuns(prev => [...prev, newRun]);
       notify(`Laufweg mit ${multiRunPoints.length} Punkten erstellt`);
     } else {
-      notify('Mindestens 2 Punkte benÃ¶tigt');
+      notify('Mindestens 2 Punkte benötigt');
     }
     setMultiRunMode(false);
     setMultiRunPlayerId(null);
@@ -2341,7 +2341,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
       animProgressRef.current = 0;
       setAnimProgress(0);
     }
-    // Falls keine Gegner/Pfade/Laufwege/Stafette sichtbar â†’ nichts tun
+    // Falls keine Gegner/Pfade/Laufwege/Stafette sichtbar → nichts tun
     if (!showOpponents && drawnPaths.length === 0 && customRuns.length === 0 && passStations.length < 2 && !isAnimating) return;
     const baseDuration = 2500;
     const duration = Math.max(400, baseDuration / animSpeed);
@@ -2498,7 +2498,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
 
   const MARKER_COLORS = [
     { color: '#FACC15', name: 'Gelb' },
-    { color: '#22C55E', name: 'GrÃ¼n' },
+    { color: '#22C55E', name: 'Grün' },
     { color: '#EF4444', name: 'Rot' },
     { color: '#3B82F6', name: 'Blau' },
     { color: '#F97316', name: 'Orange' },
@@ -2694,7 +2694,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
   const selectedNode = selectedNodeId ? (currentNodePositions.find(n => n.id === selectedNodeId) || null) : null;
   const contextMenuPlayerNode = currentNodePositions.find(n => n.id === contextMenuPlayerId);
 
-  // â•â•â• STUFE 3: Spielaufbau-Varianten (vordefinierte Laufwege nach Position setzen) â•â•â•
+  // ═══ STUFE 3: Spielaufbau-Varianten (vordefinierte Laufwege nach Position setzen) ═══
   const applyBuildUpVariant = useCallback((variant: 'sechser' | 'achter' | 'langerBall' | 'strafraum') => {
     const pos = currentNodePositions;
     const by = (px: string) => pos.find(n => n.position === px);
@@ -2791,32 +2791,32 @@ Gib mir in 3 kurzen, klaren Bullet Points:
           {/* Grass Stripes */}
           <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(16,185,129,0.06)_50%,transparent_50%)] bg-[length:100%_40px]" />
           
-          {/* Center Line & Circle â€” vertical pitch (goals top/bottom) */}
+          {/* Center Line & Circle — vertical pitch (goals top/bottom) */}
           <div className="absolute left-0 right-0 top-1/2 h-0.5 bg-emerald-400/30" />
           <div className="absolute top-1/2 left-1/2 w-24 h-24 rounded-full border-2 border-emerald-400/30 -translate-x-1/2 -translate-y-1/2" />
           <div className="absolute top-1/2 left-1/2 w-2 h-2 bg-emerald-400/40 rounded-full -translate-x-1/2 -translate-y-1/2" />
 
-          {/* Penalty Boxes â€” vertical */}
+          {/* Penalty Boxes — vertical */}
           <div className="absolute top-0 left-1/4 right-1/4 h-16 border-b-2 border-l-2 border-r-2 border-emerald-400/30" />
           <div className="absolute bottom-0 left-1/4 right-1/4 h-16 border-t-2 border-l-2 border-r-2 border-emerald-400/30" />
           
-          {/* Goal Boxes â€” vertical */}
+          {/* Goal Boxes — vertical */}
           <div className="absolute top-0 left-1/3 right-1/3 h-6 border-b-2 border-l-2 border-r-2 border-emerald-400/30" />
           <div className="absolute bottom-0 left-1/3 right-1/3 h-6 border-t-2 border-l-2 border-r-2 border-emerald-400/30" />
 
-          {/* Corner Arcs â€” vertical */}
+          {/* Corner Arcs — vertical */}
           <div className="absolute top-0 left-0 w-4 h-4 border-b-2 border-r-2 border-emerald-400/30 rounded-br-full" />
           <div className="absolute top-0 right-0 w-4 h-4 border-b-2 border-l-2 border-emerald-400/30 rounded-bl-full" />
           <div className="absolute bottom-0 left-0 w-4 h-4 border-t-2 border-r-2 border-emerald-400/30 rounded-tr-full" />
           <div className="absolute bottom-0 right-0 w-4 h-4 border-t-2 border-l-2 border-emerald-400/30 rounded-tl-full" />
 
-          {/* Zonen Overlay â€” horizontal lanes for vertical pitch */}
+          {/* Zonen Overlay — horizontal lanes for vertical pitch */}
           <div className="absolute inset-0 grid grid-rows-5 opacity-20 pointer-events-none">
-            <div className="border-b border-dashed border-emerald-400/40 bg-emerald-500/5 flex items-start justify-center pt-1"><span className="text-[7px] font-mono text-emerald-300">FlÃ¼gel L</span></div>
+            <div className="border-b border-dashed border-emerald-400/40 bg-emerald-500/5 flex items-start justify-center pt-1"><span className="text-[7px] font-mono text-emerald-300">Flügel L</span></div>
             <div className="border-b border-dashed border-emerald-400/40 bg-amber-500/10 flex items-start justify-center pt-1"><span className="text-[7px] font-mono text-amber-300">1. Halbraum</span></div>
             <div className="border-b border-dashed border-emerald-400/40 bg-emerald-500/5 flex items-start justify-center pt-1"><span className="text-[7px] font-mono text-emerald-300">Zentrum</span></div>
             <div className="border-b border-dashed border-emerald-400/40 bg-amber-500/10 flex items-start justify-center pt-1"><span className="text-[7px] font-mono text-amber-300">2. Halbraum</span></div>
-            <div className="flex items-start justify-center pt-1"><span className="text-[7px] font-mono text-emerald-300">FlÃ¼gel R</span></div>
+            <div className="flex items-start justify-center pt-1"><span className="text-[7px] font-mono text-emerald-300">Flügel R</span></div>
           </div>
         </div>
 
@@ -2845,7 +2845,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                           [next[idx1], next[idx2]] = [next[idx2], next[idx1]];
                           return next;
                         });
-                        notify(`${swapFirstPlayer} â†” ${n.name} getauscht`);
+                        notify(`${swapFirstPlayer} ↔ ${n.name} getauscht`);
                       }
                       setSwapFirstPlayer(null);
                     }
@@ -2870,7 +2870,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
               </div>
             ))}
 
-            {/* OPPONENT NODES (RED) â€” vertical pitch */}
+            {/* OPPONENT NODES (RED) — vertical pitch */}
             {[
               { id: 'op1', num: '1', pos: 'TW', name: 'Torwart', x: 50, y: 8 },
               { id: 'op2', num: '2', pos: 'RV', name: 'Rechtsverteidiger', x: 18, y: 22 },
@@ -2881,7 +2881,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
               { id: 'op7', num: '8', pos: 'ZM', name: 'Achter', x: 32, y: 38 },
               { id: 'op8', num: '10', pos: 'OM', name: 'Zehner', x: 68, y: 38 },
               { id: 'op9', num: '7', pos: 'RA', name: 'Rechtsaussen', x: 20, y: 48 },
-              { id: 'op10', num: '9', pos: 'ST', name: 'StÃ¼rmer', x: 50, y: 50 },
+              { id: 'op10', num: '9', pos: 'ST', name: 'Stürmer', x: 50, y: 50 },
               { id: 'op11', num: '11', pos: 'LA', name: 'Linksaussen', x: 80, y: 48 },
             ].map((op) => (
               <div
@@ -2901,10 +2901,10 @@ Gib mir in 3 kurzen, klaren Bullet Points:
               </div>
             ))}
 
-            {/* BATTLEGROUND OVERLAY â€” centered zone for vertical pitch */}
+            {/* BATTLEGROUND OVERLAY — centered zone for vertical pitch */}
             <div className="absolute left-1/4 right-1/4 top-[35%] bottom-[35%] bg-amber-400/20 border-2 border-dashed border-amber-400 rounded-2xl flex items-center justify-center pointer-events-none animate-pulse">
               <span className="bg-slate-950/90 text-amber-400 font-black text-[9px] uppercase px-2 py-0.5 rounded border border-amber-400/50 shadow">
-                âš”ï¸ Haupt-Duellzone 1. Halbraum
+                ⚔️ Haupt-Duellzone 1. Halbraum
               </span>
             </div>
           </div>
@@ -2933,7 +2933,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                           [next[idx1], next[idx2]] = [next[idx2], next[idx1]];
                           return next;
                         });
-                        notify(`${swapFirstPlayer} â†” ${n.name} getauscht`);
+                        notify(`${swapFirstPlayer} ↔ ${n.name} getauscht`);
                       }
                       setSwapFirstPlayer(null);
                     }
@@ -2991,7 +2991,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                           [next[idx1], next[idx2]] = [next[idx2], next[idx1]];
                           return next;
                         });
-                        notify(`${swapFirstPlayer} â†” ${n.name} getauscht`);
+                        notify(`${swapFirstPlayer} ↔ ${n.name} getauscht`);
                       }
                       setSwapFirstPlayer(null);
                     }
@@ -3032,7 +3032,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
               }`}
             >
               <span className="absolute top-2 left-2 bg-rose-500 text-white font-black text-[8px] uppercase px-1.5 py-0.5 rounded shadow">
-                ðŸ›¡ï¸ PRESSING-ZONE ({tacticalPhaseConfig.defensiv.pressinghoehe.toUpperCase()})
+                🛡️ PRESSING-ZONE ({tacticalPhaseConfig.defensiv.pressinghoehe.toUpperCase()})
               </span>
             </div>
 
@@ -3058,7 +3058,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                             [next[idx1], next[idx2]] = [next[idx2], next[idx1]];
                             return next;
                           });
-                          notify(`${swapFirstPlayer} â†” ${n.name} getauscht`);
+                          notify(`${swapFirstPlayer} ↔ ${n.name} getauscht`);
                         }
                         setSwapFirstPlayer(null);
                       }
@@ -3116,7 +3116,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                           [next[idx1], next[idx2]] = [next[idx2], next[idx1]];
                           return next;
                         });
-                        notify(`${swapFirstPlayer} â†” ${n.name} getauscht`);
+                        notify(`${swapFirstPlayer} ↔ ${n.name} getauscht`);
                       }
                       setSwapFirstPlayer(null);
                     }
@@ -3149,7 +3149,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
             {/* LOSS ZONE HOTSPOT */}
             <div className="absolute top-[35%] left-[55%] -translate-x-1/2 -translate-y-1/2 w-14 h-14 rounded-full bg-amber-500/30 border-2 border-dashed border-amber-400 flex items-center justify-center animate-ping pointer-events-none" />
             <div className="absolute top-[35%] left-[55%] -translate-x-1/2 -translate-y-1/2 z-20 bg-amber-400 text-slate-950 font-black text-[8px] uppercase px-1.5 py-0.5 rounded shadow flex items-center gap-1">
-              âš¡ Ballverlust (5s)
+              ⚡ Ballverlust (5s)
             </div>
 
             {/* SWARM VECTORS TO LOSS ZONE */}
@@ -3180,7 +3180,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                           [next[idx1], next[idx2]] = [next[idx2], next[idx1]];
                           return next;
                         });
-                        notify(`${swapFirstPlayer} â†” ${n.name} getauscht`);
+                        notify(`${swapFirstPlayer} ↔ ${n.name} getauscht`);
                       }
                       setSwapFirstPlayer(null);
                     }
@@ -3212,7 +3212,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
           <div className="absolute inset-0 p-4">
             {/* CORNER SPOT & CURVE ARC */}
             <div className="absolute bottom-2 right-2 w-4 h-4 bg-amber-400 rounded-full border-2 border-white z-20 animate-bounce flex items-center justify-center text-[7px] font-black text-slate-950">
-              âš½
+              ⚽
             </div>
             
             <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
@@ -3246,7 +3246,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                             [next[idx1], next[idx2]] = [next[idx2], next[idx1]];
                             return next;
                           });
-                          notify(`${swapFirstPlayer} â†” ${n.name} getauscht`);
+                          notify(`${swapFirstPlayer} ↔ ${n.name} getauscht`);
                         }
                         setSwapFirstPlayer(null);
                       }
@@ -3305,11 +3305,11 @@ Gib mir in 3 kurzen, klaren Bullet Points:
           <div className="absolute inset-0 p-4">
             {/* MATCH EVENTS ON PITCH */}
             {[
-              { id: 'g1', type: 'âš½ TOR', minute: "24'", player: 'Akuegwu (ST)', x: 88, y: 48, bg: 'bg-emerald-500 text-slate-950' },
-              { id: 'g2', type: 'âš½ TOR', minute: "58'", player: 'Dischinger (OM)', x: 82, y: 35, bg: 'bg-emerald-500 text-slate-950' },
-              { id: 'g3', type: 'âš½ TOR', minute: "79'", player: 'Ehret (LA)', x: 85, y: 65, bg: 'bg-emerald-500 text-slate-950' },
-              { id: 'c1', type: 'ðŸŸ¨ GELB', minute: "34'", player: 'Kalchschmidt (ZM)', x: 42, y: 50, bg: 'bg-amber-400 text-slate-950' },
-              { id: 's1', type: 'ðŸ”¥ xG Hotspot', minute: '1.28 xG', player: 'Zentrum 16m', x: 75, y: 50, bg: 'bg-sky-400 text-slate-950' },
+              { id: 'g1', type: '⚽ TOR', minute: "24'", player: 'Akuegwu (ST)', x: 88, y: 48, bg: 'bg-emerald-500 text-slate-950' },
+              { id: 'g2', type: '⚽ TOR', minute: "58'", player: 'Dischinger (OM)', x: 82, y: 35, bg: 'bg-emerald-500 text-slate-950' },
+              { id: 'g3', type: '⚽ TOR', minute: "79'", player: 'Ehret (LA)', x: 85, y: 65, bg: 'bg-emerald-500 text-slate-950' },
+              { id: 'c1', type: '🟨 GELB', minute: "34'", player: 'Kalchschmidt (ZM)', x: 42, y: 50, bg: 'bg-amber-400 text-slate-950' },
+              { id: 's1', type: '🔥 xG Hotspot', minute: '1.28 xG', player: 'Zentrum 16m', x: 75, y: 50, bg: 'bg-sky-400 text-slate-950' },
             ].map((ev) => (
               <div
                 key={ev.id}
@@ -3327,7 +3327,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
           </div>
         )}
 
-        {/* MARKERS â€” always visible on all slides */}
+        {/* MARKERS — always visible on all slides */}
         {markers.map((m) => (
           <div
             key={m.id}
@@ -3508,7 +3508,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
       setDraggingMarkerId(null);
       return;
     }
-    // Freihand-Pfad abschlieÃŸen
+    // Freihand-Pfad abschließen
     if (freeDrawMode && isDrawingFreehand && currentDrawPoints.length > 2) {
       const newId = `drawn-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
       setDrawnPaths(prev => [...prev, { id: newId, points: currentDrawPoints, color: drawColor }]);
@@ -3691,7 +3691,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
     setCustomRuns(updatedRuns);
     syncActiveCustomFormationToFirestore({ runs: updatedRuns });
     setRunTargetModePlayerId(null);
-    notify(`Laufweg fÃ¼r ${pNode.name} hinzugefÃ¼gt!`);
+    notify(`Laufweg für ${pNode.name} hinzugefügt!`);
   };
 
   return (
@@ -3726,7 +3726,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
               <div className="flex items-center gap-1.5 flex-wrap">
                 <div className="bg-amber-400 text-slate-950 px-2 py-1 rounded-md font-black text-[11px] uppercase tracking-wider flex items-center gap-1 shadow">
                   <Tv size={13} />
-                  <span>ðŸ–¥ï¸ TAKTIKFELD VOLLBILD</span>
+                  <span>🖥️ TAKTIKFELD VOLLBILD</span>
                 </div>
 
                 {/* 4-Systeme Tasten */}
@@ -3781,7 +3781,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                     <optgroup label="Eigene Trainer-Systeme">
                       {customFormationsList.map((cf) => (
                         <option key={cf.id} value={cf.id}>
-                          â­ {cf.name}
+                          ⭐ {cf.name}
                         </option>
                       ))}
                     </optgroup>
@@ -3799,7 +3799,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                       : 'bg-slate-900 text-slate-300 border-slate-800 hover:text-white'
                   }`}
                 >
-                  <span>ðŸ”µ</span>
+                  <span>🔵</span>
                   <span>Offensiv</span>
                 </button>
                 <button
@@ -3810,7 +3810,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                       : 'bg-slate-900 text-slate-300 border-slate-800 hover:text-white'
                   }`}
                 >
-                  <span>ðŸ›¡ï¸</span>
+                  <span>🛡️</span>
                   <span>Defensiv</span>
                 </button>
                 <button
@@ -3821,7 +3821,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                       : 'bg-slate-900 text-slate-300 border-slate-800 hover:text-white'
                   }`}
                 >
-                  <span>âš¡</span>
+                  <span>⚡</span>
                   <span>Umschalten Off.</span>
                 </button>
                 <button
@@ -3832,7 +3832,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                       : 'bg-slate-900 text-slate-300 border-slate-800 hover:text-white'
                   }`}
                 >
-                  <span>ðŸ”„</span>
+                  <span>🔄</span>
                   <span>Umschalten Def.</span>
                 </button>
               </div>
@@ -3864,7 +3864,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                     showZonesGrid ? 'bg-sky-950 text-sky-300 border-sky-500' : 'bg-slate-900 text-slate-400 border-slate-800'
                   }`}
                 >
-                  ðŸ“ Grid
+                  📐 Grid
                 </button>
 
                 <button
@@ -3873,7 +3873,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                     showHeatmaps ? 'bg-amber-950 text-amber-300 border-amber-500' : 'bg-slate-900 text-slate-400 border-slate-800'
                   }`}
                 >
-                  ðŸ”¥ Heatmap
+                  🔥 Heatmap
                 </button>
 
                 <button
@@ -3882,7 +3882,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                     ballMode && ballCount === 11 ? 'bg-orange-500 text-white border-orange-400' : 'bg-slate-900 text-slate-400 border-slate-800'
                   }`}
                 >
-                  âš½ 11 BÃ¤lle
+                  ⚽ 11 Bälle
                 </button>
 
                 <button
@@ -3891,7 +3891,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                     ballMode && ballCount === 6 ? 'bg-orange-500 text-white border-orange-400' : 'bg-slate-900 text-slate-400 border-slate-800'
                   }`}
                 >
-                  ðŸ”¥ 6 BÃ¤lle
+                  🔥 6 Bälle
                 </button>
 
                 <button
@@ -3900,7 +3900,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                     ballMode && ballCount === 3 ? 'bg-orange-500 text-white border-orange-400' : 'bg-slate-900 text-slate-400 border-slate-800'
                   }`}
                 >
-                  ðŸ‘‘ 3 BÃ¤lle
+                  👑 3 Bälle
                 </button>
 
                 <button
@@ -3909,7 +3909,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                     showOpponents ? 'bg-blue-600 text-white border-blue-400' : 'bg-slate-900 text-slate-400 border-slate-800'
                   }`}
                 >
-                  ðŸ”´ Gegner
+                  🔴 Gegner
                 </button>
 
                 <button
@@ -3918,17 +3918,17 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                     freeDrawMode ? 'bg-green-600 text-white border-green-400' : 'bg-slate-900 text-slate-400 border-slate-800'
                   }`}
                 >
-                  âœï¸ Freihand
+                  ✏️ Freihand
                 </button>
 
-                {/* Stufe 2: Stift-Farbkodierung (Blau=Offensiv, Rot=Defensiv, Gelb=Umschalten, GrÃ¼n=Sprint) */}
+                {/* Stufe 2: Stift-Farbkodierung (Blau=Offensiv, Rot=Defensiv, Gelb=Umschalten, Grün=Sprint) */}
                 {freeDrawMode && (
                   <div className="flex items-center gap-0.5 bg-slate-900 border border-slate-700 rounded-md px-1 py-0.5" title="Zeichen-Farbe (Farblegende)">
                     {[
                       { c: '#3B82F6', l: 'Blau Offensiv' },
                       { c: '#EF4444', l: 'Rot Defensiv' },
                       { c: '#F59E0B', l: 'Gelb Umschalten' },
-                      { c: '#22C55E', l: 'GrÃ¼n Sprint' },
+                      { c: '#22C55E', l: 'Grün Sprint' },
                     ].map(f => (
                       <button
                         key={f.c}
@@ -3943,11 +3943,11 @@ Gib mir in 3 kurzen, klaren Bullet Points:
 
                 {/* STUFE 3: Spielaufbau-Varianten */}
                 <div className="flex items-center gap-0.5 bg-slate-900 border border-slate-700 rounded-md px-1 py-0.5" title="Spielaufbau-Variante laden (setzt Laufwege)">
-                  <span className="text-[8.5px] font-black uppercase text-slate-400 mr-0.5">âš½ Aufbau</span>
-                  <button onClick={() => applyBuildUpVariant('sechser')} className="px-1.5 py-0.5 text-[9px] font-black rounded hover:bg-sky-500/30 transition-all text-slate-300" title="Aufbau Ã¼ber den 6er">6er</button>
-                  <button onClick={() => applyBuildUpVariant('achter')} className="px-1.5 py-0.5 text-[9px] font-black rounded hover:bg-sky-500/30 transition-all text-slate-300" title="Aufbau Ã¼ber den 8er">8er</button>
-                  <button onClick={() => applyBuildUpVariant('langerBall')} className="px-1.5 py-0.5 text-[9px] font-black rounded hover:bg-sky-500/30 transition-all text-slate-300" title="Langer Ball auf den FlÃ¼gel">âš¡ Ball</button>
-                  <button onClick={() => applyBuildUpVariant('strafraum')} className="px-1.5 py-0.5 text-[9px] font-black rounded hover:bg-sky-500/30 transition-all text-slate-300" title="Strafraumbesetzung & Torabschluss">ðŸŽ¯ Box</button>
+                  <span className="text-[8.5px] font-black uppercase text-slate-400 mr-0.5">⚽ Aufbau</span>
+                  <button onClick={() => applyBuildUpVariant('sechser')} className="px-1.5 py-0.5 text-[9px] font-black rounded hover:bg-sky-500/30 transition-all text-slate-300" title="Aufbau über den 6er">6er</button>
+                  <button onClick={() => applyBuildUpVariant('achter')} className="px-1.5 py-0.5 text-[9px] font-black rounded hover:bg-sky-500/30 transition-all text-slate-300" title="Aufbau über den 8er">8er</button>
+                  <button onClick={() => applyBuildUpVariant('langerBall')} className="px-1.5 py-0.5 text-[9px] font-black rounded hover:bg-sky-500/30 transition-all text-slate-300" title="Langer Ball auf den Flügel">⚡ Ball</button>
+                  <button onClick={() => applyBuildUpVariant('strafraum')} className="px-1.5 py-0.5 text-[9px] font-black rounded hover:bg-sky-500/30 transition-all text-slate-300" title="Strafraumbesetzung & Torabschluss">🎯 Box</button>
                   <button
                     onClick={applyDoppelpass}
                     className="bg-purple-500/20 hover:bg-purple-500/40 text-purple-300 font-bold text-[10px] uppercase px-2 py-1.5 rounded-lg border border-purple-500/30 transition-all flex items-center gap-1"
@@ -3963,7 +3963,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                     onClick={togglePassMode}
                     className={`px-1.5 py-0.5 text-[9px] font-black rounded transition-all ${passMode ? 'bg-green-600 text-white border border-green-400 font-black' : 'text-slate-300 hover:text-white border border-transparent'}`}
                   >
-                    ðŸŽ¯ Stafette
+                    🎯 Stafette
                   </button>
                   <select
                     value={passAction}
@@ -3976,7 +3976,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                   <button onClick={() => loadPassTemplate(6)} className="px-1 py-0.5 text-[8.5px] font-black rounded hover:bg-sky-500/30 transition-all text-slate-300" title="6-Stationen-Vorlage laden">6</button>
                   <button onClick={() => loadPassTemplate(9)} className="px-1 py-0.5 text-[8.5px] font-black rounded hover:bg-sky-500/30 transition-all text-slate-300" title="9-Stationen-Vorlage laden (Tiki-Taka)">9</button>
                   {passStations.length > 0 && (
-                    <button onClick={() => { setPassStations([]); setPassBallPos(null); }} className="px-1 py-0.5 text-[8.5px] font-black rounded hover:bg-rose-500/30 transition-all text-rose-300" title="Passstafette leeren">ðŸ§¹ Leeren</button>
+                    <button onClick={() => { setPassStations([]); setPassBallPos(null); }} className="px-1 py-0.5 text-[8.5px] font-black rounded hover:bg-rose-500/30 transition-all text-rose-300" title="Passstafette leeren">🧹 Leeren</button>
                   )}
                 </div>
 
@@ -3989,24 +3989,24 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                       }`}
                       title={isAnimating ? (animPaused ? 'Fortsetzen' : 'Pausieren') : 'Abspielen'}
                     >
-                      {isAnimating ? (animPaused ? 'â–¶ï¸ Weiter' : 'â¸ Pause') : 'â–¶ï¸ Abspielen'}
+                      {isAnimating ? (animPaused ? '▶️ Weiter' : '⏸ Pause') : '▶️ Abspielen'}
                     </button>
                     <button
                       onClick={seqRunning ? stopSequence : startSequence}
                       className={`px-2 py-0.5 text-[9.5px] font-black uppercase tracking-wider rounded-md border transition-all ${
                         seqRunning ? (seqPhase === 'lauf' ? 'bg-sky-500 text-white border-sky-400' : seqPhase === 'pass' ? 'bg-emerald-500 text-white border-emerald-400' : 'bg-violet-500 text-white border-violet-400') : 'bg-slate-800 text-sky-300 border-slate-600 hover:border-sky-400'
                       }`}
-                      title={seqRunning ? `Sequenz lÃ¤uft â€“ Phase: ${seqPhaseLabel}` : 'Sequenz: erst Laufweg, dann Passweg, dann alles'}
+                      title={seqRunning ? `Sequenz läuft – Phase: ${seqPhaseLabel}` : 'Sequenz: erst Laufweg, dann Passweg, dann alles'}
                     >
-                      {seqRunning ? (seqPhase === 'lauf' ? `ðŸš¶ ${seqPhaseLabel}` : seqPhase === 'pass' ? `âš½ ${seqPhaseLabel}` : `ðŸ” ${seqPhaseLabel}`) : 'ðŸ” Sequenz'}
+                      {seqRunning ? (seqPhase === 'lauf' ? `🚶 ${seqPhaseLabel}` : seqPhase === 'pass' ? `⚽ ${seqPhaseLabel}` : `🔁 ${seqPhaseLabel}`) : '🔁 Sequenz'}
                     </button>
                     {isAnimating && (
                       <button
                         onClick={() => { if (animRef.current) cancelAnimationFrame(animRef.current); setIsAnimating(false); setAnimPaused(false); animProgressRef.current = 0; setAnimProgress(0); setAnimatedPlayerPositions({}); setPassBallPos(null); }}
                         className="px-2 py-0.5 text-[9.5px] font-black uppercase tracking-wider rounded-md border bg-red-500 text-white border-red-400 transition-all"
-                        title="Stoppen und zurÃ¼cksetzen"
+                        title="Stoppen und zurücksetzen"
                       >
-                        â¹ Stopp
+                        ⏹ Stopp
                       </button>
                     )}
                     {/* Geschwindigkeit */}
@@ -4024,7 +4024,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                     </div>
                     {/* Zeitleiste / Scrubber */}
                     <div className="flex items-center gap-1 bg-slate-900 border border-slate-700 rounded-md px-1.5 py-0.5 min-w-[120px]">
-                      <span className="text-[8.5px] font-black uppercase text-slate-400">â±</span>
+                      <span className="text-[8.5px] font-black uppercase text-slate-400">⏱</span>
                       <input
                         type="range"
                         min={0}
@@ -4114,7 +4114,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                   ))}
                 </div>
 
-                {/* Pitch Markings â€” vertical (goals top/bottom) */}
+                {/* Pitch Markings — vertical (goals top/bottom) */}
                 <div className="absolute inset-4 border-2 border-emerald-400/40 pointer-events-none rounded-sm">
                   <div className="absolute left-0 right-0 top-1/2 h-0.5 bg-emerald-400/40 -translate-y-1/2" />
                   <div className="absolute top-1/2 left-1/2 w-32 h-32 rounded-full border-2 border-emerald-400/40 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center">
@@ -4128,7 +4128,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                   </div>
                 </div>
 
-                {/* 3 DREITTEL GRID OVERLAY â€” horizontal thirds for vertical pitch */}
+                {/* 3 DREITTEL GRID OVERLAY — horizontal thirds for vertical pitch */}
                 {showZonesGrid && (
                   <div className="absolute inset-4 grid grid-rows-3 pointer-events-none">
                     <div className="border-b-2 border-dashed border-emerald-400/50 flex flex-row items-start justify-between p-2">
@@ -4137,7 +4137,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                     </div>
                     <div className="border-b-2 border-dashed border-amber-400/50 flex flex-row items-center justify-between p-2">
                       <span className="text-[9px] font-mono font-black text-amber-400/80 bg-slate-950/80 px-1.5 py-0.5 rounded uppercase">Mittelfeld-Drittel</span>
-                      <span className="text-[9px] font-mono font-black text-amber-400/50">HalbrÃ¤ume & Zentrum</span>
+                      <span className="text-[9px] font-mono font-black text-amber-400/50">Halbräume & Zentrum</span>
                     </div>
                     <div className="flex flex-row items-end justify-between p-2">
                       <span className="text-[9px] font-mono font-black text-sky-400/80 bg-slate-950/80 px-1.5 py-0.5 rounded uppercase">Defensives Drittel</span>
@@ -4271,7 +4271,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                   })}
                 </svg>
 
-                {/* BALL-MODUS (FULLSCREEN): Draggable BÃ¤lle */}
+                {/* BALL-MODUS (FULLSCREEN): Draggable Bälle */}
                 {ballMode && ballPositions.map((bp) => {
                   const pNode = currentNodePositions.find(n => n.id === bp.playerId);
                   if (!pNode) return null;
@@ -4290,7 +4290,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                       style={{ left: `${bp.x}%`, top: `${bp.y}%` }}
                     >
                       <div className="w-6 h-6 rounded-full bg-gradient-to-br from-yellow-300 via-white to-yellow-400 border-2 border-yellow-600 shadow-lg shadow-yellow-500/40 flex items-center justify-center text-[9px] font-black text-yellow-900 group-hover:scale-125 transition-transform">
-                        âš½
+                        ⚽
                       </div>
                       <span className="absolute -bottom-3 left-1/2 -translate-x-1/2 text-[8px] font-black text-yellow-300 bg-slate-950/80 px-0.5 rounded whitespace-nowrap">
                         {pNode.number}
@@ -4340,7 +4340,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                           <div className="absolute -inset-3 rounded-full bg-emerald-400/30 animate-pulse pointer-events-none" />
                         )}
 
-                        {/* Player Name Pill / Badge â€” FC Auggen ROT */}
+                        {/* Player Name Pill / Badge — FC Auggen ROT */}
                         <div className={`px-2 py-0.5 rounded-full text-[9px] font-black shadow-xl border flex items-center gap-1 ${
                           node.isHighlighted
                             ? 'bg-amber-400 text-slate-950 border-white font-black shadow-amber-500/50'
@@ -4353,7 +4353,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                           <span>{node.number}. {node.name}</span>
                         </div>
 
-                        {/* 3D Node Sphere Marker â€” FC Auggen ROT */}
+                        {/* 3D Node Sphere Marker — FC Auggen ROT */}
                         <div className={`w-8 h-8 rounded-full border-2 mt-1 flex items-center justify-center shadow-2xl text-xs font-black transition-all ${
                           node.isHighlighted
                             ? 'bg-gradient-to-tr from-amber-500 via-yellow-400 to-amber-200 border-white text-slate-950 shadow-amber-500/60'
@@ -4450,7 +4450,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                   );
                 })}
 
-                {/* â•â•â• GEGNER (Blau) â€” 11 Spieler â€” VOLLBILD â•â•â• */}
+                {/* ═══ GEGNER (Blau) — 11 Spieler — VOLLBILD ═══ */}
                 {showOpponents && opponentPlayers.map((opp) => {
                   const oppX = isAnimating && opponentTargetPositions[opp.id]
                     ? opponentTargetPositions[opp.id].x + (opp.x - opponentTargetPositions[opp.id].x) * (1 - animProgress)
@@ -4476,7 +4476,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                   );
                 })}
 
-                {/* â•â•â• FREIHAND-LAUFWEGE â•â•â• */}
+                {/* ═══ FREIHAND-LAUFWEGE ═══ */}
                 {drawnPaths.length > 0 && (
                   <svg className="absolute inset-0 w-full h-full z-15 pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
                     {drawnPaths.map((path) => {
@@ -4493,7 +4493,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                   </svg>
                 )}
 
-                {/* â•â•â• FREIHAND: Aktiver Pfad beim Zeichnen â•â•â• */}
+                {/* ═══ FREIHAND: Aktiver Pfad beim Zeichnen ═══ */}
                 {freeDrawMode && currentDrawPoints.length > 1 && (
                   <svg className="absolute inset-0 w-full h-full z-16 pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
                     <path
@@ -4503,7 +4503,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                   </svg>
                 )}
 
-                {/* â•â•â• ABSPIELEN: Animierte rote Punkte entlang der Pfade â€” VOLLBILD â•â•â• */}
+                {/* ═══ ABSPIELEN: Animierte rote Punkte entlang der Pfade — VOLLBILD ═══ */}
                 {isAnimating && drawnPaths.map((path) => {
                   if (path.points.length < 2) return null;
                   const pos = pointAlongPathsForProgress(path.points, animProgress);
@@ -4515,13 +4515,13 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                       style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
                     >
                       <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-[#e94560] to-[#c0392b] border-2 border-white shadow-lg shadow-[#e94560]/60 flex items-center justify-center text-[8px] font-black text-white">
-                        â–¶
+                        ▶
                       </div>
                     </div>
                   );
                 })}
 
-                {/* â•â•â• PASSSTAFETTE (Stufe 4) â€” VOLLBILD â•â•â• */}
+                {/* ═══ PASSSTAFETTE (Stufe 4) — VOLLBILD ═══ */}
                 {passStations.length > 0 && !(seqRunning && seqPhase === 'lauf') && (
                   <svg className="absolute inset-0 w-full h-full z-15 pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
                     {passStations.slice(0, -1).map((s, i) => {
@@ -4581,7 +4581,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
       {/* STICKY HAUPTLISTE TAKTIKTAFEL HEADER (HAUPTEBENE - IMMER OBEN SICHTBAR - ULTRA-KOMPAKT) */}
       <div className="sticky top-0 z-40 bg-slate-900/98 border border-slate-800 rounded-xl p-1.5 sm:p-2 shadow-2xl backdrop-blur-md flex flex-col gap-1.5 shrink-0">
         
-        {/* HAUPTEBENE 1: SYSTEME (IMMER SICHTBAR) & HAUPTMENÃœ TABS */}
+        {/* HAUPTEBENE 1: SYSTEME (IMMER SICHTBAR) & HAUPTMENÜ TABS */}
         <div className="flex items-center justify-between gap-1.5 overflow-x-auto no-scrollbar w-full">
           {/* Left: Branding & 4-Systeme (Hauptebene) */}
           <div className="flex items-center gap-1.5 shrink-0">
@@ -4592,7 +4592,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
 
             <div className="h-4 w-[1px] bg-slate-800 mx-0.5 shrink-0" />
 
-            {/* SYSTEME (HAUPTEBENE - IMMER SICHTBAR & REGEL: SYSTEMWAHL Ã–FFNET AUTOMATISCH PHASEN-ANALYSE) */}
+            {/* SYSTEME (HAUPTEBENE - IMMER SICHTBAR & REGEL: SYSTEMWAHL ÖFFNET AUTOMATISCH PHASEN-ANALYSE) */}
             <div className="flex items-center gap-0.5 bg-slate-950 p-0.5 rounded-lg border border-amber-500/30">
               <span className="text-[9px] font-black uppercase text-amber-400 px-1 flex items-center gap-0.5">
                 <Zap size={10} /> Systeme:
@@ -4610,7 +4610,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                     setSelectedFormation(sys.key as TacticFormation);
                     setShowTrainerPhasePanelOnBoard(true);
                     setActiveTabSub('board');
-                    notify(`System "${sys.label}" ausgewÃ¤hlt â€“ Phasen-Analyse wurde automatisch geÃ¶ffnet!`);
+                    notify(`System "${sys.label}" ausgewählt – Phasen-Analyse wurde automatisch geöffnet!`);
                   }}
                   className={`px-2 py-0.5 text-[10px] font-black uppercase rounded-md border transition-all cursor-pointer whitespace-nowrap ${
                     selectedFormation === sys.key
@@ -4668,7 +4668,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                     : 'bg-[#1A1A1A] text-emerald-400 hover:text-emerald-300 hover:bg-[#2A2A2A] border border-emerald-500/40'
                 }`}
               >
-                <Tv size={12} /> ðŸ“º SpieltagsprÃ¤sentation
+                <Tv size={12} /> 📺 Spieltagspräsentation
               </button>
 
               <button
@@ -4725,10 +4725,10 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                 }
               }}
               className="px-2 py-1 rounded-md text-[9.5px] font-black uppercase tracking-wider bg-amber-400 text-slate-950 border border-amber-300 hover:bg-amber-300 transition-all flex items-center gap-1 shrink-0 font-black shadow cursor-pointer"
-              title={activeTabSub === 'presentation' ? 'SpieltagsprÃ¤sentation Vollbild' : 'Reines Taktikfeld Vollbild'}
+              title={activeTabSub === 'presentation' ? 'Spieltagspräsentation Vollbild' : 'Reines Taktikfeld Vollbild'}
             >
               <Maximize2 size={11} />
-              <span>{activeTabSub === 'presentation' ? 'ðŸ“º PrÃ¤sentation' : 'Vollbild'}</span>
+              <span>{activeTabSub === 'presentation' ? '📺 Präsentation' : 'Vollbild'}</span>
             </button>
 
             <button
@@ -4745,17 +4745,17 @@ Gib mir in 3 kurzen, klaren Bullet Points:
               title="Taktiktafel, Inhalte und Notizen bearbeiten"
             >
               <Edit3 size={11} className={trainerEditMode ? 'text-slate-950 font-black' : 'text-amber-400'} />
-              <span>{trainerEditMode ? 'âœï¸ AKTIV' : 'âœï¸ Bearbeiten'}</span>
+              <span>{trainerEditMode ? '✏️ AKTIV' : '✏️ Bearbeiten'}</span>
             </button>
           </div>
         </div>
 
-        {/* DYNAMISCHE PFLICHTSPIELE-VERKNÃœPFUNG: NÃ„CHSTES SPIEL BANNER & QUICK-SWITCHER */}
+        {/* DYNAMISCHE PFLICHTSPIELE-VERKNÜPFUNG: NÄCHSTES SPIEL BANNER & QUICK-SWITCHER */}
         <div className="flex flex-wrap items-center justify-between gap-1.5 bg-slate-950/90 border border-emerald-500/30 px-2.5 py-1.5 rounded-lg shadow-inner">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="flex items-center gap-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[9.5px] font-black uppercase px-2 py-0.5 rounded tracking-wider shrink-0">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping shrink-0" />
-              {selectedMatchObj.isNextMatch ? 'ðŸŸ¢ NÃ„CHSTES PFLICHTSPIEL' : 'ðŸ“‹ PFLICHTSPIEL'}
+              {selectedMatchObj.isNextMatch ? '🟢 NÄCHSTES PFLICHTSPIEL' : '📋 PFLICHTSPIEL'}
             </span>
 
             <span className="font-black text-white text-xs uppercase tracking-tight">
@@ -4763,15 +4763,15 @@ Gib mir in 3 kurzen, klaren Bullet Points:
             </span>
 
             <span className="text-slate-400 text-[10px] flex items-center gap-1.5 font-medium flex-wrap">
-              <span>ðŸ“… {selectedMatchObj.date ? new Date(selectedMatchObj.date).toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' }) : 'Spieltag'}</span>
-              <span>â€¢</span>
-              <span>â° {selectedMatchObj.time} Uhr</span>
-              <span>â€¢</span>
+              <span>📅 {selectedMatchObj.date ? new Date(selectedMatchObj.date).toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' }) : 'Spieltag'}</span>
+              <span>•</span>
+              <span>⏰ {selectedMatchObj.time} Uhr</span>
+              <span>•</span>
               <span className={selectedMatchObj.isHome ? 'text-emerald-400 font-bold' : 'text-amber-400 font-bold'}>
-                {selectedMatchObj.isHome ? 'ðŸŸï¸ Heim (Lettenpark)' : `ðŸšŒ AuswÃ¤rts (${selectedMatchObj.location})`}
+                {selectedMatchObj.isHome ? '🏟️ Heim (Lettenpark)' : `🚌 Auswärts (${selectedMatchObj.location})`}
               </span>
-              <span>â€¢</span>
-              <span className="text-slate-300">ðŸ† {selectedMatchObj.competition} (Spieltag {selectedMatchObj.matchday})</span>
+              <span>•</span>
+              <span className="text-slate-300">🏆 {selectedMatchObj.competition} (Spieltag {selectedMatchObj.matchday})</span>
             </span>
           </div>
 
@@ -4788,7 +4788,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
               >
                 {allCompetitiveMatches.map((m) => (
                   <option key={m.id} value={String(m.id)} className="bg-slate-950 text-white font-medium">
-                    {nextUpcomingMatch?.id === m.id ? 'ðŸŸ¢ [NÃ„CHSTES] ' : ''}{activeClub.name} vs. {m.opponent} ({m.date} - {m.homeAway || (m.isHome ? 'Heim' : 'Ausw.')})
+                    {nextUpcomingMatch?.id === m.id ? '🟢 [NÄCHSTES] ' : ''}{activeClub.name} vs. {m.opponent} ({m.date} - {m.homeAway || (m.isHome ? 'Heim' : 'Ausw.')})
                   </option>
                 ))}
               </select>
@@ -4799,12 +4799,12 @@ Gib mir in 3 kurzen, klaren Bullet Points:
               <button
                 onClick={() => {
                   setActiveTabSub('presentation');
-                  notify(`SpieltagsprÃ¤sentation fÃ¼r ${activeClub.name} vs. ${selectedMatchObj.opponent} geladen!`);
+                  notify(`Spieltagspräsentation für ${activeClub.name} vs. ${selectedMatchObj.opponent} geladen!`);
                 }}
                 className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-[9.5px] uppercase px-2.5 py-1 rounded-md transition-all flex items-center gap-1 shadow-xs cursor-pointer"
-                title="Direkt zur SpieltagsprÃ¤sentation wechseln"
+                title="Direkt zur Spieltagspräsentation wechseln"
               >
-                <Tv size={11} /> ðŸ“º PrÃ¤sentation
+                <Tv size={11} /> 📺 Präsentation
               </button>
             )}
           </div>
@@ -4823,7 +4823,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
               </div>
               <div className="flex items-center gap-1.5">
                 <button
-                  onClick={() => notify('Alle taktischen Ã„nderungen erfolgreich in Cloud gespeichert!')}
+                  onClick={() => notify('Alle taktischen Änderungen erfolgreich in Cloud gespeichert!')}
                   className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-[9.5px] uppercase px-2.5 py-1 rounded-md transition-all flex items-center gap-1 cursor-pointer shadow"
                 >
                   <Save size={11} /> Speichern
@@ -4845,13 +4845,13 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                 onClick={() => {
                   const newNote = prompt('Neue taktische Trainer-Anweisung eingeben:');
                   if (newNote && newNote.trim()) {
-                    setCustomTrainerNotes(prev => (prev ? `${prev}\nâ€¢ ${newNote.trim()}` : `â€¢ ${newNote.trim()}`));
-                    notify('Neue Anweisung hinzugefÃ¼gt!');
+                    setCustomTrainerNotes(prev => (prev ? `${prev}\n• ${newNote.trim()}` : `• ${newNote.trim()}`));
+                    notify('Neue Anweisung hinzugefügt!');
                   }
                 }}
                 className="bg-amber-400/20 hover:bg-amber-400/30 text-amber-300 border border-amber-400/50 font-bold text-[10px] px-2 py-0.5 rounded-md flex items-center gap-1 cursor-pointer"
               >
-                â†’ Anweisung zufÃ¼gen
+                → Anweisung zufügen
               </button>
 
               <button
@@ -4861,17 +4861,17 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                 }}
                 className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-[10px] px-2 py-0.5 rounded-md flex items-center gap-1 cursor-pointer"
               >
-                â†’ Neues System
+                → Neues System
               </button>
 
               <button
                 onClick={() => {
                   setCustomTrainerNotes('');
-                  notify('Taktische Notizen gelÃ¶scht.');
+                  notify('Taktische Notizen gelöscht.');
                 }}
                 className="bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-500/40 font-bold text-[10px] px-2 py-0.5 rounded-md flex items-center gap-1 cursor-pointer ml-auto"
               >
-                ðŸ—‘ï¸ LÃ¶schen
+                🗑️ Löschen
               </button>
             </div>
           </div>
@@ -4899,7 +4899,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                       : 'bg-slate-900 text-slate-300 border-slate-800 hover:text-white hover:bg-slate-800'
                   }`}
                 >
-                  <span className="shrink-0 text-[10px]">ðŸ”µ</span>
+                  <span className="shrink-0 text-[10px]">🔵</span>
                   <span className="truncate">Offensiv</span>
                 </button>
                 <button
@@ -4910,7 +4910,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                       : 'bg-slate-900 text-slate-300 border-slate-800 hover:text-white hover:bg-slate-800'
                   }`}
                 >
-                  <span className="shrink-0 text-[10px]">ðŸ›¡ï¸</span>
+                  <span className="shrink-0 text-[10px]">🛡️</span>
                   <span className="truncate">Defensiv</span>
                 </button>
                 <button
@@ -4921,7 +4921,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                       : 'bg-slate-900 text-slate-300 border-slate-800 hover:text-white hover:bg-slate-800'
                   }`}
                 >
-                  <span className="shrink-0 text-[10px]">âš¡</span>
+                  <span className="shrink-0 text-[10px]">⚡</span>
                   <span className="truncate">Umschalten Off.</span>
                 </button>
                 <button
@@ -4932,7 +4932,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                       : 'bg-slate-900 text-slate-300 border-slate-800 hover:text-white hover:bg-slate-800'
                   }`}
                 >
-                  <span className="shrink-0 text-[10px]">ðŸ”„</span>
+                  <span className="shrink-0 text-[10px]">🔄</span>
                   <span className="truncate">Umschalten Def.</span>
                 </button>
               </div>
@@ -4944,7 +4944,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
               {activePhase === 'offensiv' && (
                 <>
                   <div className="bg-slate-900/90 border border-emerald-500/30 px-2 py-1 rounded-md flex flex-col justify-center shadow-xs">
-                    <span className="text-emerald-400 font-bold uppercase text-[8.5px] block mb-0.5 tracking-wider">AufbauhÃ¶he</span>
+                    <span className="text-emerald-400 font-bold uppercase text-[8.5px] block mb-0.5 tracking-wider">Aufbauhöhe</span>
                     <div className="relative">
                       <select
                         value={tacticalPhaseConfig.offensiv.aufbauhoehe}
@@ -4960,7 +4960,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                   </div>
 
                   <div className="bg-slate-900/90 border border-emerald-500/30 px-2 py-1 rounded-md flex flex-col justify-center shadow-xs">
-                    <span className="text-emerald-400 font-bold uppercase text-[8.5px] block mb-0.5 tracking-wider">Ãœberzahlzonen</span>
+                    <span className="text-emerald-400 font-bold uppercase text-[8.5px] block mb-0.5 tracking-wider">Überzahlzonen</span>
                     <div className="relative">
                       <select
                         value={tacticalPhaseConfig.offensiv.ueberzahlzonen}
@@ -4999,7 +4999,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                         onChange={(e) => setTacticalPhaseConfig(prev => ({ ...prev, offensiv: { ...prev.offensiv, halbraumnutzung: e.target.value } }))}
                         className="w-full bg-slate-950 text-emerald-300 font-black text-[10px] uppercase py-0.5 px-1.5 pr-5 rounded border border-emerald-500/40 appearance-none cursor-pointer focus:outline-none focus:border-emerald-400 h-6"
                       >
-                        {['Achter', 'Zehner', 'inverser FlÃ¼gel'].map((val) => (
+                        {['Achter', 'Zehner', 'inverser Flügel'].map((val) => (
                           <option key={val} value={val} className="bg-slate-900 text-white font-bold">{val.toUpperCase()}</option>
                         ))}
                       </select>
@@ -5015,7 +5015,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                         onChange={(e) => setTacticalPhaseConfig(prev => ({ ...prev, offensiv: { ...prev.offensiv, offensivfokus: e.target.value } }))}
                         className="w-full bg-slate-950 text-emerald-300 font-black text-[10px] uppercase py-0.5 px-1.5 pr-5 rounded border border-emerald-500/40 appearance-none cursor-pointer focus:outline-none focus:border-emerald-400 h-6"
                       >
-                        {['FlÃ¼gel', 'Zentrum', 'Umschaltspiel'].map((val) => (
+                        {['Flügel', 'Zentrum', 'Umschaltspiel'].map((val) => (
                           <option key={val} value={val} className="bg-slate-900 text-white font-bold">{val.toUpperCase()}</option>
                         ))}
                       </select>
@@ -5029,7 +5029,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
               {activePhase === 'defensiv' && (
                 <>
                   <div className="bg-slate-900/90 border border-rose-500/30 px-2 py-1 rounded-md flex flex-col justify-center shadow-xs">
-                    <span className="text-rose-400 font-bold uppercase text-[8.5px] block mb-0.5 tracking-wider">PressinghÃ¶he</span>
+                    <span className="text-rose-400 font-bold uppercase text-[8.5px] block mb-0.5 tracking-wider">Pressinghöhe</span>
                     <div className="relative">
                       <select
                         value={tacticalPhaseConfig.defensiv.pressinghoehe}
@@ -5052,7 +5052,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                         onChange={(e) => setTacticalPhaseConfig(prev => ({ ...prev, defensiv: { ...prev.defensiv, pressinglenkung: e.target.value } }))}
                         className="w-full bg-slate-950 text-rose-300 font-black text-[10px] uppercase py-0.5 px-1.5 pr-5 rounded border border-rose-500/40 appearance-none cursor-pointer focus:outline-none focus:border-rose-400 h-6"
                       >
-                        {['AuÃŸenbahn', 'schwacher FuÃŸ', 'Pressingfalle'].map((val) => (
+                        {['Außenbahn', 'schwacher Fuß', 'Pressingfalle'].map((val) => (
                           <option key={val} value={val} className="bg-slate-900 text-white font-bold">{val.toUpperCase()}</option>
                         ))}
                       </select>
@@ -5105,7 +5105,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                         onChange={(e) => setTacticalPhaseConfig(prev => ({ ...prev, umschaltenOffensiv: { ...prev.umschaltenOffensiv, zielzone: e.target.value } }))}
                         className="w-full bg-slate-950 text-amber-300 font-black text-[10px] uppercase py-0.5 px-1.5 pr-5 rounded border border-amber-500/40 appearance-none cursor-pointer focus:outline-none focus:border-amber-400 h-6"
                       >
-                        {['FlÃ¼gel', 'Zentrum'].map((val) => (
+                        {['Flügel', 'Zentrum'].map((val) => (
                           <option key={val} value={val} className="bg-slate-900 text-white font-bold">{val.toUpperCase()}</option>
                         ))}
                       </select>
@@ -5137,7 +5137,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                         onChange={(e) => setTacticalPhaseConfig(prev => ({ ...prev, umschaltenOffensiv: { ...prev.umschaltenOffensiv, fokusspieler: e.target.value } }))}
                         className="w-full bg-slate-950 text-amber-300 font-black text-[10px] uppercase py-0.5 px-1.5 pr-5 rounded border border-amber-500/40 appearance-none cursor-pointer focus:outline-none focus:border-amber-400 h-6"
                       >
-                        {['StÃ¼rmer', 'Zehner', 'FlÃ¼gel'].map((val) => (
+                        {['Stürmer', 'Zehner', 'Flügel'].map((val) => (
                           <option key={val} value={val} className="bg-slate-900 text-white font-bold">{val.toUpperCase()}</option>
                         ))}
                       </select>
@@ -5272,7 +5272,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
               className="px-2 py-0.5 text-[9.5px] font-black uppercase rounded-md bg-amber-400 hover:bg-amber-300 text-slate-950 border border-amber-300 cursor-pointer font-black shadow transition-all flex items-center gap-1"
             >
               <Maximize2 size={11} />
-              <span>{activeTabSub === 'presentation' ? 'ðŸ“º PrÃ¤sentation Vollbild' : 'ðŸ–¥ï¸ Nur Taktikfeld Vollbild'}</span>
+              <span>{activeTabSub === 'presentation' ? '📺 Präsentation Vollbild' : '🖥️ Nur Taktikfeld Vollbild'}</span>
             </button>
 
             <button
@@ -5283,7 +5283,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                   : 'bg-slate-900 text-slate-300 border-slate-800 hover:text-white'
               }`}
             >
-              ðŸ“º PrÃ¤sentation
+              📺 Präsentation
             </button>
 
             <button
@@ -5292,7 +5292,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                 showZonesGrid ? 'bg-sky-950 text-sky-300 border-sky-500 font-black' : 'bg-slate-900 text-slate-400 border-slate-800'
               }`}
             >
-              ðŸ“ Drittel-Grid
+              📐 Drittel-Grid
             </button>
 
             <button
@@ -5301,7 +5301,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                 showHeatmaps ? 'bg-amber-950 text-amber-300 border-amber-500 font-black' : 'bg-slate-900 text-slate-400 border-slate-800'
               }`}
             >
-              ðŸ”¥ Heatmaps
+              🔥 Heatmaps
             </button>
 
             <button
@@ -5310,7 +5310,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                 ballMode && ballCount === 11 ? 'bg-orange-500 text-white border-orange-400 font-black' : 'bg-slate-900 text-slate-400 border-slate-800'
               }`}
             >
-              âš½ 11 BÃ¤lle
+              ⚽ 11 Bälle
             </button>
 
             <button
@@ -5319,7 +5319,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                 ballMode && ballCount === 6 ? 'bg-orange-500 text-white border-orange-400 font-black' : 'bg-slate-900 text-slate-400 border-slate-800'
               }`}
             >
-              ðŸ”¥ 6 BÃ¤lle
+              🔥 6 Bälle
             </button>
 
             <button
@@ -5328,7 +5328,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                 ballMode && ballCount === 3 ? 'bg-orange-500 text-white border-orange-400 font-black' : 'bg-slate-900 text-slate-400 border-slate-800'
               }`}
             >
-              ðŸ‘‘ 3 BÃ¤lle
+              👑 3 Bälle
             </button>
 
             <button
@@ -5337,7 +5337,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                 showOpponents ? 'bg-blue-600 text-white border-blue-400 font-black' : 'bg-slate-900 text-slate-400 border-slate-800'
               }`}
             >
-              ðŸ”´ Gegner
+              🔴 Gegner
             </button>
 
             <button
@@ -5375,12 +5375,12 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                 setChampNoteOpen(false);
                 setChampionsActiveCount(0);
                 setShowRunVectors(true);
-                notify('Taktikfeld zurÃ¼ckgesetzt â€“ alles GelÃ¶schte entfernt, Board ist wieder leer');
+                notify('Taktikfeld zurückgesetzt – alles Gelöschte entfernt, Board ist wieder leer');
               }}
               className="px-2 py-0.5 text-[9.5px] font-black uppercase rounded-md border cursor-pointer transition-all bg-rose-600 text-white border-rose-400 hover:bg-rose-500 shadow flex items-center gap-1"
-              title="Alles lÃ¶schen: BÃ¤lle, Gegner, Laufwege, Freihand-Zeichnungen, Passstafetten und Animationen entfernen â€“ Board auf blanko System zurÃ¼cksetzen"
+              title="Alles löschen: Bälle, Gegner, Laufwege, Freihand-Zeichnungen, Passstafetten und Animationen entfernen – Board auf blanko System zurücksetzen"
             >
-              <Trash2 size={11} /> Alles lÃ¶schen
+              <Trash2 size={11} /> Alles löschen
             </button>
 
             <button
@@ -5389,17 +5389,17 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                 freeDrawMode ? 'bg-green-600 text-white border-green-400 font-black' : 'bg-slate-900 text-slate-400 border-slate-800'
               }`}
             >
-              âœï¸ Freihand
+              ✏️ Freihand
             </button>
 
-            {/* Stufe 2: Stift-Farbkodierung (Blau=Offensiv, Rot=Defensiv, Gelb=Umschalten, GrÃ¼n=Sprint) */}
+            {/* Stufe 2: Stift-Farbkodierung (Blau=Offensiv, Rot=Defensiv, Gelb=Umschalten, Grün=Sprint) */}
             {freeDrawMode && (
               <div className="flex items-center gap-0.5 bg-slate-900 border border-slate-700 rounded-md px-1 py-0.5" title="Zeichen-Farbe (Farblegende)">
                 {[
                   { c: '#3B82F6', l: 'Blau Offensiv' },
                   { c: '#EF4444', l: 'Rot Defensiv' },
                   { c: '#F59E0B', l: 'Gelb Umschalten' },
-                  { c: '#22C55E', l: 'GrÃ¼n Sprint' },
+                  { c: '#22C55E', l: 'Grün Sprint' },
                 ].map(f => (
                   <button
                     key={f.c}
@@ -5414,11 +5414,11 @@ Gib mir in 3 kurzen, klaren Bullet Points:
 
             {/* STUFE 3: Spielaufbau-Varianten */}
             <div className="flex items-center gap-0.5 bg-slate-900 border border-slate-700 rounded-md px-1 py-0.5" title="Spielaufbau-Variante laden (setzt Laufwege)">
-              <span className="text-[8.5px] font-black uppercase text-slate-400 mr-0.5">âš½ Aufbau</span>
-              <button onClick={() => applyBuildUpVariant('sechser')} className="px-1.5 py-0.5 text-[9px] font-black rounded cursor-pointer hover:bg-sky-500/30 transition-all text-slate-300" title="Aufbau Ã¼ber den 6er">6er</button>
-              <button onClick={() => applyBuildUpVariant('achter')} className="px-1.5 py-0.5 text-[9px] font-black rounded cursor-pointer hover:bg-sky-500/30 transition-all text-slate-300" title="Aufbau Ã¼ber den 8er">8er</button>
-              <button onClick={() => applyBuildUpVariant('langerBall')} className="px-1.5 py-0.5 text-[9px] font-black rounded cursor-pointer hover:bg-sky-500/30 transition-all text-slate-300" title="Langer Ball auf den FlÃ¼gel">âš¡ Ball</button>
-              <button onClick={() => applyBuildUpVariant('strafraum')} className="px-1.5 py-0.5 text-[9px] font-black rounded cursor-pointer hover:bg-sky-500/30 transition-all text-slate-300" title="Strafraumbesetzung & Torabschluss">ðŸŽ¯ Box</button>
+              <span className="text-[8.5px] font-black uppercase text-slate-400 mr-0.5">⚽ Aufbau</span>
+              <button onClick={() => applyBuildUpVariant('sechser')} className="px-1.5 py-0.5 text-[9px] font-black rounded cursor-pointer hover:bg-sky-500/30 transition-all text-slate-300" title="Aufbau über den 6er">6er</button>
+              <button onClick={() => applyBuildUpVariant('achter')} className="px-1.5 py-0.5 text-[9px] font-black rounded cursor-pointer hover:bg-sky-500/30 transition-all text-slate-300" title="Aufbau über den 8er">8er</button>
+              <button onClick={() => applyBuildUpVariant('langerBall')} className="px-1.5 py-0.5 text-[9px] font-black rounded cursor-pointer hover:bg-sky-500/30 transition-all text-slate-300" title="Langer Ball auf den Flügel">⚡ Ball</button>
+              <button onClick={() => applyBuildUpVariant('strafraum')} className="px-1.5 py-0.5 text-[9px] font-black rounded cursor-pointer hover:bg-sky-500/30 transition-all text-slate-300" title="Strafraumbesetzung & Torabschluss">🎯 Box</button>
               <button
                 onClick={applyDoppelpass}
                 className="bg-purple-500/20 hover:bg-purple-500/40 text-purple-300 font-bold text-[10px] uppercase px-2 py-1.5 rounded-lg border border-purple-500/30 transition-all flex items-center gap-1"
@@ -5434,7 +5434,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                 onClick={togglePassMode}
                 className={`px-1.5 py-0.5 text-[9px] font-black rounded cursor-pointer transition-all ${passMode ? 'bg-green-600 text-white border border-green-400 font-black' : 'text-slate-300 hover:text-white border border-transparent'}`}
               >
-                ðŸŽ¯ Stafette
+                🎯 Stafette
               </button>
               <select
                 value={passAction}
@@ -5447,7 +5447,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
               <button onClick={() => loadPassTemplate(6)} className="px-1 py-0.5 text-[8.5px] font-black rounded cursor-pointer hover:bg-sky-500/30 transition-all text-slate-300" title="6-Stationen-Vorlage laden">6</button>
               <button onClick={() => loadPassTemplate(9)} className="px-1 py-0.5 text-[8.5px] font-black rounded cursor-pointer hover:bg-sky-500/30 transition-all text-slate-300" title="9-Stationen-Vorlage laden (Tiki-Taka)">9</button>
               {passStations.length > 0 && (
-                <button onClick={() => { setPassStations([]); setPassBallPos(null); }} className="px-1 py-0.5 text-[8.5px] font-black rounded cursor-pointer hover:bg-rose-500/30 transition-all text-rose-300" title="Passstafette leeren">ðŸ§¹ Leeren</button>
+                <button onClick={() => { setPassStations([]); setPassBallPos(null); }} className="px-1 py-0.5 text-[8.5px] font-black rounded cursor-pointer hover:bg-rose-500/30 transition-all text-rose-300" title="Passstafette leeren">🧹 Leeren</button>
               )}
             </div>
 
@@ -5460,24 +5460,24 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                   }`}
                   title={isAnimating ? (animPaused ? 'Fortsetzen' : 'Pausieren') : 'Abspielen'}
                 >
-                  {isAnimating ? (animPaused ? 'â–¶ï¸ Weiter' : 'â¸ Pause') : 'â–¶ï¸ Abspielen'}
+                  {isAnimating ? (animPaused ? '▶️ Weiter' : '⏸ Pause') : '▶️ Abspielen'}
                 </button>
                 <button
                   onClick={seqRunning ? stopSequence : startSequence}
                   className={`px-2 py-0.5 text-[9.5px] font-black uppercase rounded-md border cursor-pointer transition-all ${
                     seqRunning ? (seqPhase === 'lauf' ? 'bg-sky-500 text-white border-sky-400' : seqPhase === 'pass' ? 'bg-emerald-500 text-white border-emerald-400' : 'bg-violet-500 text-white border-violet-400') : 'bg-slate-800 text-sky-300 border-slate-600 hover:border-sky-400'
                   }`}
-                  title={seqRunning ? `Sequenz lÃ¤uft â€“ Phase: ${seqPhaseLabel}` : 'Sequenz: erst Laufweg, dann Passweg, dann alles'}
+                  title={seqRunning ? `Sequenz läuft – Phase: ${seqPhaseLabel}` : 'Sequenz: erst Laufweg, dann Passweg, dann alles'}
                 >
-                  {seqRunning ? (seqPhase === 'lauf' ? `ðŸš¶ ${seqPhaseLabel}` : seqPhase === 'pass' ? `âš½ ${seqPhaseLabel}` : `ðŸ” ${seqPhaseLabel}`) : 'ðŸ” Sequenz'}
+                  {seqRunning ? (seqPhase === 'lauf' ? `🚶 ${seqPhaseLabel}` : seqPhase === 'pass' ? `⚽ ${seqPhaseLabel}` : `🔁 ${seqPhaseLabel}`) : '🔁 Sequenz'}
                 </button>
                 {isAnimating && (
                   <button
                     onClick={() => { if (animRef.current) cancelAnimationFrame(animRef.current); setIsAnimating(false); setAnimPaused(false); animProgressRef.current = 0; setAnimProgress(0); setAnimatedPlayerPositions({}); setPassBallPos(null); }}
                     className="px-2 py-0.5 text-[9.5px] font-black uppercase rounded-md border cursor-pointer transition-all bg-red-500 text-white border-red-400 font-black"
-                    title="Stoppen und zurÃ¼cksetzen"
+                    title="Stoppen und zurücksetzen"
                   >
-                    â¹ Stopp
+                    ⏹ Stopp
                   </button>
                 )}
                 {/* Geschwindigkeit */}
@@ -5495,7 +5495,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                 </div>
                 {/* Zeitleiste / Scrubber */}
                 <div className="flex items-center gap-1 bg-slate-900 border border-slate-700 rounded-md px-1.5 py-0.5 min-w-[120px]">
-                  <span className="text-[8.5px] font-black uppercase text-slate-400">â±</span>
+                  <span className="text-[8.5px] font-black uppercase text-slate-400">⏱</span>
                   <input
                     type="range"
                     min={0}
@@ -5525,7 +5525,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
             {ballMode && (
               <div className="bg-orange-500 text-slate-950 font-black text-xs px-4 py-2 rounded-xl flex items-center justify-between shadow-lg border border-orange-300">
                 <span className="flex items-center gap-2">
-                  âš½ Ball-Modus aktiv â€” Ziehe die BÃ¤lle an die gewÃ¼nschte Position. {ballPositions.length} BÃ¤lle aktiv.
+                  ⚽ Ball-Modus aktiv — Ziehe die Bälle an die gewünschte Position. {ballPositions.length} Bälle aktiv.
                 </span>
                 <div className="flex items-center gap-2">
                   <button 
@@ -5534,7 +5534,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                     }}
                     className="bg-slate-950 text-white px-2 py-0.5 rounded text-[10px] uppercase font-black"
                   >
-                    ZurÃ¼cksetzen
+                    Zurücksetzen
                   </button>
                   <button 
                     onClick={() => { setBallMode(false); setShowRunVectors(true); }}
@@ -5551,7 +5551,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
               <div className="bg-amber-500 text-slate-950 font-black text-xs px-4 py-2 rounded-xl flex items-center justify-between shadow-lg border border-amber-300">
                 <span className="flex items-center gap-2">
                   <CornerUpRight size={16} /> 
-                  Klicke auf das Spielfeld, um den Zielpunkt fÃ¼r den Laufweg von "{currentNodePositions.find(n => n.id === runTargetModePlayerId)?.name}" zu setzen...
+                  Klicke auf das Spielfeld, um den Zielpunkt für den Laufweg von "{currentNodePositions.find(n => n.id === runTargetModePlayerId)?.name}" zu setzen...
                 </span>
                 <button 
                   onClick={() => setRunTargetModePlayerId(null)}
@@ -5612,10 +5612,10 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                     }
                   }}
                   className="bg-slate-900/90 hover:bg-amber-400 hover:text-slate-950 text-amber-300 border border-amber-500/50 px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider shadow-2xl backdrop-blur-md flex items-center gap-1.5 transition-all cursor-pointer"
-                  title="Spielfeld in Reines Vollbild vergrÃ¶ÃŸern"
+                  title="Spielfeld in Reines Vollbild vergrößern"
                 >
                   <Maximize2 size={13} />
-                  <span>ðŸ–¥ï¸ Solo Spielfeld</span>
+                  <span>🖥️ Solo Spielfeld</span>
                 </button>
               </div>
               {/* THE PITCH SURFACE */}
@@ -5637,7 +5637,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                   ))}
                 </div>
 
-                {/* Outer Field Boundary Line â€” vertical pitch (goals top/bottom) */}
+                {/* Outer Field Boundary Line — vertical pitch (goals top/bottom) */}
                 <div className="absolute inset-4 border-2 border-emerald-400/40 pointer-events-none rounded-sm">
                   <div className="absolute left-0 right-0 top-1/2 h-0.5 bg-emerald-400/40 -translate-y-1/2" />
                   <div className="absolute top-1/2 left-1/2 w-32 h-32 rounded-full border-2 border-emerald-400/40 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center">
@@ -5651,7 +5651,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                   </div>
                 </div>
 
-                {/* 3 VERTIKALE DRITTEL OVERLAY â€” horizontal thirds for vertical pitch */}
+                {/* 3 VERTIKALE DRITTEL OVERLAY — horizontal thirds for vertical pitch */}
                 {showZonesGrid && (
                   <div className="absolute inset-4 grid grid-rows-3 pointer-events-none">
                     <div className="border-b-2 border-dashed border-emerald-400/50 flex flex-row items-start justify-between p-2">
@@ -5660,7 +5660,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                     </div>
                     <div className="border-b-2 border-dashed border-amber-400/50 flex flex-row items-center justify-between p-2">
                       <span className="text-[9px] font-mono font-black text-amber-400/80 bg-slate-950/80 px-1.5 py-0.5 rounded uppercase">Mittelfeld-Drittel</span>
-                      <span className="text-[9px] font-mono font-black text-amber-400/50">HalbrÃ¤ume & Zentrum</span>
+                      <span className="text-[9px] font-mono font-black text-amber-400/50">Halbräume & Zentrum</span>
                     </div>
                     <div className="flex flex-row items-end justify-between p-2">
                       <span className="text-[9px] font-mono font-black text-sky-400/80 bg-slate-950/80 px-1.5 py-0.5 rounded uppercase">Defensives Drittel</span>
@@ -5795,7 +5795,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                   })}
                 </svg>
 
-                {/* BALL-MODUS: Draggable BÃ¤lle auf dem Pitch */}
+                {/* BALL-MODUS: Draggable Bälle auf dem Pitch */}
                 {ballMode && ballPositions.map((bp) => {
                   const pNode = currentNodePositions.find(n => n.id === bp.playerId);
                   if (!pNode) return null;
@@ -5814,7 +5814,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                       style={{ left: `${bp.x}%`, top: `${bp.y}%` }}
                     >
                       <div className="w-5 h-5 rounded-full bg-gradient-to-br from-yellow-300 via-white to-yellow-400 border-2 border-yellow-600 shadow-lg shadow-yellow-500/40 flex items-center justify-center text-[7px] font-black text-yellow-900 group-hover:scale-125 transition-transform">
-                        âš½
+                        ⚽
                       </div>
                       <span className="absolute -bottom-3 left-1/2 -translate-x-1/2 text-[7px] font-black text-yellow-300 bg-slate-950/80 px-0.5 rounded whitespace-nowrap">
                         {pNode.number}
@@ -5870,7 +5870,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                           <div className="absolute -inset-3 rounded-full bg-emerald-400/30 animate-pulse pointer-events-none" />
                         )}
 
-                        {/* Player Name Pill / Badge â€” FC Auggen ROT */}
+                        {/* Player Name Pill / Badge — FC Auggen ROT */}
                         <div className={`px-2 py-0.5 rounded-full text-[9px] font-black shadow-xl border flex items-center gap-1 ${
                           node.isHighlighted
                             ? 'bg-amber-400 text-slate-950 border-white font-black shadow-amber-500/50'
@@ -5883,7 +5883,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                           <span>{node.number}. {node.name}</span>
                         </div>
 
-                        {/* 3D Node Sphere Marker â€” FC Auggen ROT */}
+                        {/* 3D Node Sphere Marker — FC Auggen ROT */}
                         <div className={`w-8 h-8 rounded-full border-2 mt-1 flex items-center justify-center shadow-2xl text-xs font-black transition-all ${
                           node.isHighlighted
                             ? 'bg-gradient-to-tr from-amber-500 via-yellow-400 to-amber-200 border-white text-slate-950 shadow-amber-500/60'
@@ -5929,7 +5929,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                                 <span className="text-amber-400 font-mono">#{node.number}</span> {node.name}
                               </div>
                               <div className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">
-                                {node.position} â€¢ {node.role}
+                                {node.position} • {node.role}
                               </div>
                             </div>
 
@@ -5937,7 +5937,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                             {contextSubMenu === 'main' && (
                               <div className="space-y-1 text-xs">
                                 
-                                {/* 1. Laufweg hinzufÃ¼gen */}
+                                {/* 1. Laufweg hinzufügen */}
                                 <button
                                   onClick={() => {
                                     setRunTargetModePlayerId(node.id);
@@ -5946,7 +5946,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                                   className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-slate-800 text-emerald-400 font-bold flex items-center gap-2 transition-colors"
                                 >
                                   <CornerUpRight size={14} />
-                                  <span>Laufweg hinzufÃ¼gen</span>
+                                  <span>Laufweg hinzufügen</span>
                                 </button>
                                 <button
                                   onClick={() => { startMultiRunDrawing(node.id); setContextMenuPlayerId(null); }}
@@ -6036,7 +6036,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                                     className="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-rose-950/60 text-rose-400 font-medium flex items-center gap-2 transition-colors mt-1 border-t border-slate-800"
                                   >
                                     <Trash2 size={13} />
-                                    <span>Laufwege lÃ¶schen</span>
+                                    <span>Laufwege löschen</span>
                                   </button>
                                 )}
                               </div>
@@ -6046,8 +6046,8 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                             {contextSubMenu === 'roles' && (
                               <div className="space-y-1.5 text-xs">
                                 <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 mb-1">
-                                  <span>Rolle auswÃ¤hlen:</span>
-                                  <button onClick={() => setContextSubMenu('main')} className="text-emerald-400 hover:underline">ZurÃ¼ck</button>
+                                  <span>Rolle auswählen:</span>
+                                  <button onClick={() => setContextSubMenu('main')} className="text-emerald-400 hover:underline">Zurück</button>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-1 max-h-36 overflow-y-auto custom-scrollbar">
@@ -6059,7 +6059,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                                         setCustomRoles(updatedRoles);
                                         syncActiveCustomFormationToFirestore({ roles: updatedRoles });
                                         setContextMenuPlayerId(null);
-                                        notify(`Rolle "${roleName}" fÃ¼r ${node.name} zugewiesen.`);
+                                        notify(`Rolle "${roleName}" für ${node.name} zugewiesen.`);
                                       }}
                                       className={`px-2 py-1 rounded text-[10px] font-bold text-left truncate transition-colors ${
                                         node.role === roleName ? 'bg-emerald-600 text-white' : 'bg-slate-950 hover:bg-slate-800 text-slate-300'
@@ -6101,7 +6101,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                               <div className="space-y-1.5 text-xs">
                                 <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 mb-1">
                                   <span>Zone markieren:</span>
-                                  <button onClick={() => setContextSubMenu('main')} className="text-emerald-400 hover:underline">ZurÃ¼ck</button>
+                                  <button onClick={() => setContextSubMenu('main')} className="text-emerald-400 hover:underline">Zurück</button>
                                 </div>
 
                                 <div className="space-y-1">
@@ -6137,7 +6137,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                               <div className="space-y-2 text-xs">
                                 <div className="flex items-center justify-between text-[10px] font-bold text-slate-400">
                                   <span>Formation umbenennen:</span>
-                                  <button onClick={() => setContextSubMenu('main')} className="text-emerald-400 hover:underline">ZurÃ¼ck</button>
+                                  <button onClick={() => setContextSubMenu('main')} className="text-emerald-400 hover:underline">Zurück</button>
                                 </div>
 
                                 <input
@@ -6166,7 +6166,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                   );
                 })}
 
-                {/* â•â•â• GEGNER (Blau) â€” 11 Spieler â•â•â• */}
+                {/* ═══ GEGNER (Blau) — 11 Spieler ═══ */}
                 {showOpponents && opponentPlayers.map((opp) => {
                   const oppX = isAnimating && opponentTargetPositions[opp.id]
                     ? opponentTargetPositions[opp.id].x + (opp.x - opponentTargetPositions[opp.id].x) * (1 - animProgress)
@@ -6192,7 +6192,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                   );
                 })}
 
-                {/* â•â•â• FREIHAND-LAUFWEGE â•â•â• */}
+                {/* ═══ FREIHAND-LAUFWEGE ═══ */}
                 {drawnPaths.length > 0 && (
                   <svg className="absolute inset-0 w-full h-full z-15 pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
                     {drawnPaths.map((path) => {
@@ -6209,7 +6209,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                   </svg>
                 )}
 
-                {/* â•â•â• FREIHAND: Aktiver Pfad beim Zeichnen â•â•â• */}
+                {/* ═══ FREIHAND: Aktiver Pfad beim Zeichnen ═══ */}
                 {freeDrawMode && currentDrawPoints.length > 1 && (
                   <svg className="absolute inset-0 w-full h-full z-16 pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
                     <path
@@ -6219,7 +6219,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                   </svg>
                 )}
 
-                {/* â•â•â• ABSPIELEN: Animierte Spieler-Punkte laufen entlang der gezeichneten Pfade â•â•â• */}
+                {/* ═══ ABSPIELEN: Animierte Spieler-Punkte laufen entlang der gezeichneten Pfade ═══ */}
                 {isAnimating && drawnPaths.map((path) => {
                   if (path.points.length < 2) return null;
                   const pos = pointAlongPathsForProgress(path.points, animProgress);
@@ -6231,13 +6231,13 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                       style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
                     >
                       <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-[#e94560] to-[#c0392b] border-2 border-white shadow-lg shadow-[#e94560]/60 flex items-center justify-center text-[8px] font-black text-white">
-                        â–¶
+                        ▶
                       </div>
                     </div>
                   );
                 })}
 
-                {/* â•â•â• PASSSTAFETTE (Stufe 4) â•â•â• */}
+                {/* ═══ PASSSTAFETTE (Stufe 4) ═══ */}
                 {passStations.length > 0 && !(seqRunning && seqPhase === 'lauf') && (
                   <svg className="absolute inset-0 w-full h-full z-15 pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
                     {passStations.slice(0, -1).map((s, i) => {
@@ -6307,12 +6307,12 @@ Gib mir in 3 kurzen, klaren Bullet Points:
               <p className="text-xs text-slate-200 leading-snug">
                 {activePhase === 'offensiv' && (
                   <>
-                    AufbauhÃ¶he: <strong className="text-emerald-400">{tacticalPhaseConfig.offensiv.aufbauhoehe}</strong> | Ãœberzahl: <strong className="text-emerald-400">{tacticalPhaseConfig.offensiv.ueberzahlzonen}</strong> | Progression: <strong className="text-emerald-400">{tacticalPhaseConfig.offensiv.progression}</strong> | Halbraum: <strong className="text-emerald-400">{tacticalPhaseConfig.offensiv.halbraumnutzung}</strong> | Fokus: <strong className="text-emerald-400">{tacticalPhaseConfig.offensiv.offensivfokus}</strong>.
+                    Aufbauhöhe: <strong className="text-emerald-400">{tacticalPhaseConfig.offensiv.aufbauhoehe}</strong> | Überzahl: <strong className="text-emerald-400">{tacticalPhaseConfig.offensiv.ueberzahlzonen}</strong> | Progression: <strong className="text-emerald-400">{tacticalPhaseConfig.offensiv.progression}</strong> | Halbraum: <strong className="text-emerald-400">{tacticalPhaseConfig.offensiv.halbraumnutzung}</strong> | Fokus: <strong className="text-emerald-400">{tacticalPhaseConfig.offensiv.offensivfokus}</strong>.
                   </>
                 )}
                 {activePhase === 'defensiv' && (
                   <>
-                    PressinghÃ¶he: <strong className="text-rose-400">{tacticalPhaseConfig.defensiv.pressinghoehe}</strong> | Lenkung: <strong className="text-rose-400">{tacticalPhaseConfig.defensiv.pressinglenkung}</strong> | Kompaktheit: <strong className="text-rose-400">{tacticalPhaseConfig.defensiv.kompaktheit}</strong> | Mannorientierung: <strong className="text-rose-400">{tacticalPhaseConfig.defensiv.mannorientierung}</strong>.
+                    Pressinghöhe: <strong className="text-rose-400">{tacticalPhaseConfig.defensiv.pressinghoehe}</strong> | Lenkung: <strong className="text-rose-400">{tacticalPhaseConfig.defensiv.pressinglenkung}</strong> | Kompaktheit: <strong className="text-rose-400">{tacticalPhaseConfig.defensiv.kompaktheit}</strong> | Mannorientierung: <strong className="text-rose-400">{tacticalPhaseConfig.defensiv.mannorientierung}</strong>.
                   </>
                 )}
                 {activePhase === 'umschalten' && (
@@ -6337,7 +6337,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
               ) : (
                 <>
                   <BrainCircuit size={16} />
-                  {activeClub.name} â€” Taktische KI-Analyse generieren
+                  {activeClub.name} — Taktische KI-Analyse generieren
                 </>
               )}
             </button>
@@ -6348,7 +6348,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                 <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                   <span className="font-black text-xs uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
                     <BrainCircuit size={14} className="text-purple-400" />
-                    Taktische KI-Analyse â€” {activeClub.name}
+                    Taktische KI-Analyse — {activeClub.name}
                   </span>
                   <button onClick={() => setShowTacticalAnalysis(false)} className="p-1 rounded hover:bg-slate-800 cursor-pointer">
                     <X size={14} className="text-slate-500" />
@@ -6377,7 +6377,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                     </div>
                     <div>
                       <h3 className="font-black text-base text-white uppercase">{selectedNode.name}</h3>
-                      <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">{selectedNode.position} â€¢ {selectedNode.role}</p>
+                      <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">{selectedNode.position} • {selectedNode.role}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 z-10">
@@ -6387,7 +6387,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                     <button
                       onClick={() => setSelectedNodeId(null)}
                       className="p-1 rounded-lg bg-slate-950 hover:bg-rose-600 text-slate-400 hover:text-white border border-slate-800 transition-all cursor-pointer"
-                      title="Profilkarte schlieÃŸen"
+                      title="Profilkarte schließen"
                     >
                       <X size={16} />
                     </button>
@@ -6426,7 +6426,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                 <div className="bg-emerald-950/40 border border-emerald-500/30 rounded-xl p-3 text-[10px] text-emerald-200 space-y-1">
                   <span className="font-black uppercase text-emerald-400 block tracking-wider">Level 3 Position-Analyse:</span>
                   <p className="leading-snug">
-                    FÃ¼r die Position {selectedNode.position} ist diese Laufbewegung typisch und taktisch essenziell fÃ¼r das {activeClub.name} Gegenpressing.
+                    Für die Position {selectedNode.position} ist diese Laufbewegung typisch und taktisch essenziell für das {activeClub.name} Gegenpressing.
                   </p>
                 </div>
 
@@ -6479,7 +6479,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-amber-500/30 pb-4">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-yellow-600 text-slate-950 font-black flex items-center justify-center shadow-lg text-xl">
-                  ðŸ†
+                  🏆
                 </div>
                 <div>
                   <h2 className="font-black text-xl text-white uppercase tracking-wider flex items-center gap-2">
@@ -6651,7 +6651,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
 
                     <div className="grid grid-cols-2 gap-2 text-[10px] font-mono font-bold bg-slate-900 p-2 rounded-xl border border-slate-800">
                       <div>
-                        <span className="text-slate-500 block">Ã˜ xG Tore:</span>
+                        <span className="text-slate-500 block">Ø xG Tore:</span>
                         <span className="text-emerald-400 font-black text-xs">{data.xGAvg} / Spiel</span>
                       </div>
                       <div>
@@ -6692,15 +6692,15 @@ Gib mir in 3 kurzen, klaren Bullet Points:
           <div className="bg-gradient-to-br from-purple-950/60 via-slate-900 to-slate-950 border-2 border-purple-500/50 rounded-2xl p-6 shadow-2xl">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-400 to-violet-600 text-slate-950 font-black flex items-center justify-center shadow-lg text-2xl">ðŸŽ¯</div>
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-400 to-violet-600 text-slate-950 font-black flex items-center justify-center shadow-lg text-2xl">🎯</div>
                 <div>
                   <h2 className="font-black text-xl text-white uppercase tracking-wider">Standards & Standardsituationen</h2>
-                  <p className="text-xs text-purple-300 font-semibold mt-0.5">Halbfeld-Ansicht â€¢ Zonen markieren â€¢ Laufwege zeichnen</p>
+                  <p className="text-xs text-purple-300 font-semibold mt-0.5">Halbfeld-Ansicht • Zonen markieren • Laufwege zeichnen</p>
                 </div>
               </div>
               <div className="flex gap-2 flex-wrap items-center">
                 {standardsFullscreen && (
-                  <span className="text-[8px] font-black text-purple-400 uppercase mr-1">ESC zum SchlieÃŸen</span>
+                  <span className="text-[8px] font-black text-purple-400 uppercase mr-1">ESC zum Schließen</span>
                 )}
                 <button
                   onClick={() => setStandardsFullscreen(!standardsFullscreen)}
@@ -6713,49 +6713,49 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                     onClick={() => setStandardsFullscreen(false)}
                     className="flex items-center gap-1 bg-red-600 hover:bg-red-500 text-white text-[10px] font-black uppercase px-3 py-2 rounded-xl transition-colors"
                   >
-                    <X size={12} /> SchlieÃŸen
+                    <X size={12} /> Schließen
                   </button>
                 )}
                 <button
                   onClick={() => { setStandardMode('ecke_links'); resetStandardField(); }}
                   className={`px-3 py-2 text-[10px] font-black uppercase rounded-xl border transition-all ${standardMode === 'ecke_links' ? 'bg-amber-500 text-slate-950 border-amber-400' : 'bg-slate-800 text-slate-300 border-slate-700 hover:border-amber-500/50'}`}
-                >âš½ Ecke Links</button>
+                >⚽ Ecke Links</button>
                 <button
                   onClick={() => { setStandardMode('ecke_rechts'); resetStandardField(); }}
                   className={`px-3 py-2 text-[10px] font-black uppercase rounded-xl border transition-all ${standardMode === 'ecke_rechts' ? 'bg-amber-500 text-slate-950 border-amber-400' : 'bg-slate-800 text-slate-300 border-slate-700 hover:border-amber-500/50'}`}
-                >âš½ Ecke Rechts</button>
+                >⚽ Ecke Rechts</button>
                 <button
                   onClick={() => { setStandardMode('freistoss_zentral'); resetStandardField(); }}
                   className={`px-3 py-2 text-[10px] font-black uppercase rounded-xl border transition-all ${standardMode === 'freistoss_zentral' ? 'bg-emerald-500 text-slate-950 border-emerald-400' : 'bg-slate-800 text-slate-300 border-slate-700 hover:border-emerald-500/50'}`}
-                >ðŸŽ¯ FreistoÃŸ Zentral</button>
+                >🎯 Freistoß Zentral</button>
                 <button
                   onClick={() => { setStandardMode('freistoss_seitlich'); resetStandardField(); }}
                   className={`px-3 py-2 text-[10px] font-black uppercase rounded-xl border transition-all ${standardMode === 'freistoss_seitlich' ? 'bg-emerald-500 text-slate-950 border-emerald-400' : 'bg-slate-800 text-slate-300 border-slate-700 hover:border-emerald-500/50'}`}
-                >ðŸŽ¯ FreistoÃŸ Seitlich</button>
+                >🎯 Freistoß Seitlich</button>
                 <button
                   onClick={() => { setStandardMode('elfmeter'); resetStandardField(); }}
                   className={`px-3 py-2 text-[10px] font-black uppercase rounded-xl border transition-all ${standardMode === 'elfmeter' ? 'bg-red-500 text-white border-red-400' : 'bg-slate-800 text-slate-300 border-slate-700 hover:border-red-500/50'}`}
-                >âš¡ Elfmeter</button>
+                >⚡ Elfmeter</button>
                 <div className="w-px bg-slate-700" />
                 <button
                   onClick={() => setStandardDrawMode(standardDrawMode === 'zone' ? 'player' : 'zone')}
                   className={`px-3 py-2 text-[10px] font-black uppercase rounded-xl border transition-all ${standardDrawMode === 'zone' ? 'bg-violet-500 text-white border-violet-400' : 'bg-slate-800 text-slate-300 border-slate-700 hover:border-violet-500/50'}`}
-                >{standardDrawMode === 'zone' ? 'ðŸ”² Zonen-Modus' : 'ðŸ”µ Spieler-Modus'}</button>
+                >{standardDrawMode === 'zone' ? '🔲 Zonen-Modus' : '🔵 Spieler-Modus'}</button>
                 <button
                   onClick={() => { setStandardDrawMode('run'); }}
                   className={`px-3 py-2 text-[10px] font-black uppercase rounded-xl border transition-all ${standardDrawMode === 'run' ? 'bg-cyan-500 text-slate-950 border-cyan-400' : 'bg-slate-800 text-slate-300 border-slate-700 hover:border-cyan-500/50'}`}
-                >ðŸƒ Laufweg zeichnen</button>
-                <button onClick={resetStandardField} className="px-3 py-2 text-[10px] font-black uppercase rounded-xl border bg-slate-800 text-red-400 border-slate-700 hover:border-red-500/50 transition-all">ðŸ—‘ Reset</button>
+                >🏃 Laufweg zeichnen</button>
+                <button onClick={resetStandardField} className="px-3 py-2 text-[10px] font-black uppercase rounded-xl border bg-slate-800 text-red-400 border-slate-700 hover:border-red-500/50 transition-all">🗑 Reset</button>
               </div>
             </div>
           </div>
 
-          {/* HALBfeld â€” interaktiv */}
+          {/* HALBfeld — interaktiv */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
             {/* Halbfeld SVG */}
             <div className="lg:col-span-2 bg-slate-900 border-2 border-slate-800 rounded-2xl overflow-hidden shadow-xl">
               <div className="bg-slate-950/80 px-4 py-2 border-b border-slate-800 flex items-center justify-between">
-                <span className="text-[10px] font-black text-purple-400 uppercase">Halbfeld â€” AngriffshÃ¤lfte</span>
+                <span className="text-[10px] font-black text-purple-400 uppercase">Halbfeld — Angriffshälfte</span>
                 <span className="text-[9px] text-slate-500">Klicke auf das Feld um Spieler/Zonen zu platzieren</span>
               </div>
               <div className="relative w-full" style={{ paddingBottom: '70%' }}>
@@ -6771,7 +6771,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                   {/* Mittellinie (unten =Anfang des Halbfelds) */}
                   <line x1="10" y1="340" x2="490" y2="340" stroke="#10B981" strokeWidth="1.5" opacity="0.35" />
 
-                  {/* Strafraum groÃŸ */}
+                  {/* Strafraum groß */}
                   <rect x="120" y="10" width="260" height="100" fill="none" stroke="#10B981" strokeWidth="1.2" opacity="0.35" rx="2" />
 
                   {/* 5-Meter-Raum */}
@@ -6802,35 +6802,35 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                   {standardMode === 'ecke_links' && (
                     <g>
                       <circle cx="10" cy="10" r="8" fill="#F97316" opacity="0.8"><animate attributeName="r" values="8;12;8" dur="1.5s" repeatCount="indefinite" /></circle>
-                      <text x="22" y="22" fill="#F97316" fontSize="10" fontWeight="black">âš½ Ecke Links</text>
+                      <text x="22" y="22" fill="#F97316" fontSize="10" fontWeight="black">⚽ Ecke Links</text>
                     </g>
                   )}
                   {standardMode === 'ecke_rechts' && (
                     <g>
                       <circle cx="490" cy="10" r="8" fill="#F97316" opacity="0.8"><animate attributeName="r" values="8;12;8" dur="1.5s" repeatCount="indefinite" /></circle>
-                      <text x="440" y="22" fill="#F97316" fontSize="10" fontWeight="black">âš½ Ecke Rechts</text>
+                      <text x="440" y="22" fill="#F97316" fontSize="10" fontWeight="black">⚽ Ecke Rechts</text>
                     </g>
                   )}
                   {standardMode === 'freistoss_zentral' && (
                     <g>
                       <circle cx="250" cy="170" r="8" fill="#10B981" opacity="0.8"><animate attributeName="r" values="8;12;8" dur="1.5s" repeatCount="indefinite" /></circle>
-                      <text x="265" y="175" fill="#10B981" fontSize="10" fontWeight="black">âš½ FreistoÃŸ</text>
+                      <text x="265" y="175" fill="#10B981" fontSize="10" fontWeight="black">⚽ Freistoß</text>
                     </g>
                   )}
                   {standardMode === 'freistoss_seitlich' && (
                     <g>
                       <circle cx="80" cy="150" r="8" fill="#10B981" opacity="0.8"><animate attributeName="r" values="8;12;8" dur="1.5s" repeatCount="indefinite" /></circle>
-                      <text x="95" y="155" fill="#10B981" fontSize="10" fontWeight="black">âš½ FreistoÃŸ</text>
+                      <text x="95" y="155" fill="#10B981" fontSize="10" fontWeight="black">⚽ Freistoß</text>
                     </g>
                   )}
                   {standardMode === 'elfmeter' && (
                     <g>
                       <circle cx="250" cy="75" r="8" fill="#EF4444" opacity="0.8"><animate attributeName="r" values="8;12;8" dur="1.5s" repeatCount="indefinite" /></circle>
-                      <text x="265" y="80" fill="#EF4444" fontSize="10" fontWeight="black">âš½ Elfmeter</text>
+                      <text x="265" y="80" fill="#EF4444" fontSize="10" fontWeight="black">⚽ Elfmeter</text>
                     </g>
                   )}
 
-                  {/* Zonen-Overlay (anklickbare FlÃ¤chen) */}
+                  {/* Zonen-Overlay (anklickbare Flächen) */}
                   {standardZones.map((zone, i) => (
                     <rect
                       key={`zone-${i}`}
@@ -6896,10 +6896,10 @@ Gib mir in 3 kurzen, klaren Bullet Points:
               <div className="bg-slate-900 border-2 border-slate-800 rounded-2xl p-4">
                 <div className="text-[10px] font-black text-purple-400 uppercase tracking-widest mb-2">Aktiver Modus</div>
                 <div className="text-sm font-black text-white">
-                  {standardMode === 'ecke_links' ? 'âš½ Ecke Links' : standardMode === 'ecke_rechts' ? 'âš½ Ecke Rechts' : standardMode === 'freistoss_zentral' ? 'ðŸŽ¯ FreistoÃŸ Zentral' : standardMode === 'freistoss_seitlich' ? 'ðŸŽ¯ FreistoÃŸ Seitlich' : standardMode === 'elfmeter' ? 'âš¡ Elfmeter' : 'Frei'}
+                  {standardMode === 'ecke_links' ? '⚽ Ecke Links' : standardMode === 'ecke_rechts' ? '⚽ Ecke Rechts' : standardMode === 'freistoss_zentral' ? '🎯 Freistoß Zentral' : standardMode === 'freistoss_seitlich' ? '🎯 Freistoß Seitlich' : standardMode === 'elfmeter' ? '⚡ Elfmeter' : 'Frei'}
                 </div>
                 <div className="text-[9px] text-slate-500 mt-1">
-                  {standardDrawMode === 'zone' ? 'Zonen-Modus: Klicke um Farbzone zu platzieren' : standardDrawMode === 'run' ? 'Laufweg-Modus: 2x klicken (Start â†’ Ende)' : 'Spieler-Modus: Klick um Spieler zu platzieren'}
+                  {standardDrawMode === 'zone' ? 'Zonen-Modus: Klicke um Farbzone zu platzieren' : standardDrawMode === 'run' ? 'Laufweg-Modus: 2x klicken (Start → Ende)' : 'Spieler-Modus: Klick um Spieler zu platzieren'}
                 </div>
               </div>
 
@@ -6912,7 +6912,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                     <div key={i} className="flex items-center gap-2 text-[9px]">
                       <span className="w-5 h-5 rounded-full flex items-center justify-center text-white font-black text-[8px]" style={{ backgroundColor: p.color }}>{p.number || i + 1}</span>
                       <span className="text-white font-bold">{p.name || `Spieler ${i + 1}`}</span>
-                      <button onClick={() => setStandardPlayers(prev => prev.filter((_, idx) => idx !== i))} className="ml-auto text-red-500 hover:text-red-400">Ã—</button>
+                      <button onClick={() => setStandardPlayers(prev => prev.filter((_, idx) => idx !== i))} className="ml-auto text-red-500 hover:text-red-400">×</button>
                     </div>
                   ))}
                 </div>
@@ -6927,7 +6927,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                     <div key={i} className="flex items-center gap-2 text-[9px]">
                       <span className="w-4 h-4 rounded" style={{ backgroundColor: z.color, opacity: 0.6 }} />
                       <span className="text-white font-bold">Zone {i + 1}</span>
-                      <button onClick={() => setStandardZones(prev => prev.filter((_, idx) => idx !== i))} className="ml-auto text-red-500 hover:text-red-400">Ã—</button>
+                      <button onClick={() => setStandardZones(prev => prev.filter((_, idx) => idx !== i))} className="ml-auto text-red-500 hover:text-red-400">×</button>
                     </div>
                   ))}
                 </div>
@@ -6942,7 +6942,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                     <div key={i} className="flex items-center gap-2 text-[9px]">
                       <span className="w-4 h-0.5 rounded" style={{ backgroundColor: r.color }} />
                       <span className="text-white font-bold">Lauf {i + 1}</span>
-                      <button onClick={() => setStandardRunPaths(prev => prev.filter((_, idx) => idx !== i))} className="ml-auto text-red-500 hover:text-red-400">Ã—</button>
+                      <button onClick={() => setStandardRunPaths(prev => prev.filter((_, idx) => idx !== i))} className="ml-auto text-red-500 hover:text-red-400">×</button>
                     </div>
                   ))}
                 </div>
@@ -6959,10 +6959,10 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                 />
               </div>
 
-              {/* Letzte 2 Spiele â€” automatisch */}
+              {/* Letzte 2 Spiele — automatisch */}
               {lastTwoMatchStandards.length > 0 && (
                 <div className="bg-gradient-to-br from-purple-950/60 via-slate-900 to-slate-950 border-2 border-purple-500/30 rounded-2xl p-4">
-                  <div className="text-[10px] font-black text-purple-400 uppercase tracking-widest mb-2">ðŸ“„ Standards letzte 2 Spiele</div>
+                  <div className="text-[10px] font-black text-purple-400 uppercase tracking-widest mb-2">📄 Standards letzte 2 Spiele</div>
                   <div className="space-y-3">
                     {lastTwoMatchStandards.map((ms: any, i: number) => (
                       <div key={i} className="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-2">
@@ -6976,12 +6976,12 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                               const newStandard: StandardVariant = {
                                 id: `std_from_match_${Date.now()}_${i}`,
                                 name: `Standard vs ${ms.opponent} (${ms.date})`,
-                                type: ms.types.includes('Ecke') ? 'ecke_offensiv' : ms.types.includes('FreistoÃŸ') ? 'freistoss_halbfeld' : 'ecke_offensiv',
+                                type: ms.types.includes('Ecke') ? 'ecke_offensiv' : ms.types.includes('Freistoß') ? 'freistoss_halbfeld' : 'ecke_offensiv',
                                 executor: ms.playerNames[0] || '',
                                 keyPlayers: ms.playerNames.slice(0, 4).join(', '),
                                 description: ms.fullText.substring(0, 200),
                                 successRate: 70,
-                                aiTacticNotes: `Ãœbernommen aus Spielanalyse vs ${ms.opponent}`,
+                                aiTacticNotes: `Übernommen aus Spielanalyse vs ${ms.opponent}`,
                                 positions: [],
                                 createdAt: new Date().toISOString()
                               };
@@ -7035,7 +7035,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
           style={{ left: standardPlayerPicker.x + 10, top: standardPlayerPicker.y - 100 }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="text-[9px] font-black text-purple-400 uppercase mb-1 px-1">Spieler wÃ¤hlen</div>
+          <div className="text-[9px] font-black text-purple-400 uppercase mb-1 px-1">Spieler wählen</div>
           {(() => {
             const squad = (players || []).filter((p: any) => p.category === 'player');
             return squad.map((p: any) => (
@@ -7057,12 +7057,12 @@ Gib mir in 3 kurzen, klaren Bullet Points:
         </div>
       )}
 
-      {/* Hintergrund-Klick schlieÃŸt Popup */}
+      {/* Hintergrund-Klick schließt Popup */}
       {standardPlayerPicker && (
         <div className="fixed inset-0 z-[9998]" onClick={() => setStandardPlayerPicker(null)} />
       )}
 
-      {/* SUB-TAB 6b: 1:1 SYSTEME & STANDARDS (geteilt mit PrÃ¤sentation) */}
+      {/* SUB-TAB 6b: 1:1 SYSTEME & STANDARDS (geteilt mit Präsentation) */}
       {activeTabSub === 'scenarios' && (
         <div className="bg-slate-900 border-2 border-violet-500/40 rounded-2xl p-6 space-y-6 shadow-2xl">
           <div className="border-b border-slate-800 pb-4">
@@ -7079,7 +7079,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
               </button>
             </div>
             <p className="text-[11px] text-slate-400 mt-1">
-              Zeichnungen exakt nach Trainer-Vorgabe. Wird im gleichen Zustand auch in der ðŸ“º SpieltagsprÃ¤sentation Ã¼bernommen.
+              Zeichnungen exakt nach Trainer-Vorgabe. Wird im gleichen Zustand auch in der 📺 Spieltagspräsentation übernommen.
             </p>
           </div>
 
@@ -7093,7 +7093,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                   : 'bg-slate-950 text-violet-300 border-violet-500/40 hover:border-violet-400'
               }`}
             >
-              âš™ï¸ Spielsysteme
+              ⚙️ Spielsysteme
             </button>
             <button
               onClick={() => setScenarioCatFilter('standard')}
@@ -7103,7 +7103,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                   : 'bg-slate-950 text-violet-300 border-violet-500/40 hover:border-violet-400'
               }`}
             >
-              ðŸ“ Standards (1:1)
+              📐 Standards (1:1)
             </button>
           </div>
 
@@ -7146,7 +7146,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
             </div>
             <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-3">
               <div className="text-[11px] font-black uppercase tracking-wider text-violet-300">
-                {activeScenario.name} <span className="text-slate-400">Â· {activeScenario.sub}</span>
+                {activeScenario.name} <span className="text-slate-400">· {activeScenario.sub}</span>
               </div>
               {activeScenario.note && (
                 <p className="text-[12px] text-slate-300 leading-relaxed">{activeScenario.note}</p>
@@ -7170,19 +7170,19 @@ Gib mir in 3 kurzen, klaren Bullet Points:
         </div>
       )}
 
-      {/* 1:1 VOLLBILD-OVERLAY (gilt fÃ¼r das 1:1-Panel UND die TV-PrÃ¤sentation/Standards) */}
+      {/* 1:1 VOLLBILD-OVERLAY (gilt für das 1:1-Panel UND die TV-Präsentation/Standards) */}
       {scenarioFullscreen && (
         <div className="fixed inset-0 z-[400] bg-slate-950 p-4 sm:p-6 overflow-auto">
           <div className="absolute top-3 right-3 flex items-center gap-2">
             <span className="text-[11px] font-black uppercase tracking-wider text-violet-300 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg">
-              {activeScenario.name} Â· {activeScenario.sub}
+              {activeScenario.name} · {activeScenario.sub}
             </span>
             <button
               onClick={() => setScenarioFullscreen(false)}
               className="bg-rose-500 hover:bg-rose-400 text-white font-black text-[11px] uppercase px-3 py-1.5 rounded-lg shadow-lg transition-all flex items-center gap-1.5 cursor-pointer"
-              title="Vollbild schlieÃŸen (ESC)"
+              title="Vollbild schließen (ESC)"
             >
-              <X size={14} /> SchlieÃŸen
+              <X size={14} /> Schließen
             </button>
           </div>
           <div className="w-full max-w-4xl mx-auto aspect-square mt-16">
@@ -7191,14 +7191,14 @@ Gib mir in 3 kurzen, klaren Bullet Points:
         </div>
       )}
 
-      {/* SUB-TAB 7: SPIELTAGSPRÃ„SENTATION & TAKTIKTAFEL-AUSGABE (FC AUGGEN) */}
+      {/* SUB-TAB 7: SPIELTAGSPRÄSENTATION & TAKTIKTAFEL-AUSGABE (FC AUGGEN) */}
       {activeTabSub === 'presentation' && (
         <div className="bg-slate-900 border-2 border-emerald-500/40 rounded-2xl p-6 space-y-6 shadow-2xl">
           {/* HEADER & MATCH SELECTOR */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 text-slate-950 font-black flex items-center justify-center shadow-lg text-2xl">
-                ðŸ“º
+                📺
               </div>
               <div>
                 <div className="flex items-center gap-2">
@@ -7210,7 +7210,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                   </span>
                 </div>
                 <h3 className="font-black text-lg uppercase tracking-wider text-white mt-0.5">
-                  SPIELTAGSPRÃ„SENTATION & TAKTIKTAFEL
+                  SPIELTAGSPRÄSENTATION & TAKTIKTAFEL
                 </h3>
               </div>
             </div>
@@ -7224,7 +7224,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
               >
                 {allCompetitiveMatches.map((m) => (
                   <option key={m.id} value={String(m.id)}>
-                    {nextUpcomingMatch?.id === m.id ? 'ðŸŸ¢ [NÃ„CHSTES SPIEL] ' : ''}{activeClub.name} vs. {m.opponent} ({m.date ? `${m.date} - ` : ''}{m.homeAway || (m.isHome ? 'Heim' : 'AuswÃ¤rts')} - {m.competition})
+                    {nextUpcomingMatch?.id === m.id ? '🟢 [NÄCHSTES SPIEL] ' : ''}{activeClub.name} vs. {m.opponent} ({m.date ? `${m.date} - ` : ''}{m.homeAway || (m.isHome ? 'Heim' : 'Auswärts')} - {m.competition})
                   </option>
                 ))}
               </select>
@@ -7233,7 +7233,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                 onClick={() => { setPresentationSlideIndex(0); setIsTvMode(true); }}
                 className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs uppercase px-4 py-2.5 rounded-xl shadow-lg transition-all flex items-center gap-1.5 active:scale-95"
               >
-                <Tv size={15} /> TV-PrÃ¤sentation Starten
+                <Tv size={15} /> TV-Präsentation Starten
               </button>
 
               <button
@@ -7270,7 +7270,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                     onClick={() => { setMarkers([]); notify('Alle Markierungen entfernt'); }}
                     className="bg-rose-500/20 hover:bg-rose-500/40 text-rose-300 font-bold text-[10px] uppercase px-2 py-1.5 rounded-lg border border-rose-500/30 transition-all"
                   >
-                    Alle lÃ¶schen ({markers.length})
+                    Alle löschen ({markers.length})
                   </button>
                 )}
               </div>
@@ -7278,7 +7278,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
               <button
                 onClick={syncLineupFromBoard}
                 className="bg-gradient-to-br from-violet-500 to-purple-600 hover:from-violet-400 hover:to-purple-500 text-white font-black text-xs uppercase px-4 py-2.5 rounded-xl shadow-lg transition-all flex items-center gap-1.5 active:scale-95"
-                title="Aktuelle Aufstellung vom 3D-Board Ã¼bernehmen (inkl. Bilder)"
+                title="Aktuelle Aufstellung vom 3D-Board übernehmen (inkl. Bilder)"
               >
                 <RefreshCw size={15} /> Vom Board
               </button>
@@ -7287,9 +7287,9 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                 onClick={loadStartelfFromLineupImages}
                 disabled={analyzingLineupFromImage}
                 className="bg-gradient-to-br from-sky-500 to-cyan-600 hover:from-sky-400 hover:to-cyan-500 text-white font-black text-xs uppercase px-4 py-2.5 rounded-xl shadow-lg transition-all flex items-center gap-1.5 active:scale-95 disabled:opacity-60 disabled:cursor-wait"
-                title="Startelf aus dem AUFSTELLUNG-Bild (von der letzten Aufstellung) des letzten Spielberichts per KI-Erkennung Ã¼bernehmen â€“ Namen per Trikotnummer dem Kader zuordnen, falls Name unlesbar"
+                title="Startelf aus dem AUFSTELLUNG-Bild (von der letzten Aufstellung) des letzten Spielberichts per KI-Erkennung übernehmen – Namen per Trikotnummer dem Kader zuordnen, falls Name unlesbar"
               >
-                <ScanSearch size={15} /> {analyzingLineupFromImage ? 'Erkenneâ€¦' : 'Ans Bild-Analyse'}
+                <ScanSearch size={15} /> {analyzingLineupFromImage ? 'Erkenne…' : 'Ans Bild-Analyse'}
               </button>
 
               <button
@@ -7320,15 +7320,15 @@ Gib mir in 3 kurzen, klaren Bullet Points:
           {/* SLIDE STEPPER / TABS BAR (9 SLIDES) */}
           <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-1.5">
             {[
-              { id: 0, label: '1. Titel', icon: 'âš½' },
-              { id: 1, label: '2. Aufstellung', icon: 'ðŸ‘•' },
-              { id: 2, label: '3. Defensiv', icon: 'ðŸ›¡ï¸' },
-              { id: 3, label: '4. Mit Ball', icon: 'âš¡' },
-              { id: 4, label: '5. Rotation', icon: 'ðŸ”' },
-              { id: 5, label: '6. Dreiecks-Rot.', icon: 'ðŸ”º' },
-              { id: 6, label: '7. Gegen Ball', icon: 'ðŸ—‘ï¸' },
-              { id: 7, label: '8. 1:1 Taktik', icon: 'ðŸ“' },
-              { id: 8, label: '9. Gegner Top 3', icon: 'â­' },
+              { id: 0, label: '1. Titel', icon: '⚽' },
+              { id: 1, label: '2. Aufstellung', icon: '👕' },
+              { id: 2, label: '3. Defensiv', icon: '🛡️' },
+              { id: 3, label: '4. Mit Ball', icon: '⚡' },
+              { id: 4, label: '5. Rotation', icon: '🔁' },
+              { id: 5, label: '6. Dreiecks-Rot.', icon: '🔺' },
+              { id: 6, label: '7. Gegen Ball', icon: '🗑️' },
+              { id: 7, label: '8. 1:1 Taktik', icon: '📐' },
+              { id: 8, label: '9. Gegner Top 3', icon: '⭐' },
             ].map((slide) => (
               <button
                 key={slide.id}
@@ -7352,7 +7352,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                 <Move size={14} className="text-amber-400" />
                 <span className="text-xs font-bold text-amber-300">
                   Bearbeitungsmodus: Spieler ziehen oder zum Tauschen zwei Spieler nacheinander anklicken.
-                  {swapFirstPlayer && ` Tausche: ${swapFirstPlayer} â†’ klicke Ziel-Spieler`}
+                  {swapFirstPlayer && ` Tausche: ${swapFirstPlayer} → klicke Ziel-Spieler`}
                 </span>
               </div>
             )}
@@ -7360,7 +7360,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
               <div className="bg-yellow-400/20 border border-yellow-400/40 rounded-xl px-4 py-2 flex items-center gap-3 mb-2">
                 <Circle size={14} className="text-yellow-400" />
                 <span className="text-xs font-bold text-yellow-300">
-                  Markierungsmodus: Klicke auf das Spielfeld um eine Markierung zu setzen. Rechtsklick zum LÃ¶schen, Doppelklick fÃ¼r Beschreibung.
+                  Markierungsmodus: Klicke auf das Spielfeld um eine Markierung zu setzen. Rechtsklick zum Löschen, Doppelklick für Beschreibung.
                 </span>
               </div>
             )}
@@ -7368,12 +7368,12 @@ Gib mir in 3 kurzen, klaren Bullet Points:
             {(() => {
               return (
                 <div className="space-y-6">
-                  {/* SLIDE 0: TITEL â€” Side-by-Side */}
+                  {/* SLIDE 0: TITEL — Side-by-Side */}
                   {presentationSlideIndex === 0 && (
                     <div className="flex flex-col lg:flex-row gap-6 min-h-[480px]">
                       <div className="lg:w-[55%] shrink-0">
                         <div className="h-full rounded-2xl border border-emerald-500/40 overflow-hidden relative shadow-2xl">
-                          <img src="/presentation/titel-design.png" alt="SpieltagsprÃ¤sentation" className="absolute inset-0 w-full h-full object-cover opacity-40" />
+                          <img src="/presentation/titel-design.png" alt="Spieltagspräsentation" className="absolute inset-0 w-full h-full object-cover opacity-40" />
                           <div className="absolute inset-0 bg-gradient-to-br from-emerald-950/95 via-slate-950/90 to-slate-950/95" />
                           <div className="relative z-10 p-8 flex flex-col items-center justify-center text-center min-h-[480px] gap-4">
                             <div className="flex items-center justify-center">{renderClubLogo(72, 'border-4 border-emerald-400/60', true)}</div>
@@ -7395,19 +7395,19 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                       <div className="lg:w-[45%] space-y-4 overflow-y-auto max-h-[520px]">
                         <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4">
                           <h4 className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                            <span className="text-sm">âš½</span> Match-Info
+                            <span className="text-sm">⚽</span> Match-Info
                           </h4>
                           <div className="space-y-2">
                             <div className="flex items-center gap-2 text-[12px] text-slate-300"><span className="text-slate-500 font-bold w-24 shrink-0">Wettbewerb:</span> {selectedMatchObj.competition}</div>
-                            <div className="flex items-center gap-2 text-[12px] text-slate-300"><span className="text-slate-500 font-bold w-24 shrink-0">Datum:</span> {selectedMatchObj.date ? new Date(selectedMatchObj.date).toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' }) : 'â€“'}</div>
+                            <div className="flex items-center gap-2 text-[12px] text-slate-300"><span className="text-slate-500 font-bold w-24 shrink-0">Datum:</span> {selectedMatchObj.date ? new Date(selectedMatchObj.date).toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' }) : '–'}</div>
                             <div className="flex items-center gap-2 text-[12px] text-slate-300"><span className="text-slate-500 font-bold w-24 shrink-0">Anpfiff:</span> {selectedMatchObj.time || '15:30'} Uhr</div>
                             <div className="flex items-center gap-2 text-[12px] text-slate-300"><span className="text-slate-500 font-bold w-24 shrink-0">Ort:</span> {selectedMatchObj.location}</div>
-                            <div className="flex items-center gap-2 text-[12px] text-slate-300"><span className="text-slate-500 font-bold w-24 shrink-0">Heim/Away:</span> <span className={selectedMatchObj.isHome ? 'text-emerald-400 font-bold' : 'text-amber-400 font-bold'}>{selectedMatchObj.isHome ? 'Heimspiel' : 'AuswÃ¤rtsspiel'}</span></div>
+                            <div className="flex items-center gap-2 text-[12px] text-slate-300"><span className="text-slate-500 font-bold w-24 shrink-0">Heim/Away:</span> <span className={selectedMatchObj.isHome ? 'text-emerald-400 font-bold' : 'text-amber-400 font-bold'}>{selectedMatchObj.isHome ? 'Heimspiel' : 'Auswärtsspiel'}</span></div>
                           </div>
                         </div>
                         <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4">
                           <h4 className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                            <span className="text-sm">ðŸ“‹</span> Vorbereitung
+                            <span className="text-sm">📋</span> Vorbereitung
                           </h4>
                           {slideEditingActive ? (
                             <div className="space-y-3">
@@ -7436,19 +7436,19 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                     </div>
                   )}
 
-                  {/* SLIDE 1: AUFSTELLUNG â€” Side-by-Side */}
+                  {/* SLIDE 1: AUFSTELLUNG — Side-by-Side */}
                   {presentationSlideIndex === 1 && (
                     <div className="flex flex-col lg:flex-row gap-6 min-h-[480px]">
                       <div className="lg:w-[55%] shrink-0">
                         <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
                           <div>
                             <h3 className="font-black text-xl uppercase text-white tracking-wider flex items-center gap-2">
-                              <span className="text-emerald-400">AUFSTELLUNG</span> â€” 4-3-3
+                              <span className="text-emerald-400">AUFSTELLUNG</span> — 4-3-3
                             </h3>
                             <p className="text-[11px] text-slate-400 font-mono">Spielsystem: 4-3-3 &bull; Startelf (XI)</p>
                           </div>
                           <div className="flex items-center gap-1.5">
-                          <button onClick={() => setStartelfEditMode(!startelfEditMode)} className={`${startelfEditMode ? 'bg-amber-400 text-slate-950' : 'bg-slate-800 hover:bg-slate-700 text-slate-200'} font-black text-xs uppercase px-3 py-2 rounded-xl border border-slate-700 transition-all flex items-center gap-1.5 active:scale-95`} title="Startelf manuell bearbeiten: Spieler in Startelf-Slots austauschen, Bank ergÃ¤nzen/entfernen â€“ wird automatisch gespeichert">
+                          <button onClick={() => setStartelfEditMode(!startelfEditMode)} className={`${startelfEditMode ? 'bg-amber-400 text-slate-950' : 'bg-slate-800 hover:bg-slate-700 text-slate-200'} font-black text-xs uppercase px-3 py-2 rounded-xl border border-slate-700 transition-all flex items-center gap-1.5 active:scale-95`} title="Startelf manuell bearbeiten: Spieler in Startelf-Slots austauschen, Bank ergänzen/entfernen – wird automatisch gespeichert">
                             <Pencil size={13} /> {startelfEditMode ? 'Fertig' : 'Startelf bearbeiten'}
                           </button>
                           <button onClick={() => startChampions()} className="bg-gradient-to-br from-amber-500 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 text-slate-950 font-black text-xs uppercase px-4 py-2.5 rounded-xl shadow-lg transition-all flex items-center gap-1.5 active:scale-95" title="Startelf-Karten von oben animiert einfliegen lassen">
@@ -7465,19 +7465,19 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                             draftPlayers={scPlayersFor('sys-433')}
                             onDraftChange={(z, p) => setEditsForScenario('sys-433', z, p)}
                           />
-                          <p className="text-[11px] text-slate-400 text-center mt-2 font-semibold">4-3-3 Â· Startelf Â· frei bearbeitbar (Zonen & Spieler ziehen)</p>
+                          <p className="text-[11px] text-slate-400 text-center mt-2 font-semibold">4-3-3 · Startelf · frei bearbeitbar (Zonen & Spieler ziehen)</p>
                         </div>
                       </div>
                       <div className="lg:w-[45%] space-y-4 overflow-y-auto max-h-[520px]">
                         <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4">
                           <h4 className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                            <span className="text-sm">ðŸ‘•</span> Startelf
+                            <span className="text-sm">👕</span> Startelf
                           </h4>
                           <div className="space-y-1.5">
                             {presentationLineup.map((p: any, idx: number) => (
                               <div key={idx} className="flex items-center gap-2 bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2">
                                 <span className="w-6 h-6 rounded-full bg-emerald-400 text-slate-950 font-black text-[10px] flex items-center justify-center shrink-0">{p.number}</span>
-                                <span className="text-[11px] text-white font-bold truncate flex-1">{p.name || 'â€” freier Platz â€”'}</span>
+                                <span className="text-[11px] text-white font-bold truncate flex-1">{p.name || '— freier Platz —'}</span>
                                 <span className="text-[9px] text-slate-500 uppercase font-mono shrink-0">{p.position}</span>
                                 {startelfEditMode ? (
                                   <div className="flex items-center gap-1 shrink-0">
@@ -7485,17 +7485,17 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                                       value=""
                                       onChange={(e) => { const pl = squadForLineupEdit.find((s) => s.id === e.target.value); if (pl) replaceStartelfRow(idx, pl); }}
                                       className="text-[9px] bg-slate-900 border border-amber-500/50 rounded px-1.5 py-1 text-slate-200 focus:outline-none max-w-[130px]"
-                                      title="Spieler fÃ¼r diese Position wÃ¤hlen"
+                                      title="Spieler für diese Position wählen"
                                     >
-                                      <option value="">Ersetzenâ€¦</option>
+                                      <option value="">Ersetzen…</option>
                                       {squadForLineupEdit.map((s) => (
                                         <option key={s.id} value={s.id}>{s.number ? `${s.number} ` : ''}{shortNameOf(s)} ({s.position})</option>
                                       ))}
                                     </select>
-                                    <button onClick={() => clearStartelfRow(idx)} className="text-[9px] px-1.5 py-1 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/40 font-black" title="Position leeren">âœ•</button>
+                                    <button onClick={() => clearStartelfRow(idx)} className="text-[9px] px-1.5 py-1 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/40 font-black" title="Position leeren">✕</button>
                                   </div>
                                 ) : (
-                                  <button onClick={() => setLineupSwapTarget(idx)} className={`text-[10px] px-1.5 py-0.5 rounded border transition-all shrink-0 ${lineupSwapTarget === idx ? 'bg-amber-400 text-slate-950 border-amber-300 font-black' : 'bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500'}`} title="Diesen Spieler zum Tausch auswÃ¤hlen">â†”</button>
+                                  <button onClick={() => setLineupSwapTarget(idx)} className={`text-[10px] px-1.5 py-0.5 rounded border transition-all shrink-0 ${lineupSwapTarget === idx ? 'bg-amber-400 text-slate-950 border-amber-300 font-black' : 'bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500'}`} title="Diesen Spieler zum Tausch auswählen">↔</button>
                                 )}
                               </div>
                             ))}
@@ -7503,7 +7503,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                         </div>
                         <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4">
                           <h4 className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                            <span className="text-sm">ðŸª‘</span> Bank
+                            <span className="text-sm">🪑</span> Bank
                           </h4>
                           <div className="space-y-1.5">
                             {presentationSubstitutes.map((sub, idx) => (
@@ -7512,7 +7512,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                                 <span className="text-[11px] text-slate-300 font-bold truncate flex-1">{sub.name}</span>
                                 <span className="text-[9px] text-slate-500 uppercase font-mono shrink-0">{sub.pos}</span>
                                 {startelfEditMode ? (
-                                  <button onClick={() => removePlayerFromBank(idx)} className="text-[9px] px-1.5 py-1 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/40 font-black shrink-0" title="Spieler von der Bank entfernen">âœ• Entf.</button>
+                                  <button onClick={() => removePlayerFromBank(idx)} className="text-[9px] px-1.5 py-1 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/40 font-black shrink-0" title="Spieler von der Bank entfernen">✕ Entf.</button>
                                 ) : (
                                   <button onClick={() => swapStartelfWithSub(idx)} className="text-[9px] px-2 py-0.5 rounded bg-violet-500/20 text-violet-300 border border-violet-500/40 hover:bg-violet-500/40 font-bold uppercase shrink-0 transition-all">Einwechseln</button>
                                 )}
@@ -7526,7 +7526,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                                 onChange={(e) => { const pl = squadForLineupEdit.find((s) => s.id === e.target.value); if (pl) addPlayerToBank(pl); }}
                                 className="text-[9px] bg-slate-900 border border-emerald-500/40 rounded px-1.5 py-1 text-slate-200 focus:outline-none flex-1"
                               >
-                                <option value="">+ Spieler zur Bank hinzufÃ¼genâ€¦</option>
+                                <option value="">+ Spieler zur Bank hinzufügen…</option>
                                 {squadForLineupEdit.map((s) => (
                                   <option key={s.id} value={s.id}>{s.number ? `${s.number} ` : ''}{shortNameOf(s)} ({s.position})</option>
                                 ))}
@@ -7536,14 +7536,14 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                         </div>
                         <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4">
                           <h4 className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                            <span className="text-sm">ðŸ“</span> Notizen
+                            <span className="text-sm">📝</span> Notizen
                           </h4>
                           {slideEditingActive ? (
                             <div className="space-y-2">
                               <div><label className="block text-[9px] text-slate-500 font-bold uppercase mb-0.5">Abwehrkette</label><textarea value={formationNotes.defenseLine} onChange={(e) => setFormationNotes({ ...formationNotes, defenseLine: e.target.value })} rows={2} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-[11px] text-slate-200 focus:outline-none focus:border-emerald-400 resize-none" /></div>
                               <div><label className="block text-[9px] text-slate-500 font-bold uppercase mb-0.5">Doppel-Pivot</label><textarea value={formationNotes.doublePivot} onChange={(e) => setFormationNotes({ ...formationNotes, doublePivot: e.target.value })} rows={2} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-[11px] text-slate-200 focus:outline-none focus:border-emerald-400 resize-none" /></div>
                               <div><label className="block text-[9px] text-slate-500 font-bold uppercase mb-0.5">Offensivreihe</label><textarea value={formationNotes.attackingRow} onChange={(e) => setFormationNotes({ ...formationNotes, attackingRow: e.target.value })} rows={2} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-[11px] text-slate-200 focus:outline-none focus:border-emerald-400 resize-none" /></div>
-                              <div><label className="block text-[9px] text-slate-500 font-bold uppercase mb-0.5">StÃ¼rmer</label><textarea value={formationNotes.striker} onChange={(e) => setFormationNotes({ ...formationNotes, striker: e.target.value })} rows={2} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-[11px] text-slate-200 focus:outline-none focus:border-emerald-400 resize-none" /></div>
+                              <div><label className="block text-[9px] text-slate-500 font-bold uppercase mb-0.5">Stürmer</label><textarea value={formationNotes.striker} onChange={(e) => setFormationNotes({ ...formationNotes, striker: e.target.value })} rows={2} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-[11px] text-slate-200 focus:outline-none focus:border-emerald-400 resize-none" /></div>
                             </div>
                           ) : (
                             <div className="space-y-1.5">
@@ -7556,7 +7556,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                         </div>
                         <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4">
                           <h4 className="text-[10px] font-black text-rose-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                            <span className="text-sm">ðŸ”</span> Gegneranalyse
+                            <span className="text-sm">🔍</span> Gegneranalyse
                           </h4>
                           <div className="bg-emerald-950/60 border border-emerald-800/40 rounded-xl p-3 relative min-h-[180px]">
                             <span className="text-[8px] font-black uppercase text-emerald-400/60 mb-1 block">Erwartete Formation: 4-2-3-1</span>
@@ -7579,13 +7579,13 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                               </div>
                             ))}
                           </div>
-                          <p className="text-[10px] text-slate-400 mt-2 leading-snug">Gegner spielt kompakte 4-2-3-1 mit hohem Pressing. Schwachstelle: RÃ¤ume hinter den AVs bei Verlagerungen.</p>
+                          <p className="text-[10px] text-slate-400 mt-2 leading-snug">Gegner spielt kompakte 4-2-3-1 mit hohem Pressing. Schwachstelle: Räume hinter den AVs bei Verlagerungen.</p>
                         </div>
                       </div>
                     </div>
                   )}
 
-                  {/* SLIDE 2: DEFENSIVE GRUNDORDNUNG â€” Side-by-Side */}
+                  {/* SLIDE 2: DEFENSIVE GRUNDORDNUNG — Side-by-Side */}
                   {presentationSlideIndex === 2 && (
                     <div className="flex flex-col lg:flex-row gap-6 min-h-[480px]">
                       <div className="lg:w-[55%] shrink-0">
@@ -7603,16 +7603,16 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                       <div className="lg:w-[45%] space-y-4 overflow-y-auto max-h-[520px]">
                         <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4">
                           <h4 className="text-[10px] font-black text-rose-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                            <span className="text-sm">ðŸ›¡ï¸</span> Defensive Grundordnung 4-2-3-1
+                            <span className="text-sm">🛡️</span> Defensive Grundordnung 4-2-3-1
                           </h4>
                           <p className="text-[11px] text-slate-400 font-mono mb-3">FC Auggen &bull; Wichtige Punkte</p>
                           <div className="space-y-2">
                             {[
-                              'Konsequent durchschieben â€“ vertikal und horizontal',
-                              'Gute Pressing-AuslÃ¶ser finden',
-                              'Nach auÃŸen lenken',
+                              'Konsequent durchschieben – vertikal und horizontal',
+                              'Gute Pressing-Auslöser finden',
+                              'Nach außen lenken',
                               'Kommunikation: Passgeber = Informationsgeber',
-                              'Gegen den Ball max. 16er-Breite â€“ kompakt im Zentrum â€“ kleine ZwischenrÃ¤ume',
+                              'Gegen den Ball max. 16er-Breite – kompakt im Zentrum – kleine Zwischenräume',
                             ].map((punkt, i) => (
                               <div key={i} className="flex items-start gap-3 bg-slate-900/80 border border-slate-800 rounded-xl p-3">
                                 <span className="text-rose-400 font-black text-sm mt-0.5 shrink-0">{i + 1}.</span>
@@ -7623,14 +7623,14 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                         </div>
                         <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4">
                           <h4 className="text-[10px] font-black text-rose-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                            <span className="text-sm">ðŸ“</span> Defensiv-Regeln
+                            <span className="text-sm">📝</span> Defensiv-Regeln
                           </h4>
                           {slideEditingActive ? (
                             <textarea value={defensiveRulesList.join('\n')} onChange={(e) => setDefensiveRulesList(e.target.value.split('\n').filter(Boolean))} rows={5} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-[11px] text-slate-200 focus:outline-none focus:border-rose-400 resize-none font-mono" />
                           ) : (
                             <div className="space-y-1.5">
                               {defensiveRulesList.map((rule, i) => (
-                                <p key={i} className="text-[11px] text-slate-300 leading-snug">â€¢ {rule}</p>
+                                <p key={i} className="text-[11px] text-slate-300 leading-snug">• {rule}</p>
                               ))}
                             </div>
                           )}
@@ -7639,7 +7639,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                     </div>
                   )}
 
-                  {/* SLIDE 3: MIT DEM BALL â€” Side-by-Side */}
+                  {/* SLIDE 3: MIT DEM BALL — Side-by-Side */}
                   {presentationSlideIndex === 3 && (
                     <div className="flex flex-col lg:flex-row gap-6 min-h-[480px]">
                       <div className="lg:w-[55%] shrink-0">
@@ -7657,27 +7657,27 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                       <div className="lg:w-[45%] space-y-4 overflow-y-auto max-h-[520px]">
                         <div className="bg-slate-900/80 border border-emerald-500/30 rounded-xl p-4">
                           <h4 className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                            <span className="text-sm">âš½</span> Spielaufbau
+                            <span className="text-sm">⚽</span> Spielaufbau
                           </h4>
-                          <p className="text-[12px] text-slate-300 leading-relaxed">8er-Raum finden, kurze Optionen bieten und bespielen, spielerische StÃ¤rke ausspielen, Angebote gut timen, Dreiecksbildung</p>
+                          <p className="text-[12px] text-slate-300 leading-relaxed">8er-Raum finden, kurze Optionen bieten und bespielen, spielerische Stärke ausspielen, Angebote gut timen, Dreiecksbildung</p>
                         </div>
                         <div className="bg-slate-900/80 border border-sky-500/30 rounded-xl p-4">
                           <h4 className="text-[10px] font-black text-sky-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                            <span className="text-sm">âš¡</span> Mit Gegnerdruck
+                            <span className="text-sm">⚡</span> Mit Gegnerdruck
                           </h4>
-                          <p className="text-[12px] text-slate-300 leading-relaxed">Platz frei machen. Den geschaffenen Raum dynamisch besetzen. Steil-Klatsch-Kombinationen finden und nutzen â€“ Klatschball ist ein Signal fÃ¼r TiefenlÃ¤ufe</p>
+                          <p className="text-[12px] text-slate-300 leading-relaxed">Platz frei machen. Den geschaffenen Raum dynamisch besetzen. Steil-Klatsch-Kombinationen finden und nutzen – Klatschball ist ein Signal für Tiefenläufe</p>
                         </div>
                         <div className="bg-slate-900/80 border border-amber-500/30 rounded-xl p-4">
                           <h4 className="text-[10px] font-black text-amber-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                            <span className="text-sm">ðŸ”„</span> Nach Ballgewinn
+                            <span className="text-sm">🔄</span> Nach Ballgewinn
                           </h4>
-                          <p className="text-[12px] text-slate-300 leading-relaxed">Erster Blick nach vorne. Verlagerungen â€“ dann Tempo aufnehmen. Spielwitz im letzten Drittel â€“ gemeinsam SpaÃŸ haben</p>
+                          <p className="text-[12px] text-slate-300 leading-relaxed">Erster Blick nach vorne. Verlagerungen – dann Tempo aufnehmen. Spielwitz im letzten Drittel – gemeinsam Spaß haben</p>
                         </div>
                       </div>
                     </div>
                   )}
 
-                  {/* SLIDE 4: ROTATION SPIELAUFBAU â€” Side-by-Side */}
+                  {/* SLIDE 4: ROTATION SPIELAUFBAU — Side-by-Side */}
                   {presentationSlideIndex === 4 && (
                     <div className="flex flex-col lg:flex-row gap-6 min-h-[480px]">
                       <div className="lg:w-[55%] shrink-0">
@@ -7690,7 +7690,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                             draftPlayers={scPlayersFor('f-r1')}
                             onDraftChange={(z, p) => setEditsForScenario('f-r1', z, p)}
                           />
-                          <p className="text-[11px] text-slate-400 text-center mt-2 font-semibold">Bild 1 Â· Rotation Â· Zonen & Spieler frei ziehen</p>
+                          <p className="text-[11px] text-slate-400 text-center mt-2 font-semibold">Bild 1 · Rotation · Zonen & Spieler frei ziehen</p>
                         </div>
                       </div>
                       <div className="lg:w-[45%] space-y-4 overflow-y-auto max-h-[520px]">
@@ -7703,18 +7703,18 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                             draftPlayers={scPlayersFor('f-r2')}
                             onDraftChange={(z, p) => setEditsForScenario('f-r2', z, p)}
                           />
-                          <p className="text-[11px] text-slate-400 text-center mt-2 font-semibold">Bild 2 Â· Rotation Â· Zonen & Spieler frei ziehen</p>
+                          <p className="text-[11px] text-slate-400 text-center mt-2 font-semibold">Bild 2 · Rotation · Zonen & Spieler frei ziehen</p>
                         </div>
                         <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4">
                           <h4 className="text-[10px] font-black text-sky-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                            <span className="text-sm">ðŸ“‹</span> Offensiv-Guidelines
+                            <span className="text-sm">📋</span> Offensiv-Guidelines
                           </h4>
                           {slideEditingActive ? (
                             <textarea value={offensiveGuidelinesList.join('\n')} onChange={(e) => setOffensiveGuidelinesList(e.target.value.split('\n').filter(Boolean))} rows={4} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-[11px] text-slate-200 focus:outline-none focus:border-sky-400 resize-none font-mono" />
                           ) : (
                             <div className="space-y-1.5">
                               {offensiveGuidelinesList.map((g, i) => (
-                                <p key={i} className="text-[11px] text-slate-300 leading-snug">â€¢ {g}</p>
+                                <p key={i} className="text-[11px] text-slate-300 leading-snug">• {g}</p>
                               ))}
                             </div>
                           )}
@@ -7723,7 +7723,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                     </div>
                   )}
 
-                  {/* SLIDE 5: DREIECKS-ROTATION â€” Side-by-Side */}
+                  {/* SLIDE 5: DREIECKS-ROTATION — Side-by-Side */}
                   {presentationSlideIndex === 5 && (
                     <div className="flex flex-col lg:flex-row gap-6 min-h-[480px]">
                       <div className="lg:w-[55%] shrink-0">
@@ -7736,7 +7736,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                             draftPlayers={scPlayersFor('f-d1')}
                             onDraftChange={(z, p) => setEditsForScenario('f-d1', z, p)}
                           />
-                          <p className="text-[11px] text-slate-400 text-center mt-2 font-semibold">Bild 1 Â· Dreiecks-Rotation Â· frei ziehen</p>
+                          <p className="text-[11px] text-slate-400 text-center mt-2 font-semibold">Bild 1 · Dreiecks-Rotation · frei ziehen</p>
                         </div>
                       </div>
                       <div className="lg:w-[45%] space-y-4 overflow-y-auto max-h-[520px]">
@@ -7749,19 +7749,19 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                             draftPlayers={scPlayersFor('f-d2')}
                             onDraftChange={(z, p) => setEditsForScenario('f-d2', z, p)}
                           />
-                          <p className="text-[11px] text-slate-400 text-center mt-2 font-semibold">Bild 2 Â· Dreiecks-Rotation Â· frei ziehen</p>
+                          <p className="text-[11px] text-slate-400 text-center mt-2 font-semibold">Bild 2 · Dreiecks-Rotation · frei ziehen</p>
                         </div>
                         <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4">
                           <h4 className="text-[10px] font-black text-violet-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                            <span className="text-sm">ðŸ”º</span> Dreiecks-Beschreibung
+                            <span className="text-sm">🔺</span> Dreiecks-Beschreibung
                           </h4>
-                          <p className="text-[11px] text-slate-300 leading-relaxed">Dreiecks-Rotation schafft Ãœberzahlsituationen im Mittelfeld. Durch konsequente Verlagerung und NachrÃ¼cken entstehen permanente 2v1-Situationen auf den AuÃŸen. Die Diagonalwege halten den Ball-Zirkulationskreis lebendig.</p>
+                          <p className="text-[11px] text-slate-300 leading-relaxed">Dreiecks-Rotation schafft Überzahlsituationen im Mittelfeld. Durch konsequente Verlagerung und Nachrücken entstehen permanente 2v1-Situationen auf den Außen. Die Diagonalwege halten den Ball-Zirkulationskreis lebendig.</p>
                         </div>
                       </div>
                     </div>
                   )}
 
-                  {/* SLIDE 6: GEGEN DEN BALL â€” Side-by-Side */}
+                  {/* SLIDE 6: GEGEN DEN BALL — Side-by-Side */}
                   {presentationSlideIndex === 6 && (
                     <div className="flex flex-col lg:flex-row gap-6 min-h-[480px]">
                       <div className="lg:w-[55%] shrink-0">
@@ -7779,18 +7779,18 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                       <div className="lg:w-[45%] space-y-4 overflow-y-auto max-h-[520px]">
                         <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4">
                           <h4 className="text-[10px] font-black text-rose-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                            <span className="text-sm">ðŸ—‘ï¸</span> Gegen den Ball â€” Regeln
+                            <span className="text-sm">🗑️</span> Gegen den Ball — Regeln
                           </h4>
                           <div className="space-y-2">
                             {[
-                              { txt: 'Anspielen lassen und dann nach auÃŸen lenken', icon: 'âž¡' },
-                              { txt: 'Mit Ãœberzeugung anlaufen â€“ jedoch clever sein', icon: 'âš”' },
-                              { txt: 'Konzentration hochhalten â€“ Standards', icon: 'ðŸŽ¯' },
-                              { txt: 'Direktes Gegenpressing, wir bleiben dominant!', icon: 'ðŸ”¥' },
-                              { txt: 'Tiefensicherung gegen lange BÃ¤lle', icon: 'ðŸ§±' },
-                              { txt: 'Abwehrdreieck einrÃ¼cken', icon: 'ðŸ”º' },
-                              { txt: '2. BÃ¤lle! 6er bereit sein!', icon: 'âš½' },
-                              { txt: 'Kommunikation, Kommandos geben, ZUSAMMEN', icon: 'ðŸ“£' },
+                              { txt: 'Anspielen lassen und dann nach außen lenken', icon: '➡' },
+                              { txt: 'Mit Überzeugung anlaufen – jedoch clever sein', icon: '⚔' },
+                              { txt: 'Konzentration hochhalten – Standards', icon: '🎯' },
+                              { txt: 'Direktes Gegenpressing, wir bleiben dominant!', icon: '🔥' },
+                              { txt: 'Tiefensicherung gegen lange Bälle', icon: '🧱' },
+                              { txt: 'Abwehrdreieck einrücken', icon: '🔺' },
+                              { txt: '2. Bälle! 6er bereit sein!', icon: '⚽' },
+                              { txt: 'Kommunikation, Kommandos geben, ZUSAMMEN', icon: '📣' },
                             ].map((punkt, i) => (
                               <div key={i} className="flex items-center gap-3 bg-slate-900/80 border border-slate-800 rounded-xl p-3">
                                 <span className="text-base shrink-0">{punkt.icon}</span>
@@ -7803,7 +7803,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                     </div>
                   )}
 
-                  {/* SLIDE 7: 1:1 TAKTIK â€” Side-by-Side */}
+                  {/* SLIDE 7: 1:1 TAKTIK — Side-by-Side */}
                   {presentationSlideIndex === 7 && (
                     <div className="flex flex-col lg:flex-row gap-6 min-h-[480px]">
                       <div className="lg:w-[55%] shrink-0">
@@ -7822,7 +7822,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                         <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4">
                           <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
                             <h4 className="text-[10px] font-black text-violet-400 uppercase tracking-widest flex items-center gap-2">
-                              <span className="text-sm">ðŸ“</span> 1:1 Taktik Â· {activeScenario.name}
+                              <span className="text-sm">📐</span> 1:1 Taktik · {activeScenario.name}
                             </h4>
                             <button onClick={() => setScenarioFullscreen(true)} className="bg-violet-400 hover:bg-violet-300 text-slate-950 font-black text-[10px] uppercase px-3 py-1.5 rounded-lg shadow-lg transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer" title="1:1-Szenario im Vollbild anzeigen">
                               <Maximize2 size={13} /> Vollbild
@@ -7839,14 +7839,14 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                     </div>
                   )}
 
-                  {/* SLIDE 8: GEGNER TOP 3 â€” Side-by-Side */}
+                  {/* SLIDE 8: GEGNER TOP 3 — Side-by-Side */}
                   {presentationSlideIndex === 8 && (
                     <div className="flex flex-col lg:flex-row gap-6 min-h-[480px]">
                       <div className="lg:w-[55%] shrink-0">
                         <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
                           <div>
                             <h3 className="font-black text-xl uppercase text-white tracking-wider flex items-center gap-2">
-                              <span className="text-amber-400">GEGNER TOP 3</span> â€” {selectedMatchObj.opponent}
+                              <span className="text-amber-400">GEGNER TOP 3</span> — {selectedMatchObj.opponent}
                             </h3>
                             <p className="text-[11px] text-slate-400 font-mono">Erwartete Formation: 4-2-3-1</p>
                           </div>
@@ -7879,7 +7879,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                               <span className="text-[7px] font-black uppercase text-rose-300 bg-slate-950/80 px-1 rounded mt-0.5 whitespace-nowrap">{op.pos}</span>
                             </div>
                           ))}
-                          {/* EIGENE SPIELER â€” frei bewegliche Chips (Name + Bild) */}
+                          {/* EIGENE SPIELER — frei bewegliche Chips (Name + Bild) */}
                           {ownTop3Chips.map((c, i) => (
                             <div
                               key={`ownchip_${i}`}
@@ -7905,14 +7905,14 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                             </div>
                           ))}
                           <span className="absolute bottom-2 left-2 right-2 text-center text-[9px] font-bold text-emerald-400/80 bg-slate-950/70 rounded-lg px-2 py-1 z-30 pointer-events-none">
-                            GrÃ¼n = eigene Spieler frei ziehen Â· Rot = Gegner (statisch)
+                            Grün = eigene Spieler frei ziehen · Rot = Gegner (statisch)
                           </span>
                         </div>
                       </div>
                       <div className="lg:w-[45%] space-y-4 overflow-y-auto max-h-[520px]">
                         <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4">
                           <h4 className="text-[10px] font-black text-amber-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                            <span className="text-sm">â­</span> Top 3 Spieler
+                            <span className="text-sm">⭐</span> Top 3 Spieler
                           </h4>
                           <div className="space-y-3">
                             {opponentTop3.map((p, i) => (
@@ -7930,7 +7930,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                                   </div>
                                 </div>
                                 <div><label className="block text-[9px] text-slate-400 font-bold uppercase mb-0.5">Name</label><input type="text" value={p.name} onChange={(e) => { const next = [...opponentTop3]; next[i] = { ...next[i], name: e.target.value }; setOpponentTop3(next); }} placeholder="z.B. Mustermann" className="w-full bg-slate-950 border border-slate-700 p-2 rounded-lg text-sm font-bold text-white focus:outline-none focus:border-amber-400" /></div>
-                                <div><label className="block text-[9px] text-slate-400 font-bold uppercase mb-0.5">Position</label><input type="text" value={p.position} onChange={(e) => { const next = [...opponentTop3]; next[i] = { ...next[i], position: e.target.value }; setOpponentTop3(next); }} placeholder="z.B. StÃ¼rmer (ST)" className="w-full bg-slate-950 border border-slate-700 p-2 rounded-lg text-xs text-white focus:outline-none focus:border-amber-400" /></div>
+                                <div><label className="block text-[9px] text-slate-400 font-bold uppercase mb-0.5">Position</label><input type="text" value={p.position} onChange={(e) => { const next = [...opponentTop3]; next[i] = { ...next[i], position: e.target.value }; setOpponentTop3(next); }} placeholder="z.B. Stürmer (ST)" className="w-full bg-slate-950 border border-slate-700 p-2 rounded-lg text-xs text-white focus:outline-none focus:border-amber-400" /></div>
                                 <div><label className="block text-[9px] text-slate-400 font-bold uppercase mb-0.5">Note</label><input type="text" value={p.note} onChange={(e) => { const next = [...opponentTop3]; next[i] = { ...next[i], note: e.target.value }; setOpponentTop3(next); }} placeholder="z.B. 2,5 (Leistungsklasse)" className="w-full bg-slate-950 border border-slate-700 p-2 rounded-lg text-sm font-black text-amber-400 focus:outline-none focus:border-amber-400" /></div>
                               </div>
                             ))}
@@ -7938,7 +7938,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                         </div>
                         <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4">
                           <h4 className="text-[10px] font-black text-amber-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                            <span className="text-sm">ðŸ“Š</span> Team-Metriken
+                            <span className="text-sm">📊</span> Team-Metriken
                           </h4>
                           <div className="grid grid-cols-3 gap-2">
                             <div className="bg-slate-950 border border-slate-800 rounded-lg p-2 text-center">
@@ -7946,7 +7946,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                               <span className="text-sm font-black text-emerald-400">{presentationMetrics.passQuote}</span>
                             </div>
                             <div className="bg-slate-950 border border-slate-800 rounded-lg p-2 text-center">
-                              <span className="text-[9px] text-slate-500 uppercase font-bold block">ZweikÃ¤mpfe</span>
+                              <span className="text-[9px] text-slate-500 uppercase font-bold block">Zweikämpfe</span>
                               <span className="text-sm font-black text-sky-400">{presentationMetrics.duelWin}</span>
                             </div>
                             <div className="bg-slate-950 border border-slate-800 rounded-lg p-2 text-center">
@@ -7981,7 +7981,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                 onClick={() => setPresentationSlideIndex(prev => Math.min(8, prev + 1))}
                 className="bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-slate-950 font-black text-xs uppercase px-5 py-2.5 rounded-xl transition-all shadow flex items-center gap-1.5"
               >
-                NÃ¤chstes Slide <ChevronRight size={16} />
+                Nächstes Slide <ChevronRight size={16} />
               </button>
             </div>
           </div>
@@ -7998,7 +7998,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                 {renderClubLogo(44, 'border-2 border-emerald-400/60', true)}
                 <div>
                   <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-black uppercase px-2 py-0.5 rounded tracking-wider">
-                    TV PRÃ„SENTATION â€¢ {activeClub.shortName || 'FCA'}
+                    TV PRÄSENTATION • {activeClub.shortName || 'FCA'}
                   </span>
                   <h2 className="text-xl sm:text-2xl font-black text-white uppercase tracking-tight">
                     {activeClub.shortName || 'FC AUGGEN'} vs. {selectedMatchObj.opponent.toUpperCase()}
@@ -8060,9 +8060,9 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                     </h1>
                   </div>
 
-                  {/* TEXT SUMMARY FOR TV MODE â€” matching inline categories */}
+                  {/* TEXT SUMMARY FOR TV MODE — matching inline categories */}
                   <div className="bg-slate-900/90 border border-slate-800 p-6 rounded-2xl space-y-3 text-sm text-slate-200 leading-relaxed max-h-[420px] overflow-y-auto">
-                    {/* Slide 0: Titel & Match â€” matchNotes */}
+                    {/* Slide 0: Titel & Match — matchNotes */}
                     {presentationSlideIndex === 0 && (
                       <div className="space-y-2">
                         <p className="text-[12px] text-slate-300 leading-relaxed"><span className="text-slate-500 font-bold">Heim-Strategie:</span> {matchNotes.home}</p>
@@ -8070,12 +8070,12 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                         <p className="text-[12px] text-slate-300 leading-relaxed"><span className="text-slate-500 font-bold">Fokus:</span> {matchNotes.focus}</p>
                       </div>
                     )}
-                    {/* Slide 1: Aufstellung â€” lineup list + bank + formation notes */}
+                    {/* Slide 1: Aufstellung — lineup list + bank + formation notes */}
                     {presentationSlideIndex === 1 && (
                       <div className="space-y-3">
                         <div>
                           <h4 className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                            <span className="text-sm">ðŸ‘•</span> Startelf
+                            <span className="text-sm">👕</span> Startelf
                           </h4>
                           <div className="space-y-1">
                             {presentationLineup.map((p: any, idx: number) => (
@@ -8089,7 +8089,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                         </div>
                         <div>
                           <h4 className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                            <span className="text-sm">ðŸª‘</span> Bank
+                            <span className="text-sm">🪑</span> Bank
                           </h4>
                           <div className="space-y-1">
                             {presentationSubstitutes.map((sub, idx) => (
@@ -8110,18 +8110,18 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                         </div>
                       </div>
                     )}
-                    {/* Slide 2: Defensive Grundordnung â€” bullet points + defensive rules */}
+                    {/* Slide 2: Defensive Grundordnung — bullet points + defensive rules */}
                     {presentationSlideIndex === 2 && (
                       <div className="space-y-3">
                         <div className="bg-slate-950/40 border border-slate-800 rounded-xl p-3">
                           <h4 className="text-[10px] font-black text-rose-400 uppercase tracking-widest mb-2">Defensive Grundordnung 4-2-3-1</h4>
                           <div className="space-y-1.5">
                             {[
-                              'Konsequent durchschieben â€“ vertikal und horizontal',
-                              'Gute Pressing-AuslÃ¶ser finden',
-                              'Nach auÃŸen lenken',
+                              'Konsequent durchschieben – vertikal und horizontal',
+                              'Gute Pressing-Auslöser finden',
+                              'Nach außen lenken',
                               'Kommunikation: Passgeber = Informationsgeber',
-                              'Gegen den Ball max. 16er-Breite â€“ kompakt im Zentrum â€“ kleine ZwischenrÃ¤ume',
+                              'Gegen den Ball max. 16er-Breite – kompakt im Zentrum – kleine Zwischenräume',
                             ].map((punkt, i) => (
                               <div key={i} className="flex items-start gap-2">
                                 <span className="text-rose-400 font-black text-[11px] mt-0.5 shrink-0">{i + 1}.</span>
@@ -8134,78 +8134,78 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                           <h4 className="text-[10px] font-black text-rose-400 uppercase tracking-widest mb-2">Defensiv-Regeln</h4>
                           <div className="space-y-1">
                             {defensiveRulesList.map((rule, i) => (
-                              <p key={i} className="text-[11px] text-slate-300 leading-snug">â€¢ {rule}</p>
+                              <p key={i} className="text-[11px] text-slate-300 leading-snug">• {rule}</p>
                             ))}
                           </div>
                         </div>
                       </div>
                     )}
-                    {/* Slide 3: Eigener Matchplan mit dem Ball â€” 3 category cards */}
+                    {/* Slide 3: Eigener Matchplan mit dem Ball — 3 category cards */}
                     {presentationSlideIndex === 3 && (
                       <div className="space-y-3">
                         <div className="bg-slate-950/40 border border-emerald-500/30 rounded-xl p-3">
                           <h4 className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-1 flex items-center gap-2">
-                            <span className="text-sm">âš½</span> Spielaufbau
+                            <span className="text-sm">⚽</span> Spielaufbau
                           </h4>
-                          <p className="text-[12px] text-slate-300 leading-relaxed">8er-Raum finden, kurze Optionen bieten und bespielen, spielerische StÃ¤rke ausspielen, Angebote gut timen, Dreiecksbildung</p>
+                          <p className="text-[12px] text-slate-300 leading-relaxed">8er-Raum finden, kurze Optionen bieten und bespielen, spielerische Stärke ausspielen, Angebote gut timen, Dreiecksbildung</p>
                         </div>
                         <div className="bg-slate-950/40 border border-sky-500/30 rounded-xl p-3">
                           <h4 className="text-[10px] font-black text-sky-400 uppercase tracking-widest mb-1 flex items-center gap-2">
-                            <span className="text-sm">âš¡</span> Mit Gegnerdruck
+                            <span className="text-sm">⚡</span> Mit Gegnerdruck
                           </h4>
-                          <p className="text-[12px] text-slate-300 leading-relaxed">Platz frei machen. Den geschaffenen Raum dynamisch besetzen. Steil-Klatsch-Kombinationen finden und nutzen â€“ Klatschball ist ein Signal fÃ¼r TiefenlÃ¤ufe</p>
+                          <p className="text-[12px] text-slate-300 leading-relaxed">Platz frei machen. Den geschaffenen Raum dynamisch besetzen. Steil-Klatsch-Kombinationen finden und nutzen – Klatschball ist ein Signal für Tiefenläufe</p>
                         </div>
                         <div className="bg-slate-950/40 border border-amber-500/30 rounded-xl p-3">
                           <h4 className="text-[10px] font-black text-amber-400 uppercase tracking-widest mb-1 flex items-center gap-2">
-                            <span className="text-sm">ðŸ”„</span> Nach Ballgewinn
+                            <span className="text-sm">🔄</span> Nach Ballgewinn
                           </h4>
-                          <p className="text-[12px] text-slate-300 leading-relaxed">Erster Blick nach vorne. Verlagerungen â€“ dann Tempo aufnehmen. Spielwitz im letzten Drittel â€“ gemeinsam SpaÃŸ haben</p>
+                          <p className="text-[12px] text-slate-300 leading-relaxed">Erster Blick nach vorne. Verlagerungen – dann Tempo aufnehmen. Spielwitz im letzten Drittel – gemeinsam Spaß haben</p>
                         </div>
                       </div>
                     )}
-                    {/* Slide 4: Rotation Spielaufbau â€” offensive guidelines */}
+                    {/* Slide 4: Rotation Spielaufbau — offensive guidelines */}
                     {presentationSlideIndex === 4 && (
                       <div className="space-y-3">
                         <div className="bg-slate-950/40 border border-slate-800 rounded-xl p-3">
                           <h4 className="text-[10px] font-black text-sky-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                            <span className="text-sm">ðŸ“‹</span> Offensiv-Guidelines
+                            <span className="text-sm">📋</span> Offensiv-Guidelines
                           </h4>
                           <div className="space-y-1.5">
                             {offensiveGuidelinesList.map((g, i) => (
-                              <p key={i} className="text-[11px] text-slate-300 leading-snug">â€¢ {g}</p>
+                              <p key={i} className="text-[11px] text-slate-300 leading-snug">• {g}</p>
                             ))}
                           </div>
                         </div>
                       </div>
                     )}
-                    {/* Slide 5: Dreiecks-Rotation â€” description */}
+                    {/* Slide 5: Dreiecks-Rotation — description */}
                     {presentationSlideIndex === 5 && (
                       <div className="space-y-3">
                         <div className="bg-slate-950/40 border border-slate-800 rounded-xl p-3">
                           <h4 className="text-[10px] font-black text-violet-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                            <span className="text-sm">ðŸ”º</span> Dreiecks-Beschreibung
+                            <span className="text-sm">🔺</span> Dreiecks-Beschreibung
                           </h4>
-                          <p className="text-[11px] text-slate-300 leading-relaxed">Dreiecks-Rotation schafft Ãœberzahlsituationen im Mittelfeld. Durch konsequente Verlagerung und NachrÃ¼cken entstehen permanente 2v1-Situationen auf den AuÃŸen. Die Diagonalwege halten den Ball-Zirkulationskreis lebendig.</p>
+                          <p className="text-[11px] text-slate-300 leading-relaxed">Dreiecks-Rotation schafft Überzahlsituationen im Mittelfeld. Durch konsequente Verlagerung und Nachrücken entstehen permanente 2v1-Situationen auf den Außen. Die Diagonalwege halten den Ball-Zirkulationskreis lebendig.</p>
                         </div>
                       </div>
                     )}
-                    {/* Slide 6: Gegen den Ball â€” 8 rules with icons */}
+                    {/* Slide 6: Gegen den Ball — 8 rules with icons */}
                     {presentationSlideIndex === 6 && (
                       <div className="space-y-3">
                         <div className="bg-slate-950/40 border border-slate-800 rounded-xl p-3">
                           <h4 className="text-[10px] font-black text-rose-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                            <span className="text-sm">ðŸ—‘ï¸</span> Gegen den Ball â€” Regeln
+                            <span className="text-sm">🗑️</span> Gegen den Ball — Regeln
                           </h4>
                           <div className="space-y-1.5">
                             {[
-                              { txt: 'Anspielen lassen und dann nach auÃŸen lenken', icon: 'âž¡' },
-                              { txt: 'Mit Ãœberzeugung anlaufen â€“ jedoch clever sein', icon: 'âš”' },
-                              { txt: 'Konzentration hochhalten â€“ Standards', icon: 'ðŸŽ¯' },
-                              { txt: 'Direktes Gegenpressing, wir bleiben dominant!', icon: 'ðŸ”¥' },
-                              { txt: 'Tiefensicherung gegen lange BÃ¤lle', icon: 'ðŸ§±' },
-                              { txt: 'Abwehrdreieck einrÃ¼cken', icon: 'ðŸ”º' },
-                              { txt: '2. BÃ¤lle! 6er bereit sein!', icon: 'âš½' },
-                              { txt: 'Kommunikation, Kommandos geben, ZUSAMMEN', icon: 'ðŸ“£' },
+                              { txt: 'Anspielen lassen und dann nach außen lenken', icon: '➡' },
+                              { txt: 'Mit Überzeugung anlaufen – jedoch clever sein', icon: '⚔' },
+                              { txt: 'Konzentration hochhalten – Standards', icon: '🎯' },
+                              { txt: 'Direktes Gegenpressing, wir bleiben dominant!', icon: '🔥' },
+                              { txt: 'Tiefensicherung gegen lange Bälle', icon: '🧱' },
+                              { txt: 'Abwehrdreieck einrücken', icon: '🔺' },
+                              { txt: '2. Bälle! 6er bereit sein!', icon: '⚽' },
+                              { txt: 'Kommunikation, Kommandos geben, ZUSAMMEN', icon: '📣' },
                             ].map((punkt, i) => (
                               <div key={i} className="flex items-center gap-2">
                                 <span className="text-base shrink-0">{punkt.icon}</span>
@@ -8216,12 +8216,12 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                         </div>
                       </div>
                     )}
-                    {/* Slide 7: 1:1 Taktik â€” scenario info */}
+                    {/* Slide 7: 1:1 Taktik — scenario info */}
                     {presentationSlideIndex === 7 && (
                       <div className="space-y-3">
                         <div className="bg-slate-950/40 border border-violet-500/30 rounded-xl p-3">
                           <h4 className="text-[10px] font-black text-violet-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                            <span className="text-sm">ðŸ“</span> 1:1 Taktik Â· {activeScenario.name}
+                            <span className="text-sm">📐</span> 1:1 Taktik · {activeScenario.name}
                           </h4>
                           {activeScenario.sub && (
                             <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">{activeScenario.sub}</p>
@@ -8232,12 +8232,12 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                         </div>
                       </div>
                     )}
-                    {/* Slide 8: Gegner Top 3 â€” player cards + metrics */}
+                    {/* Slide 8: Gegner Top 3 — player cards + metrics */}
                     {presentationSlideIndex === 8 && (
                       <div className="space-y-3">
                         <div className="bg-slate-950/40 border border-slate-800 rounded-xl p-3">
                           <h4 className="text-[10px] font-black text-amber-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                            <span className="text-sm">â­</span> Top 3 Spieler â€” {selectedMatchObj.opponent}
+                            <span className="text-sm">⭐</span> Top 3 Spieler — {selectedMatchObj.opponent}
                           </h4>
                           <div className="space-y-2">
                             {opponentTop3.map((p, i) => (
@@ -8250,14 +8250,14 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                                   <div className="text-[12px] font-black text-white truncate">{p.name || 'Unbekannt'}</div>
                                   <div className="text-[10px] text-slate-500 uppercase">{p.position || 'Position'}</div>
                                 </div>
-                                <span className="bg-amber-400 text-slate-950 font-black text-sm px-3 py-1 rounded-lg shrink-0">{p.note || 'â€“'}</span>
+                                <span className="bg-amber-400 text-slate-950 font-black text-sm px-3 py-1 rounded-lg shrink-0">{p.note || '–'}</span>
                               </div>
                             ))}
                           </div>
                         </div>
                         <div className="bg-slate-950/40 border border-slate-800 rounded-xl p-3">
                           <h4 className="text-[10px] font-black text-amber-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                            <span className="text-sm">ðŸ“Š</span> Team-Metriken
+                            <span className="text-sm">📊</span> Team-Metriken
                           </h4>
                           <div className="grid grid-cols-3 gap-2">
                             <div className="bg-slate-950 border border-slate-800 rounded-lg p-2 text-center">
@@ -8265,7 +8265,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                               <span className="text-sm font-black text-emerald-400">{presentationMetrics.passQuote}</span>
                             </div>
                             <div className="bg-slate-950 border border-slate-800 rounded-lg p-2 text-center">
-                              <span className="text-[9px] text-slate-500 uppercase font-bold block">ZweikÃ¤mpfe</span>
+                              <span className="text-[9px] text-slate-500 uppercase font-bold block">Zweikämpfe</span>
                               <span className="text-sm font-black text-sky-400">{presentationMetrics.duelWin}</span>
                             </div>
                             <div className="bg-slate-950 border border-slate-800 rounded-lg p-2 text-center">
@@ -8285,14 +8285,14 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                     <div className="min-h-[400px] rounded-2xl border border-emerald-500/40 overflow-hidden relative shadow-2xl">
                       <img
                         src="/presentation/titel-design.png"
-                        alt="SpieltagsprÃ¤sentation"
+                        alt="Spieltagspräsentation"
                         className="absolute inset-0 w-full h-full object-cover opacity-40"
                       />
                       <div className="absolute inset-0 bg-gradient-to-br from-emerald-950/95 via-slate-950/90 to-slate-950/95" />
                       <div className="relative z-10 p-8 sm:p-10 flex flex-col items-center justify-center text-center min-h-[400px] gap-4">
                         <div className="flex items-center justify-center">{renderClubLogo(88, 'border-4 border-emerald-400/60', true)}</div>
                         <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-black text-xs uppercase px-3 py-1 rounded-full tracking-wider">
-                          {selectedMatchObj.competition.toUpperCase() + ' â€¢ SPIELTAGSPRÃ„SENTATION ' + (selectedMatchObj.date || '')}
+                          {selectedMatchObj.competition.toUpperCase() + ' • SPIELTAGSPRÄSENTATION ' + (selectedMatchObj.date || '')}
                         </span>
                         <h1 className="text-3xl sm:text-4xl font-black text-white uppercase tracking-tight text-center">
                           {presentationTitleOverride || `${activeClub.shortName || 'FC AUGGEN'} vs. ${selectedMatchObj.opponent.toUpperCase()}`}
@@ -8303,7 +8303,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                           <span>&bull; {selectedMatchObj.competition}</span>
                         </p>
                         <span className="mt-1 bg-slate-900/80 border border-slate-700 text-slate-300 font-bold text-xs uppercase px-4 py-2 rounded-lg">
-                          {selectedMatchObj.isHome ? 'Heimspiel' : 'AuswÃ¤rtsspiel'}
+                          {selectedMatchObj.isHome ? 'Heimspiel' : 'Auswärtsspiel'}
                         </span>
                       </div>
                     </div>
@@ -8333,7 +8333,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                             <div className="text-sm sm:text-base font-black text-white uppercase leading-tight">{p.name || 'Unbekannt'}</div>
                             <div className="text-[11px] text-slate-400 font-semibold">{p.position || 'Position'}</div>
                             <div className="mt-1.5 inline-block bg-amber-400 text-slate-950 font-black text-lg px-4 py-1 rounded-xl min-w-[52px]">
-                              {p.note || 'â€“'}
+                              {p.note || '–'}
                             </div>
                           </div>
                         </div>
@@ -8398,7 +8398,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                 onClick={() => setPresentationSlideIndex(prev => Math.min(8, prev + 1))}
                 className="bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-slate-950 font-black text-xs uppercase px-6 py-3 rounded-xl transition-all shadow flex items-center gap-2"
               >
-                NÃ¤chstes Slide <ChevronRight size={18} />
+                Nächstes Slide <ChevronRight size={18} />
               </button>
             </div>
           </div>
@@ -8417,7 +8417,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
             >
               <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                 <h3 className="font-black text-base uppercase tracking-wider text-amber-400 flex items-center gap-2">
-                  <Plus size={18} /> Neuen Coaching-Punkt HinzufÃ¼gen
+                  <Plus size={18} /> Neuen Coaching-Punkt Hinzufügen
                 </h3>
                 <button onClick={() => setShowEditCoachingModal(false)} className="text-slate-400 hover:text-white p-1">
                   <X size={20} />
@@ -8430,7 +8430,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                   type="text"
                   value={editingCoachingPointText}
                   onChange={(e) => setEditingCoachingPointText(e.target.value)}
-                  placeholder="z.B. Hohes Tempo Ã¼ber die FlÃ¼gel in den ersten 20 Minuten..."
+                  placeholder="z.B. Hohes Tempo über die Flügel in den ersten 20 Minuten..."
                   className="w-full bg-slate-950 border border-slate-700 p-3 rounded-xl font-bold text-white focus:outline-none focus:border-amber-400"
                 />
               </div>
@@ -8448,12 +8448,12 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                       setPresentationCoachingPoints(prev => [...prev, editingCoachingPointText.trim()]);
                       setEditingCoachingPointText('');
                       setShowEditCoachingModal(false);
-                      notify('Neuer Coaching-Punkt hinzugefÃ¼gt!');
+                      notify('Neuer Coaching-Punkt hinzugefügt!');
                     }
                   }}
                   className="px-5 py-2 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs uppercase rounded-xl shadow-lg transition-all"
                 >
-                  HinzufÃ¼gen
+                  Hinzufügen
                 </button>
               </div>
             </motion.div>
@@ -8495,7 +8495,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                     type="text"
                     value={editingAuditCard.title}
                     onChange={(e) => setEditingAuditCard(prev => ({ ...prev, title: e.target.value }))}
-                    placeholder="z.B. Zweikampfquote, Pressing-IntensitÃ¤t, PassschÃ¤rfe"
+                    placeholder="z.B. Zweikampfquote, Pressing-Intensität, Passschärfe"
                     className="w-full bg-slate-950 border border-slate-700 p-3 rounded-xl font-bold text-white focus:outline-none focus:border-emerald-500"
                   />
                 </div>
@@ -8546,7 +8546,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
         )}
       </AnimatePresence>
 
-      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• CHAMPIONS-LEAGUE AUFSTELLUNG (ANIMIERT) â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+      {/* ═══════════════ CHAMPIONS-LEAGUE AUFSTELLUNG (ANIMIERT) ═══════════════ */}
       {showChampionsAnimation && (
         <div className="fixed inset-0 z-[400] bg-slate-950/98 flex flex-col items-center justify-center p-3 overflow-hidden select-none">
           <style>{`@keyframes champDrop { from { top: -38%; } to { top: 50%; } }`}</style>
@@ -8556,11 +8556,11 @@ Gib mir in 3 kurzen, klaren Bullet Points:
               {renderClubLogo(56, 'border-2 border-amber-300/70', true)}
               <div>
                 <h2 className="font-black text-lg text-white uppercase tracking-wider leading-tight">Startelf-Aufstellung</h2>
-                <p className="text-[11px] text-amber-300 font-semibold">Spieler kommen von oben nacheinander runter Â· {activeClub?.name || 'Startelf'}</p>
+                <p className="text-[11px] text-amber-300 font-semibold">Spieler kommen von oben nacheinander runter · {activeClub?.name || 'Startelf'}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <span className="hidden sm:inline text-[9px] font-black text-slate-500 uppercase">ESC zum SchlieÃŸen</span>
+              <span className="hidden sm:inline text-[9px] font-black text-slate-500 uppercase">ESC zum Schließen</span>
               <button
                 onClick={() => setChampPaused(p => !p)}
                 className="flex items-center gap-1.5 bg-sky-500 hover:bg-sky-400 text-slate-950 text-[10px] font-black uppercase px-3.5 py-2 rounded-xl shadow-lg transition-all active:scale-95"
@@ -8578,7 +8578,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                 onClick={closeChampions}
                 className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-white text-[10px] font-black uppercase px-3.5 py-2 rounded-xl border border-slate-700 transition-all active:scale-95"
               >
-                <X size={13} /> SchlieÃŸen
+                <X size={13} /> Schließen
               </button>
             </div>
           </div>
@@ -8599,15 +8599,15 @@ Gib mir in 3 kurzen, klaren Bullet Points:
             {/* Center-Circle */}
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-28 h-28 rounded-full border-2 border-white/30" />
 
-            {/* Blauer AnstoÃŸpunkt */}
+            {/* Blauer Anstoßpunkt */}
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white/80" />
 
-            {/* GroÃŸes Vereinslogo im Hintergrund (Wasserzeichen) */}
+            {/* Großes Vereinslogo im Hintergrund (Wasserzeichen) */}
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.18] pointer-events-none">
               {renderClubLogo(340, 'border-[6px] border-white/30', true)}
             </div>
 
-            {/* ðŸ“ Bereits platzierte Spieler (klein auf Position) */}
+            {/* 📍 Bereits platzierte Spieler (klein auf Position) */}
             {championsCards.map((card, i) => {
               if (i >= championsActiveCount) return null;
               return (
@@ -8637,10 +8637,10 @@ Gib mir in 3 kurzen, klaren Bullet Points:
               );
             })}
 
-            {/* ðŸŒŸ Fokussierter Spieler: groÃŸes Bild â†’ Notiz â†’ klein auf Position */}
+            {/* 🌟 Fokussierter Spieler: großes Bild → Notiz → klein auf Position */}
             {focusCard && (
               <>
-                {/* GroÃŸes Bild des aktuellen Spielers (fÃ¤llt von oben in die Mitte, dann klein auf Position) */}
+                {/* Großes Bild des aktuellen Spielers (fällt von oben in die Mitte, dann klein auf Position) */}
                 <div
                   key={`focus_${focusCard.id}_${champPhase === 'big' ? 'drop' : champPhase}`}
                   className="absolute transition-all duration-[1000ms] ease-out z-30"
@@ -8654,7 +8654,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                     <div className={`w-full rounded-2xl shadow-2xl border-4 flex flex-col items-center justify-center text-center border-white/40 transition-all ${champPhase === 'place' ? '' : 'scale-100'}`}
                       style={{ background: 'linear-gradient(160deg, #e94560 0%, #c0392b 100%)', borderColor: 'rgba(255,255,255,0.5)' }}
                     >
-                      <span className="text-[11px] font-black text-white/90 tracking-widest">{focusCard.position} Â· Nr. {focusCard.number}</span>
+                      <span className="text-[11px] font-black text-white/90 tracking-widest">{focusCard.position} · Nr. {focusCard.number}</span>
                       {focusCard.image ? (
                         <div className={`rounded-full overflow-hidden border-2 border-white/70 shadow-inner my-1 shrink-0 ${champPhase === 'place' ? 'h-9 w-9' : 'h-20 w-20 sm:h-28 sm:w-28'}`}>
                           <img src={focusCard.image} alt={focusCard.name} className="w-full h-full object-cover" />
@@ -8670,7 +8670,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                   </div>
                 </div>
 
-                {/* ðŸ“‹ Trainer-Notiz neben dem groÃŸen Bild */}
+                {/* 📋 Trainer-Notiz neben dem großen Bild */}
                 {champPhase !== 'place' && (
                   <div className="absolute z-30 right-4 top-1/2 -translate-y-1/2 w-[30%] max-w-[260px] bg-slate-950/95 border-2 border-amber-400/60 rounded-2xl p-3 shadow-2xl">
                     {champNoteOpen || champPhase === 'note' ? (
@@ -8679,7 +8679,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                           <span className="w-5 h-5 rounded-full bg-amber-400 text-slate-950 font-black text-[10px] flex items-center justify-center">{focusCard.number}</span>
                           <span className="font-black text-[11px] text-white uppercase truncate">{focusCard.name}</span>
                         </div>
-                        <p className="text-[10px] font-bold text-amber-300 uppercase tracking-wider">Trainer-Anweisung Â· Position {focusCard.position}</p>
+                        <p className="text-[10px] font-bold text-amber-300 uppercase tracking-wider">Trainer-Anweisung · Position {focusCard.position}</p>
                         <p className="text-[11px] text-slate-200 leading-relaxed font-medium">{champInstructionFor(focus)}</p>
                         <div className="flex items-center justify-end gap-2 pt-1">
                           <button
@@ -8687,7 +8687,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                             className="flex items-center gap-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-[10px] font-black uppercase px-3 py-1.5 rounded-lg shadow transition-all active:scale-95"
                             title="Schnell weiter (ohne warten)"
                           >
-                            <Check size={12} /> Weiter â­
+                            <Check size={12} /> Weiter ⏭
                           </button>
                         </div>
                       </div>
@@ -8709,7 +8709,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                           className="w-full flex items-center justify-center gap-1 bg-emerald-500/90 hover:bg-emerald-400 text-slate-950 text-[10px] font-black uppercase px-3 py-1.5 rounded-lg shadow transition-all active:scale-95"
                           title="Schnell weiter ohne Notiz ansehen"
                         >
-                          Weiter ohne Notiz â­
+                          Weiter ohne Notiz ⏭
                         </button>
                       </div>
                     )}
@@ -8725,8 +8725,8 @@ Gib mir in 3 kurzen, klaren Bullet Points:
           <div className="mt-3 w-full max-w-5xl flex items-center justify-between">
             <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-widest">
               {championsActiveCount >= championsTotal
-                ? `${championsTotal} Spieler Â· Startformation ${selectedFormation} Â· ${activeClub?.name || 'FC Auggen'}`
-                : `Spieler ${championsActiveCount + 1} von ${championsTotal} Â· ${focusCard ? focusCard.name : ''} (${focusCard ? focusCard.position : ''})${champPaused ? ' Â· â¸ ANGEHALTEN' : ''}`}
+                ? `${championsTotal} Spieler · Startformation ${selectedFormation} · ${activeClub?.name || 'FC Auggen'}`
+                : `Spieler ${championsActiveCount + 1} von ${championsTotal} · ${focusCard ? focusCard.name : ''} (${focusCard ? focusCard.position : ''})${champPaused ? ' · ⏸ ANGEHALTEN' : ''}`}
             </p>
             {championsActiveCount >= championsTotal && (
               <div className="flex items-center gap-2">
