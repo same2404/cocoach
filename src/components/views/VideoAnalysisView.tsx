@@ -2842,12 +2842,12 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
       {/* MODAL: SINGLE CLIP PLAYBACK PREVIEW */}
       <AnimatePresence>
         {activePlaybackClip && (
-          <div className="fixed inset-0 bg-black/85 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
+          <div className="fixed inset-0 bg-black/85 z-50 flex items-center justify-center p-4 backdrop-blur-xs overflow-y-auto">
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-[#181C24] border border-[#2A3447] rounded-2xl overflow-hidden max-w-3xl w-full shadow-2xl text-white"
+              className="bg-[#181C24] border border-[#2A3447] rounded-2xl overflow-hidden max-w-3xl w-full shadow-2xl text-white max-h-[94vh] overflow-y-auto"
             >
               <div className="p-4 bg-[#1F2636] border-b border-[#2A3447] flex items-center justify-between">
                 <div>
@@ -2868,7 +2868,7 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
               </div>
 
               {/* Player */}
-              <div className="relative aspect-video bg-black flex items-center justify-center">
+              <div className="relative aspect-video bg-black flex items-center justify-center max-h-[48vh]">
                 <video
                   ref={clipVideoRef}
                   src={activePlaybackClip.videoUrl}
