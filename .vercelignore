@@ -5,3 +5,10 @@ clips
 *.log
 .git
 .gitignore
+# Legacy api-Funktionen blockieren die Auto-Lambda-Erstellung (würden /api/*-Routen schatten).
+# Alle Endpunkte sind vollständig in server.ts umgesetzt; Dateien bleiben im Repo erhalten.
+api/dashboard.ts
+api/tactical-analysis.ts
+api/training-plan/generate.ts
+api/video-analysis/process.ts
+api/video-analysis/training-plan.ts
