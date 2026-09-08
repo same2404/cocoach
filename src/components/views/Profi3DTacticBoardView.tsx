@@ -646,17 +646,18 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
 
     const pickFor = (targetPos: string) => {
       const tp = targetPos.toUpperCase();
-      const exact = squad.find((p: any) => !used.has(p.id) && !reportIds.has(p.id) && (p.position || '').toUpperCase() === tp);
+      const noTw = (p: any) => !String(p.position || '').toUpperCase().replace(/[^A-ZÄÖÜ]/g, '').includes('TW');
+      const exact = squad.find((p: any) => !used.has(p.id) && !reportIds.has(p.id) && noTw(p) && (p.position || '').toUpperCase() === tp);
       if (exact) { used.add(exact.id); return exact; }
-      const contains = squad.find((p: any) => !used.has(p.id) && !reportIds.has(p.id) && (p.position || '').toUpperCase().includes(tp));
+      const contains = squad.find((p: any) => !used.has(p.id) && !reportIds.has(p.id) && noTw(p) && (p.position || '').toUpperCase().includes(tp));
       if (contains) { used.add(contains.id); return contains; }
       const multiPos = squad.find((p: any) => {
-        if (used.has(p.id) || reportIds.has(p.id)) return false;
+        if (used.has(p.id) || reportIds.has(p.id) || !noTw(p)) return false;
         const parts = (p.position || '').toUpperCase().split(/[\/\s]+/);
         return parts.some((part: string) => part === tp || part.includes(tp));
       });
       if (multiPos) { used.add(multiPos.id); return multiPos; }
-      const any = squad.find((p: any) => !used.has(p.id) && !reportIds.has(p.id));
+      const any = squad.find((p: any) => !used.has(p.id) && !reportIds.has(p.id) && noTw(p));
       if (any) { used.add(any.id); return any; }
       return null;
     };
@@ -669,30 +670,54 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
     };
 
     const result: typeof FORMATION_PRESETS = {};
+    const twOf = (pos: string) => String(pos || '').toUpperCase().replace(/[^A-ZÄÖÜ]/g, '').includes('TW');
     for (const [key, preset] of Object.entries(FORMATION_PRESETS)) {
       used.clear();
       const positions = posOrder[key] || [];
+      const queue = reportEntries.map((e) => ({ ...e, placed: false }));
+      const takeFromQueue = (pred: (e: any) => boolean) => {
+        const idx = queue.findIndex((e) => !e.placed && pred(e));
+        if (idx === -1) return null;
+        queue[idx].placed = true;
+        return queue[idx];
+      };
+      const posMatchQ = (p: any, tp: string) => {
+        const pp = (p.position || '').toUpperCase().replace(/[^A-ZÄÖÜ]/g, '');
+        return pp === tp || pp.includes(tp) || tp.includes(pp);
+      };
+      const buildNode = (node: any, src: { rawName: string; player: Player | null } | null, fallbackPlayer: any) => {
+        if (src?.player) {
+          used.add((src.player as any).id);
+          return { ...node, name: shortName(src.player), number: String((src.player as any).number || node.number), position: (src.player as any).position || node.position, image: (src.player as any).image };
+        }
+        if (src) {
+          return { ...node, name: src.rawName, number: String(node.number || ''), position: node.position, image: undefined };
+        }
+        if (fallbackPlayer) {
+          used.add(fallbackPlayer.id);
+          return { ...node, name: shortName(fallbackPlayer), number: String(fallbackPlayer.number || node.number), position: fallbackPlayer.position || node.position, image: fallbackPlayer.image };
+        }
+        return node;
+      };
       const mappedNodes = preset.nodes.map((node, i) => {
-        const targetPos = positions[i] || node.position;
-        const entry = reportEntries[i];
-        if (entry) {
-          if (entry.player) {
-            used.add((entry.player as any).id);
-            return {
-              ...node,
-              name: shortName(entry.player),
-              number: String((entry.player as any).number || node.number),
-              position: (entry.player as any).position || node.position,
-              image: (entry.player as any).image,
-            };
-          }
-          // Kein Kader-Match: Spielbericht-Name trotzdem auf dem Feld anzeigen
-          return { ...node, name: entry.rawName, number: String(node.number || ''), position: node.position, image: undefined };
+        const tp = (positions[i] || node.position).toUpperCase();
+        if (i === 0) {
+          // TW-Slot: zuerst der Spielbericht-TW (z. B. S. Lauer), sonst erster Name, sonst Kader-TW
+          const keeperQ = takeFromQueue((e: any) => e.player && twOf((e.player as any).position));
+          if (keeperQ) return buildNode(node, keeperQ, null);
+          const rawQ = takeFromQueue((e: any) => !e.player);
+          if (rawQ) return buildNode(node, rawQ, null);
+          const twFromSquad = squad.find((p: any) => !used.has(p.id) && !reportIds.has(p.id) && twOf(p.position));
+          if (twFromSquad) return buildNode(node, null, twFromSquad);
+          return node;
         }
-        const matched = pickFor(targetPos);
-        if (matched) {
-          return { ...node, name: shortName(matched), number: String(matched.number || node.number), position: matched.position || node.position, image: matched.image };
-        }
+        // Nicht-TW-Slots: keine Torhüter aus dem Spielbericht aufs Feld (die gehören auf die Bank)
+        const matchQ = takeFromQueue((e: any) => e.player && !twOf((e.player as any).position) && posMatchQ(e.player, tp));
+        if (matchQ) return buildNode(node, matchQ, null);
+        const anyQ = takeFromQueue((e: any) => !e.player || !twOf((e.player as any).position));
+        if (anyQ) return buildNode(node, anyQ, null);
+        const fb = pickFor(tp);
+        if (fb) return buildNode(node, null, fb);
         return node;
       });
       result[key] = { ...preset, nodes: mappedNodes };
@@ -700,8 +725,10 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
     return result;
   }, [players, activeClub.id, matchAnalyses]);
 
-  // Quellen-Stempel der Startelf: Ändert sich der letzte Spielbericht (neue Startelf), wird die
-  // gespeicherte Präsentations-Startelf beim nächsten Sync frisch vom Board übernommen.
+  // Quellen-Stempel der Startelf: Ändert sich der Startelf-Inhalt des Spielberichts (auch im selben
+// Bericht, z. B. Spieler geändert) oder die Aufstellungs-Logik (Version-Bump), wird die gespeicherte
+// Präsentations-Startelf beim nächsten Sync frisch vom Board übernommen.
+  const LINEUP_SRC_VERSION = 'v-twguard-1';
   const reportSrcId = useMemo(() => {
     const latest = [...(matchAnalyses || [])]
       .filter((a: any) => a && a.startingLineup && String(a.startingLineup).trim().length > 0)
@@ -710,7 +737,9 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
         const db = new Date(String(b.date || b.createdAt || '')).getTime();
         return (isNaN(db) ? 0 : db) - (isNaN(da) ? 0 : da) || String(b.id || '').localeCompare(String(a.id || ''));
       })[0];
-    return latest ? String(latest.id || latest.date || latest.createdAt || 'report-unknown') : 'none';
+    if (!latest) return `${LINEUP_SRC_VERSION}::none`;
+    const sig = `${LINEUP_SRC_VERSION}::${String(latest.id || latest.date || latest.createdAt || 'report')}::${String(latest.startingLineup || '')}::${String(latest.updatedAt || latest.lastModified || '')}`;
+    return sig;
   }, [matchAnalyses]);
 
   // Aktuelle Startelf (editierbar über Bank-Wechsel) — Board als Quelle beim Start, danach User-Wechsel.
@@ -809,15 +838,34 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
       if (slots.length === 0) throw new Error('Formation nicht verfügbar');
       const usedReport = new Set<string>();
       const usedSquad = new Set<string>();
+      const twOf = (p: any) => String(p?.position || '').toUpperCase().replace(/[^A-ZÄÜÖ]/g, '').includes('TW');
       const posMatch = (p: any, tp: string) => {
         const pp = (p.position || '').toUpperCase().replace(/[^A-ZÄÜÖ]/g, '');
         return pp === tp || pp.includes(tp) || tp.includes(pp);
       };
       const nextLineup = slots.map((node: any, i: number) => {
         const tp = order[i] || 'ST';
+        if (i === 0) {
+          // TW-Slot: TW-Spieler bevorzugen (sonst erster erkannter)
+          const fromReport =
+            resolved.find((r) => r.player && !usedReport.has(r.player.id) && twOf(r.player)) ||
+            resolved.find((r) => r.player && !usedReport.has(r.player.id));
+          if (fromReport?.player) {
+            usedReport.add(fromReport.player.id);
+            usedSquad.add(fromReport.player.id);
+            return { ...node, name: shortName(fromReport.player), number: String(fromReport.player.number || node.number), position: fromReport.player.position || node.position, image: fromReport.player.image || node.image };
+          }
+          const twFromSquad = squad.find((p: any) => !usedSquad.has(p.id) && twOf(p));
+          if (twFromSquad) {
+            usedSquad.add(twFromSquad.id);
+            return { ...node, name: shortName(twFromSquad), number: String(twFromSquad.number || node.number), position: twFromSquad.position || node.position, image: twFromSquad.image || node.image };
+          }
+          return node;
+        }
+        // Nicht-TW-Slots: keine Torhüter aufs Feld
         const fromReport =
-          resolved.find((r) => r.player && !usedReport.has(r.player.id) && posMatch(r.player, tp)) ||
-          resolved.find((r) => r.player && !usedReport.has(r.player.id));
+          resolved.find((r) => r.player && !usedReport.has(r.player.id) && !twOf(r.player) && posMatch(r.player, tp)) ||
+          resolved.find((r) => r.player && !usedReport.has(r.player.id) && !twOf(r.player));
         if (fromReport?.player) {
           usedReport.add(fromReport.player.id);
           usedSquad.add(fromReport.player.id);
@@ -829,8 +877,8 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
             image: fromReport.player.image || node.image,
           };
         }
-        const fromSquad = squad.find((p: any) => !usedSquad.has(p.id) && posMatch(p, tp)) ||
-                          squad.find((p: any) => !usedSquad.has(p.id));
+        const fromSquad = squad.find((p: any) => !usedSquad.has(p.id) && !twOf(p) && posMatch(p, tp)) ||
+                          squad.find((p: any) => !usedSquad.has(p.id) && !twOf(p));
         if (fromSquad) {
           usedSquad.add(fromSquad.id);
           return { ...node, name: shortName(fromSquad), number: String(fromSquad.number || node.number), position: fromSquad.position || node.position, image: fromSquad.image || node.image };
