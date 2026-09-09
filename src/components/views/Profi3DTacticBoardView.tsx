@@ -54,7 +54,8 @@ import {
   Bot,
   Route,
   Circle,
-  Repeat
+  Repeat,
+  ClipboardPaste
 } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
 import { collection, onSnapshot, doc, setDoc, deleteDoc, query, getDoc } from 'firebase/firestore';
@@ -605,14 +606,23 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
     // Startelf aus dem letzten Spielbericht (startingLineup) hat Vorrang vor der Positions-Zuordnung.
     const parseReportNames = (v: any): string[] => {
       const raw: string[] = Array.isArray(v) ? v.map(String) : String(v || '').split(/[,;\n]+/);
+      const POS_WORDS = new Set(['TORWART','TW','ABWEHR','ABW','IV','RV','LV','IVL','IVR','LVL','LVR','INNENVERTEIDIGER','MITTELFELD','MF','DM','ZM','OM','ZOM','ZDM','RA','RM','LA','LM','ANGRIFF','ANG','ST','STURM','TOR','ZENTRAL','DEFENSIVES','OFFENSIVES']);
       const names: string[] = [];
       raw.forEach((entry: string) => {
         const cleaned = String(entry)
           .replace(/\s*\([\s\S]*?\)\s*/g, ' ')
-          .replace(/^\s*[\d]+[\.\)]?\s*/, ' ')
+          .replace(/\s+und\s+auf\s+der\s+Bank\s*$/gi, '')
+          .replace(/\s*\(BANK\)\s*$/gi, '')
+          .replace(/\s*auf\s+der\s+Bank\s*$/gi, '')
+          .replace(/^\s*[\d]+[\s\-\–\:\.\)]*\s*/g, ' ')
+          .replace(/^\s*[\d]+[\s\-\–\:\.\)]+\s*/g, ' ')
+          .replace(/[\d]+\s*[\-\–\:]+\s*/g, ' ')
           .replace(/\s+/g, ' ')
           .trim();
         if (!cleaned) return;
+        const upper = cleaned.toUpperCase().replace(/[^A-ZÄÖÜ]/g, '');
+        if (POS_WORDS.has(upper)) return;
+        if (cleaned.length <= 1) return;
         names.push(cleaned.replace(/[.,'"]/g, ''));
       });
       return names;
@@ -728,7 +738,7 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
   // Quellen-Stempel der Startelf: Ändert sich der Startelf-Inhalt des Spielberichts (auch im selben
 // Bericht, z. B. Spieler geändert) oder die Aufstellungs-Logik (Version-Bump), wird die gespeicherte
 // Präsentations-Startelf beim nächsten Sync frisch vom Board übernommen.
-  const LINEUP_SRC_VERSION = 'v-twguard-1';
+  const LINEUP_SRC_VERSION = 'v-parserfix-1';
   const reportSrcId = useMemo(() => {
     const latest = [...(matchAnalyses || [])]
       .filter((a: any) => a && a.startingLineup && String(a.startingLineup).trim().length > 0)
@@ -1046,6 +1056,66 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
   const removePlayerFromBank = (idx: number) => {
     setPresentationSubstitutes((prev) => prev.filter((_, i) => i !== idx));
     notify('Spieler von der Bank entfernt (automatisch gespeichert ✓)');
+  };
+
+  // 📋 Startelf durch Einfügen ersetzen & speichern (Format: "Nummer / Name / Position" zeilenweise oder "Nummer – Name – Position")
+  const [lineupImportOpen, setLineupImportOpen] = useState(false);
+  const [lineupPasteText, setLineupPasteText] = useState('');
+  const importLineupFromText = () => {
+    const short = (s: string) => String(s || '').replace(/[.,'"]/g, '').replace(/\s+/g, ' ').trim();
+    const posKey = (s: string) => String(s || '').toUpperCase().replace(/[^A-ZÄÖÜ]/g, '');
+    const POS_WORDS = new Set(['TORWART','TW','ABWEHR','ABW','IV','RV','LV','IVL','IVR','LVL','LVR','INNENVERTEIDIGER','MITTELFELD','MF','DM','ZM','OM','ZOM','ZDM','RA','RM','LA','LM','ANGRIFF','ANG','ST','STURM','TOR','ZENTRAL','DEFENSIVES','OFFENSIVES','KADER']);
+    const rows: Array<{ num: string; name: string; pos: string }> = [];
+    const tokens = String(lineupPasteText || '').split('\n').map((t) => t.replace(/\r$/, '').trim());
+    let i = 0;
+    while (i < tokens.length) {
+      const tok = tokens[i];
+      if (!tok) { i++; continue; }
+      const one = tok.match(/^(\d+)[\s\-–:]+([A-Za-zÄÖÜäöü.\-' ]+?)\s*[|\-–]+\s*([A-Za-zÄÖÜäöü/]+)\s*$/);
+      if (one) { rows.push({ num: one[1], name: short(one[2]), pos: one[3] }); i++; continue; }
+      const numOnly = tok.match(/^(\d+)\s*$/);
+      if (numOnly) {
+        const num = numOnly[1];
+        i++;
+        const nameTok = (tokens[i] ?? '').replace(/\s+und\s+auf\s+der\s+Bank\s*$/i, '').trim();
+        i++;
+        let posTok = '';
+        if (i < tokens.length && POS_WORDS.has(posKey(tokens[i]))) { posTok = tokens[i]; i++; }
+        const nameClean = short(nameTok);
+        if (nameClean) rows.push({ num, name: nameClean, pos: posTok });
+        continue;
+      }
+      const upTok = posKey(tok);
+      if (POS_WORDS.has(upTok)) { i++; continue; }
+      let posTok2 = '';
+      if (i + 1 < tokens.length && POS_WORDS.has(posKey(tokens[i + 1]))) { posTok2 = tokens[i + 1]; i++; }
+      const nameClean2 = short(tok);
+      if (nameClean2) rows.push({ num: '', name: nameClean2, pos: posTok2 });
+      i++;
+    }
+    if (rows.length === 0) { notify('Keine Spieler erkannt — Text zuerst einfügen (Nummer / Name / Position).'); return; }
+    const twRow = rows.find((r) => posKey(r.pos).includes('TW')) || null;
+    const others = rows.filter((r) => r !== twRow);
+    const starters = ([twRow, ...others].filter((r): r is { num: string; name: string; pos: string } => !!r)).slice(0, 11);
+    const bank = rows.filter((r) => !starters.some((s) => s === r)).map((r) => ({ num: String(r.num || ''), name: short(r.name), pos: r.pos || '', note: '', image: undefined }));
+    const preset = FORMATION_PRESETS['4-2-3-1'];
+    const nodes = (preset?.nodes || []).map((n: any, idx: number) => {
+      const row = starters[idx];
+      if (!row) return { ...n, name: '', number: '', position: n.position, image: undefined };
+      const sq = (players || []).find((p: any) => String(p.lastName || p.name || '').toLowerCase().includes(row.name.toLowerCase()) || row.name.toLowerCase().includes(String(p.lastName || '').toLowerCase()));
+      return { ...n, name: sq ? shortNameOf(sq) : row.name, number: String(row.num || n.number || ''), position: row.pos || n.position, image: sq?.image || undefined };
+    });
+    setPresentationLineup(nodes);
+    setPresentationSubstitutes(bank);
+    swappedPositionsRef.current = new Set();
+    try {
+      localStorage.setItem('fca_presentationLineup', JSON.stringify(nodes));
+      localStorage.setItem('fca_presentationLineup_src', `${LINEUP_SRC_VERSION}::manual-import::${Date.now()}`);
+      localStorage.setItem('fca_presentationSubstitutes', JSON.stringify(bank));
+    } catch { /* ignore */ }
+    setLineupImportOpen(false);
+    setLineupPasteText('');
+    notify(`✅ Startelf ersetzt & gespeichert: ${starters.length} Feldspieler, ${bank.length} auf der Bank`);
   };
 
   // Zurücksetzen: System wieder auf 4-2-3-1, Startelf & Bank zurück auf Ursprung, alle Wechsel gelöscht
@@ -7531,6 +7601,24 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                                   <option key={s.id} value={s.id}>{s.number ? `${s.number} ` : ''}{shortNameOf(s)} ({s.position})</option>
                                 ))}
                               </select>
+                            </div>
+                          )}
+                        </div>
+                        <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4">
+                          <button onClick={() => setLineupImportOpen(!lineupImportOpen)} className="w-full flex items-center justify-between gap-2 font-black uppercase text-[10px] tracking-widest text-emerald-400">
+                            <span className="flex items-center gap-2"><ClipboardPaste size={12} /> Startelf aus Text ersetzen & speichern</span>
+                            <span>{lineupImportOpen ? '▲' : '▼'}</span>
+                          </button>
+                          {lineupImportOpen && (
+                            <div className="mt-2 space-y-2">
+                              <p className="text-[10px] text-slate-400 leading-relaxed">Jede Zeile: <span className="text-slate-200 font-mono">Nummer</span> dann <span className="text-slate-200 font-mono">Name</span> dann <span className="text-slate-200 font-mono">Position</span> (z. B. "1 L. Misic / Torwart" oder dein Bericht-Format). Erste 11 = Startelf, Rest = Bank.</p>
+                              <textarea value={lineupPasteText} onChange={(e) => setLineupPasteText(e.target.value)} rows={6} className="w-full bg-slate-950 border border-emerald-500/40 rounded-lg p-2 text-[11px] font-mono text-slate-200 focus:outline-none focus:border-emerald-400 resize-y" placeholder={'1 L. Misic / Torwart\n5 J. Fangmeier / Mittelfeld\n21 M. Disch / Abwehr\n…'} />
+                              <div className="flex items-center gap-2">
+                                <button onClick={() => importLineupFromText()} className="flex-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-[11px] uppercase px-3 py-2 rounded-lg transition-all active:scale-95" title="Startelf & Bank durch den eingefügten Text ersetzen und speichern">
+                                  Ersetzen & Speichern
+                                </button>
+                                <button onClick={() => { setLineupImportOpen(false); setLineupPasteText(''); }} className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-black text-[11px] uppercase px-3 py-2 rounded-lg transition-all" title="Abbrechen">Abbrechen</button>
+                              </div>
                             </div>
                           )}
                         </div>
