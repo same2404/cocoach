@@ -936,8 +936,38 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
     let lines: string[] = [];
     if (Array.isArray(report?.startingLineup)) lines = (report.startingLineup as string[]).map((l: any) => String(l)).filter(Boolean);
     else if (typeof report?.startingLineup === 'string') lines = String(report.startingLineup).split('\n').map(l => l.trim()).filter(Boolean);
-    if (!report || lines.length === 0) return { ok: false as const, nodes: [] as Array<any> };
     const templatePositions = liveFormations['4-2-3-1']?.nodes || FORMATION_PRESETS['4-2-3-1']?.nodes || [];
+    // Fallback: kein Spielbericht/keine Startelf → Kader nach Position priorisiert (mit Foto) als Startelf
+    if (!report || lines.length === 0) {
+      const rank = (p: any): number => {
+        const pos = String(p.position || '').toUpperCase().replace(/[^A-ZÄÜÖ]/g, '');
+        if (pos.includes('TW')) return 0;
+        if (pos.includes('AB') || pos.includes('IV') || pos.includes('RV') || pos.includes('LV')) return 1;
+        if (pos.includes('DM') || pos.includes('ZM') || pos.includes('OM')) return 2;
+        if (pos.includes('RA') || pos.includes('LA') || pos.includes('ST')) return 3;
+        return 4;
+      };
+      const sorted = [...squad].sort((a, b) => {
+        const ar = rank(a); const br = rank(b);
+        if (ar !== br) return ar - br;
+        return String(a.number || a.rückennummer || '999').localeCompare(String(b.number || b.rückennummer || '999'), 'de', { numeric: true });
+      }).slice(0, 11);
+      if (sorted.length === 0) return { ok: false as const, nodes: [] as Array<any> };
+      const nodes = sorted.map((player: any, idx: number) => {
+        const slot = templatePositions[idx % Math.max(1, templatePositions.length)] || {};
+        return {
+          id: `${idx + 1}`,
+          name: shortName(player),
+          number: String(player.number || player.rückennummer || ''),
+          position: player.position || '',
+          role: (slot as any).role || '',
+          xPercent: (slot as any).xPercent ?? 50,
+          yPercent: (slot as any).yPercent ?? 50,
+          image: player?.image || undefined,
+        };
+      });
+      return { ok: nodes.length > 0, nodes };
+    }
     const nodes = lines.slice(0, 11).map((line, idx) => {
       const numStr = (line.match(/^\s*(\d{1,3})/) || [])[1] || '';
       const nameStr = (line.replace(/^\s*(\d{1,3})\s*/, '').match(/^[^()]+/) || [''])[0].trim();
@@ -1029,6 +1059,33 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
       return changed ? next : prev;
     });
   }, [players]);
+
+  // Aktuelle Startelf JETZT übernehmen (letzter Spielbericht bzw. Kader-Fallback, mit Fotos)
+  const applyCurrentStartelf = useCallback(() => {
+    if (!currentStartelfNodes.ok || currentStartelfNodes.nodes.length === 0) {
+      notify('Keine Startelf verfügbar – bitte zuerst Spieler im Kader erfassen oder einen Spielbericht mit Startelf anlegen.');
+      return;
+    }
+    setPresentationLineup(currentStartelfNodes.nodes);
+    swappedPositionsRef.current = new Set();
+    const withFoto = currentStartelfNodes.nodes.filter((n: any) => n.image).length;
+    notify(`✅ Aktuelle Startelf übernommen (${currentStartelfNodes.nodes.length} Spieler, ${withFoto} mit Foto)`);
+  }, [currentStartelfNodes]);
+
+  // Neuer/aktualisierter Spielbericht → alte gespeicherte Präsentation NICHT mitnehmen, sondern frische Startelf mit Fotos übernehmen
+  useEffect(() => {
+    if (!currentStartelfNodes.ok || currentStartelfNodes.nodes.length === 0) return;
+    let savedSrc = '';
+    try { savedSrc = localStorage.getItem('fca_presentationLineup_src') || ''; } catch { /* ignore */ }
+    if (savedSrc === reportSrcId) return;
+    if (presentationLineup.length > 0) {
+      const curSig = JSON.stringify(presentationLineup.map((n: any) => `${n.number}:${n.name}`));
+      const nextSig = JSON.stringify(currentStartelfNodes.nodes.map((n: any) => `${n.number}:${n.name}`));
+      if (curSig === nextSig) return;
+    }
+    setPresentationLineup(currentStartelfNodes.nodes);
+    swappedPositionsRef.current = new Set();
+  }, [reportSrcId, currentStartelfNodes]);
 
   // 📐 Standard-Skizze aus dem Spielbericht exakt nachzeichnen (Text/Bild → Taktiktafel)
   const [draftReference, setDraftReference] = useState<any>(null);
@@ -7732,6 +7789,14 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                 title="Aktuelle Aufstellung vom 3D-Board übernehmen (inkl. Bilder)"
               >
                 <RefreshCw size={15} /> Vom Board
+              </button>
+
+              <button
+                onClick={applyCurrentStartelf}
+                className="bg-gradient-to-br from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-black text-xs uppercase px-4 py-2.5 rounded-xl shadow-lg transition-all flex items-center gap-1.5 active:scale-95"
+                title="Aktuelle Startelf aus dem letzten Spielbericht übernehmen – echte Spieler mit Foto statt Nummern"
+              >
+                <Users size={15} /> Startelf (Fotos)
               </button>
 
               <button

@@ -597,7 +597,7 @@ export const MatchReportView: React.FC<MatchReportViewProps> = ({
     }
     setTraceLoading(side);
     try {
-      const resp: any = await apiFetch('/api/tacticboard/standard-from-text', {
+      const raw: any = await apiFetch('/api/tacticboard/standard-from-text', {
         method: 'POST',
         body: JSON.stringify({
           name: side === 'own' ? (currentAnalysis.opponent ? `Offensiv vs. ${currentAnalysis.opponent}` : 'Offensiv') : (currentAnalysis.opponent ? `Defensiv vs. ${currentAnalysis.opponent}` : 'Defensiv'),
@@ -606,11 +606,12 @@ export const MatchReportView: React.FC<MatchReportViewProps> = ({
           images,
         }),
       });
-      if (!resp?.ok || !resp?.standard) {
-        throw new Error(resp?.error || 'Zeichnung fehlgeschlagen');
+      const parsed = await raw.json().catch(() => ({}));
+      if (!raw.ok || !parsed?.standard) {
+        throw new Error(parsed?.error || 'Zeichnung fehlgeschlagen');
       }
       onNavigateToTacticBoard(currentAnalysis.matchId || currentAnalysis.id, {
-        standard: resp.standard,
+        standard: parsed.standard,
         label: side === 'own' ? 'STANDARDS OFFENSIV' : 'STANDARDS DEFENSIV',
         referenceText: text,
         referenceImages: images,
@@ -632,7 +633,7 @@ export const MatchReportView: React.FC<MatchReportViewProps> = ({
     setMatchdayLoading(true);
     setMatchdayResult(null);
     try {
-      const resp: any = await apiFetch('/api/matchday/fetch', {
+      const raw: any = await apiFetch('/api/matchday/fetch', {
         method: 'POST',
         body: JSON.stringify({
           squadPlayers: (players || []).filter((p: any) => (p.category || 'player') === 'player').map((p: any) => ({
@@ -642,10 +643,11 @@ export const MatchReportView: React.FC<MatchReportViewProps> = ({
           })),
         }),
       });
-      if (!resp?.ok || !resp?.data) {
-        throw new Error(resp?.error || 'Abruf fehlgeschlagen');
+      const parsed = await raw.json().catch(() => ({}));
+      if (!raw.ok || !parsed?.data) {
+        throw new Error(parsed?.error || 'Abruf fehlgeschlagen');
       }
-      setMatchdayResult(resp.data);
+      setMatchdayResult(parsed.data);
     } catch (err: any) {
       console.error('[Matchday Client]', err);
       setMatchdayResult({ error: err?.message || 'Abruf fehlgeschlagen' });
