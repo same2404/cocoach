@@ -19,6 +19,7 @@ import { UniformMask } from './components/UniformMask';
 import { KaderAgentModal } from './components/KaderAgentModal';
 import { Pro3DTacticBoardModal } from './components/Pro3DTacticBoardModal';
 import { AgentSystemControlCenterModal } from './components/AgentSystemControlCenterModal';
+import { runMasterAgentCycle } from './utils/agentSystemEngine';
 
 import { GoogleDriveModal } from './components/GoogleDriveModal';
 import { GoogleCalendarModal } from './components/GoogleCalendarModal';
@@ -375,6 +376,7 @@ const App: React.FC = () => {
   const { data: vorbereitungWinter, loading: loadingWinter, addOrUpdateItem: saveVorbereitungWinter, removeItem: removeVorbereitungWinter } = useCollectionSync<any>('vorbereitung_winter', 'id', undefined, 'asc', true);
   const { data: winterPrepConfig, loading: loadingWinterConfig, addOrUpdateItem: saveWinterConfig } = useCollectionSync<any>('winter_prep_config', 'id', undefined, 'asc', true);
   const { data: matchAnalyses, loading: loadingAnalyses, addOrUpdateItem: saveMatchAnalysis, removeItem: deleteMatchAnalysis } = useCollectionSync<any>('match_analyses', 'id', undefined, 'asc', true);
+  const { data: agentLogs, addOrUpdateItem: saveAgentLog, removeItem: deleteAgentLog } = useCollectionSync<any>('agent_logs', 'id', 'timestamp', 'desc', true);
   const { data: academyEvaluations, loading: loadingAcademyEvals, addOrUpdateItem: saveAcademyEvaluation, removeItem: deleteAcademyEvaluation } = useCollectionSync<any>('academy_evaluations', 'id', 'createdAt', 'desc', true);
   const { data: academyWeeklyReports, loading: loadingAcademyReports, addOrUpdateItem: saveAcademyWeeklyReport, removeItem: deleteAcademyWeeklyReport } = useCollectionSync<any>('academy_weekly_reports', 'id', 'createdAt', 'desc', true);
   const { data: trackerAcademyReports, loading: loadingTrackerReports, addOrUpdateItem: saveTrackerAcademyReport, removeItem: deleteTrackerAcademyReport } = useCollectionSync<any>('tracker_academy_reports', 'id', 'createdAt', 'desc', true);
@@ -386,6 +388,54 @@ const App: React.FC = () => {
     }
     return _rawCompMatches;
   }, [_rawCompMatches, isSCSand, loadingCompMatches]);
+
+  const [lastAgentCycle, setLastAgentCycle] = useState<{ time: number; summary: string } | null>(null);
+
+  const agentDataRef = useRef({ players, matches: competitiveMatches, analyses: matchAnalyses });
+  agentDataRef.current = { players, matches: competitiveMatches, analyses: matchAnalyses };
+  const agentLogsRef = useRef(agentLogs);
+  agentLogsRef.current = agentLogs;
+
+  // Hintergrund-Heartbeat: echter Master-Agent-Zyklus alle 60s beim App-Start (nicht nur im Modal)
+  useEffect(() => {
+    const runBackgroundCycle = () => {
+      try {
+        const { players: p, matches: m, analyses: a } = agentDataRef.current;
+        const result = runMasterAgentCycle(p as any, m as any, a as any);
+        const sup = result.updatedAgents.SupervisorAgent;
+        const clean = result.updatedAgents.CleanupAgent;
+        const summary = `${sup.metrics.syncStatus} · Team ${result.updatedAgents.TeamAgent.metrics.healthScore}% · Comp ${result.updatedAgents.CompetitionAgent.metrics.healthScore}% · Clean ${clean.metrics.healthScore}% · Mem ${result.updatedAgents.MemoryAgent.metrics.healthScore}% · Cleanup-Vorschläge ${clean.metrics.processedCount}`;
+        setLastAgentCycle({ time: Date.now(), summary });
+        const base = Date.now();
+        result.logs.forEach((log, i) => {
+          saveAgentLog({
+            id: `agentlog-${base}-${i}`,
+            timestamp: new Date().toISOString(),
+            agentId: log.agentId,
+            agentName: log.agentName,
+            type: log.type,
+            message: log.message,
+            details: log.details,
+            collector: 'app-heartbeat',
+            healthSup: sup.metrics.healthScore
+          } as any);
+        });
+        // CleanupAgent-Regel: Firestore-Log-Datei schlank halten (max 300 Einträge, älteste zuerst entfernen)
+        if (agentLogsRef.current.length > 300) {
+          agentLogsRef.current.slice(200).forEach((l: any) => {
+            if (l?.id && typeof l.id === 'string' && l.id.startsWith('agentlog-')) {
+              deleteAgentLog(l.id as any);
+            }
+          });
+        }
+      } catch (e) {
+        console.error('[Background Agent Cycle Error]', e);
+      }
+    };
+    runBackgroundCycle();
+    const interval = setInterval(runBackgroundCycle, 60000);
+    return () => clearInterval(interval);
+  }, [saveAgentLog, deleteAgentLog]);
 
   const getAppBackupData = useCallback(() => {
     return {
@@ -4415,6 +4465,7 @@ onNavigateToTacticBoard={() => {
           players={players}
           matches={competitiveMatches}
           analyses={matchAnalyses}
+          backgroundLastCycle={lastAgentCycle}
           onClose={() => setShowAgentControlCenterModal(false)}
         />
       )}

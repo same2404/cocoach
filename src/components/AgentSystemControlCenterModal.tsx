@@ -18,14 +18,19 @@ import {
   Layers,
   FileText,
   Radio,
-  Clock
+  Clock,
+  Brain,
+  ListChecks,
+  Loader2
 } from 'lucide-react';
+import { apiFetch } from '../lib/apiClient';
 import { AgentStatus, AgentLog, INITIAL_AGENTS_STATE, runMasterAgentCycle } from '../utils/agentSystemEngine';
 
 interface AgentSystemControlCenterModalProps {
   players: Player[];
   matches?: Match[];
   analyses?: any[];
+  backgroundLastCycle?: { time: number; summary: string } | null;
   onClose: () => void;
 }
 
@@ -33,12 +38,15 @@ export const AgentSystemControlCenterModal: React.FC<AgentSystemControlCenterMod
   players,
   matches = [],
   analyses = [],
+  backgroundLastCycle = null,
   onClose
 }) => {
   const [agents, setAgents] = useState<Record<string, AgentStatus>>(INITIAL_AGENTS_STATE);
   const [logs, setLogs] = useState<AgentLog[]>([]);
   const [isAutoLoopActive, setIsAutoLoopActive] = useState<boolean>(true);
   const [activeAgentTab, setActiveAgentTab] = useState<string>('ALL');
+  const [monthlyReview, setMonthlyReview] = useState<string | null>(null);
+  const [isReviewLoading, setIsReviewLoading] = useState(false);
 
   // Trigger cycle on load
   useEffect(() => {
@@ -81,6 +89,32 @@ export const AgentSystemControlCenterModal: React.FC<AgentSystemControlCenterMod
     ? logs 
     : logs.filter((l) => l.agentId === activeAgentTab);
 
+  const selectedFindings = activeAgentTab === 'ALL'
+    ? (agents.SupervisorAgent?.findings ?? [])
+    : (agents[activeAgentTab]?.findings ?? []);
+
+  const handleMonthlyReview = async () => {
+    setIsReviewLoading(true);
+    setMonthlyReview(null);
+    try {
+      const data = {
+        players: players.map((p: any) => ({ name: `${p?.firstName || ''} ${p?.lastName || p?.name || ''}`.trim(), position: p?.position || '', number: p?.number ?? '', category: p?.category || 'player', isInjured: p?.isInjured || false })),
+        matches: matches.map((m) => ({ opponent: m.opponent || '', date: m.date || '', result: m.result || '', competition: m.competition || '' })),
+        analyses: analyses.map((a: any) => ({ opponent: a?.opponent || '', date: a?.date || '', result: a?.result || '', hasContent: !!(a?.berichtText || a?.startingLineup) }))
+      };
+      const res = await apiFetch('/api/agent-monthly-review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      setMonthlyReview(String((res as any)?.text || 'Keine Antwort erhalten.'));
+    } catch (err: any) {
+      setMonthlyReview(`Fehler: ${err?.message || err}`);
+    } finally {
+      setIsReviewLoading(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[999999] flex items-center justify-center p-2 sm:p-4 text-white font-sans overflow-hidden select-none">
       <div className="bg-slate-900 border-4 border-black rounded-xl shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] max-w-6xl w-full flex flex-col max-h-[92vh] overflow-hidden">
@@ -98,6 +132,12 @@ export const AgentSystemControlCenterModal: React.FC<AgentSystemControlCenterMod
               <p className="text-xs text-slate-300 font-bold flex items-center gap-2 mt-0.5">
                 <span>SupervisorAgent • TeamAgent • CompetitionAgent • CleanupAgent • MemoryAgent</span>
               </p>
+              {backgroundLastCycle && (
+                <p className="text-[10px] text-emerald-400 font-mono mt-0.5 truncate max-w-[600px]" title={backgroundLastCycle.summary}>
+                  <span className="inline-block w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse mr-1" />
+                  Background-Cycle {new Date(backgroundLastCycle.time).toLocaleTimeString('de-DE')}: {backgroundLastCycle.summary}
+                </p>
+              )}
             </div>
           </div>
 
@@ -157,11 +197,23 @@ export const AgentSystemControlCenterModal: React.FC<AgentSystemControlCenterMod
                   <span className="text-emerald-400 font-bold">{agent.status}</span>
                 </div>
                 <div className="flex justify-between text-slate-400">
-                  <span>Last Sync:</span>
+                  <span>Last Run:</span>
                   <span className="text-amber-300">{agent.lastRun}</span>
                 </div>
+                <div className="flex justify-between text-slate-400 items-center">
+                  <span>Health:</span>
+                  <span className="flex items-center gap-1.5">
+                    <span className={`font-bold ${agent.metrics.healthScore >= 90 ? 'text-emerald-400' : agent.metrics.healthScore >= 60 ? 'text-amber-400' : 'text-red-400'}`}>{agent.metrics.healthScore}%</span>
+                    <span className="w-10 h-1.5 bg-slate-800 rounded-full overflow-hidden inline-block align-middle">
+                      <span
+                        className={`block h-full ${agent.metrics.healthScore >= 90 ? 'bg-emerald-500' : agent.metrics.healthScore >= 60 ? 'bg-amber-500' : 'bg-red-500'}`}
+                        style={{ width: `${agent.metrics.healthScore}%` }}
+                      />
+                    </span>
+                  </span>
+                </div>
                 <div className="flex justify-between text-slate-400">
-                  <span>Metrics:</span>
+                  <span>Sync:</span>
                   <span className="text-blue-300 font-bold">{agent.metrics.syncStatus}</span>
                 </div>
               </div>
@@ -224,8 +276,60 @@ export const AgentSystemControlCenterModal: React.FC<AgentSystemControlCenterMod
             </div>
           </div>
 
-          {/* RIGHT COLUMN: RULES & AGENT DIRECTIVES */}
+          {/* RIGHT COLUMN: FINDINGS & RULES & KI-REVIEW */}
           <div className="bg-slate-950 border-2 border-black rounded-xl p-3 flex flex-col overflow-y-auto custom-scrollbar gap-3">
+            <div className="border-b-2 border-slate-800 pb-2">
+              <h3 className="text-xs font-black uppercase text-amber-400 flex items-center gap-1.5">
+                <ListChecks size={16} /> BEFUNDE {activeAgentTab === 'ALL' ? '(SUPERVISOR)' : activeAgentTab.toUpperCase()}
+              </h3>
+              <p className="text-[10px] text-slate-500 font-mono mt-0.5">Echte Checks auf deinen Daten · kein Dummy-Status</p>
+            </div>
+
+            <div className="space-y-2 text-[11px]">
+              {selectedFindings.length === 0 ? (
+                <div className="bg-slate-900 p-2.5 rounded-lg border border-slate-800 text-slate-400 font-mono text-[10px]">
+                  Keine Befunde. Cycle läuft...
+                </div>
+              ) : selectedFindings.map((f, i) => (
+                <div key={i} className={`p-2.5 rounded-lg border space-y-1 ${f.severity === 'ERROR' ? 'bg-red-950/60 border-red-900/60' : f.severity === 'WARNING' ? 'bg-amber-950/40 border-amber-900/40' : 'bg-slate-900 border-slate-800'}`}>
+                  <div className="flex items-start gap-1.5">
+                    <span className={`shrink-0 text-[9px] font-black px-1.5 py-0.5 rounded border border-black ${f.severity === 'ERROR' ? 'bg-red-600 text-white' : f.severity === 'WARNING' ? 'bg-amber-500 text-slate-950' : 'bg-slate-700 text-slate-200'}`}>
+                      {f.severity}
+                    </span>
+                    <span className="font-bold text-slate-100">{f.text}</span>
+                  </div>
+                  {f.items && f.items.length > 0 && (
+                    <ul className="text-[10px] text-slate-400 font-mono list-disc list-inside space-y-0.5 pl-1">
+                      {f.items.map((it, j) => <li key={j}>{it}</li>)}
+                    </ul>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="bg-slate-900 border-2 border-slate-800 rounded-lg p-2.5 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-xs font-black uppercase text-amber-400 flex items-center gap-1.5">
+                  <Brain size={16} /> MONATS-KI-REVIEW
+                </h3>
+                <button
+                  onClick={handleMonthlyReview}
+                  disabled={isReviewLoading}
+                  className={`px-2.5 py-1 rounded-lg border-2 border-black text-[10px] font-black uppercase flex items-center gap-1.5 transition-all ${
+                    isReviewLoading ? 'bg-slate-700 text-slate-300' : 'bg-amber-400 hover:bg-amber-500 text-slate-950 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]'
+                  }`}
+                >
+                  {isReviewLoading ? <Loader2 size={12} className="animate-spin" /> : <Play size={12} />}
+                  {isReviewLoading ? 'Erzeuge...' : 'Review'}
+                </button>
+              </div>
+              {monthlyReview && (
+                <div className="bg-slate-950 border border-slate-800 rounded-lg p-2.5 whitespace-pre-wrap text-[10px] font-mono text-slate-300 max-h-44 overflow-y-auto custom-scrollbar">
+                  {monthlyReview}
+                </div>
+              )}
+            </div>
+
             <div className="border-b-2 border-slate-800 pb-2">
               <h3 className="text-xs font-black uppercase text-amber-400 flex items-center gap-1.5">
                 <ShieldCheck size={16} /> SYSTEM-REGELN & DIRECTIVES

@@ -2123,6 +2123,56 @@ Jeder Block soll fachlich präzise, sofort nutzbar und im Deutschen sein. Antwor
     });
   }, runCut);
 
+  // Monthly KI-Review für das Agentensystem (nur lesend, keine Datenänderungen)
+  app.post('/api/agent-monthly-review', async (req, res) => {
+    try {
+      const { players = [], matches = [], analyses = [] } = req.body || {};
+      const results = analyses.filter((a: any) => String(a?.result || '').trim()).length;
+      const opponentList = [...new Set((matches as any[]).map((m) => String(m?.opponent || '').trim()).filter(Boolean))];
+      const dataDump = JSON.stringify({
+        kader: players,
+        spiele: matches,
+        berichte: analyses,
+        kennzahlen: {
+          spieleranzahl: players.length,
+          pflichtspiele: matches.length,
+          unbeantworteteErgebnisse: matches.filter((m: any) => !String(m?.result || '').trim()).length,
+          berichteMitErgebnis: results
+        },
+        gegnerHistorie: opponentList
+      }, null, 2).slice(0, 60000);
+
+      const prompt = `Du bist der MemoryAgent des FC Auggen KI-Systems und erstellst einen kompakten, ehrlichen Monats-Review in BRETTERDEUTSCH (Fußball-Fachbegriffe, Trainer-Stil, KEINE Füllphrasen).
+
+Nutze NUR die folgenden realen Daten (keine Erfindungen):
+${dataDump}
+
+Erstelle einen Review mit genau diesen Abschnitten:
+1. SAMSTAG-AUFSTELLUNG & KADER: Kaderstärke, Positionen, Verletzungen/Befunde aus den Spieler-Daten.
+2. LIGA & SPIELPLAN: Anzahl Pflichtspiele, Gegner, offene Ergebnisse oder fehlende Infos.
+3. SPIELBERICHTE & FORM: Welche Gegner wurden analysiert, Ergebnisse, Hinweise auf Form/Muster.
+4. RISIKEN & DATENQUALITÄT: Fehlende Ergebnisse, Berichte ohne Inhalt/Gegner, Duplikate - klar benennen.
+5. TRAINER-EMPFEHLUNG: 3 konkrete, umsetzbare nächste Schritte.
+
+Maximal 5 Absätze, kompakt, markdownfrei, direkt als reiner Text.`;
+
+      const response = await safeGenerateContent({
+        model: 'gemini-3.6-flash',
+        contents: [{ text: prompt }],
+        config: {
+          temperature: 0.3,
+          maxOutputTokens: 4096
+        }
+      });
+
+      const text = (response as any)?.text || 'Kein Review verfügbar.';
+      res.json({ success: true, text, model: (response as any)?.modelVersion });
+    } catch (err: any) {
+      console.error('[Agent Monthly Review Error]', err.message);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   return app;
 }
 
