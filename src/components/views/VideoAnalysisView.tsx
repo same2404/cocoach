@@ -1522,6 +1522,111 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
     URL.revokeObjectURL(url);
   };
 
+  // ══════════════ MATCHIQ MILESTONE 1: Speicher/Import, CSV-Export, Wärmekarte ══════════════
+  const [matchiqMsg, setMatchiqMsg] = useState<string | null>(null);
+  const [heatmapOpen, setHeatmapOpen] = useState(false);
+  const jsonFileRef = useRef<HTMLInputElement>(null);
+
+  const downloadBlob = (content: string, fileName: string, mime: string) => {
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const csvCell = (v: any) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+
+  const handleDownloadCsv = () => {
+    if (!savedClips?.length) return;
+    const today = new Date().toLocaleDateString('de-DE');
+    const head = ['sep=;', 'Kennung', 'Kategorie', 'Titel', 'Label', 'Start (s)', 'Ende (s)', 'Dauer (s)', 'Markierung', 'Zonen', 'Schlüsselspieler', 'Lernpunkt', 'Taktik-Notiz', 'Video-URL', 'Erstellt am'];
+    const rows = (savedClips || []).map((c: any) => [
+      c.id || '',
+      c.category || '',
+      c.title || '',
+      c.label || '',
+      c.startTime ?? '',
+      c.endTime ?? '',
+      c.duration ?? '',
+      c.colorMarking || '',
+      Object.keys(c.spatialAnalysis || {}).filter((k) => c.spatialAnalysis[k]).join(' | '),
+      (c.keyPlayers || []).map((k: any) => k?.name || (k?.jerseyNumber ? `#${k.jerseyNumber}` : '')).filter(Boolean).join(', '),
+      c.mainLearningPoint || '',
+      String(c.tacticalNote || '').replace(/\r?\n/g, ' '),
+      c.videoUrl || '',
+      c.createdAt || '',
+    ].map(csvCell).join(';'));
+    downloadBlob('\uFEFF' + [head.join(';'), ...rows].join('\r\n'), `FC_Auggen_Videoanalyse_${today.replace(/\./g, '-')}.csv`, 'text/csv;charset=utf-8');
+    setMatchiqMsg('📊 CSV-Export erstellt (Excel-kompatibel, Trennzeichen ;)');
+    setTimeout(() => setMatchiqMsg(null), 5000);
+  };
+
+  const handleExportJson = () => {
+    const today = new Date().toLocaleDateString('de-DE');
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      club: clubName,
+      schema: 'matchiq-milestone-1',
+      clips: savedClips || [],
+      categoryNotes: Object.values(categoryNotes || {}),
+    };
+    downloadBlob(JSON.stringify(payload, null, 2), `FC_Auggen_MatchIQ_Backup_${today.replace(/\./g, '-')}.json`, 'application/json;charset=utf-8');
+    setMatchiqMsg(`💾 Backup gesichert (${(savedClips || []).length} Szenen)`);
+    setTimeout(() => setMatchiqMsg(null), 5000);
+  };
+
+  const handleImportJsonFile = async (evt: React.ChangeEvent<HTMLInputElement>) => {
+    const file = evt.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      const clips = Array.isArray(data) ? data : Array.isArray(data.clips) ? data.clips : [];
+      const notes = Array.isArray(data.categoryNotes) ? data.categoryNotes : [];
+      let savedClipsN = 0;
+      let savedNotesN = 0;
+      for (const c of clips) { try { await saveClip(c); savedClipsN++; } catch { /* einzelne Szene überspringen */ } }
+      for (const n of notes) { try { await saveCategoryNote(n); savedNotesN++; } catch { /* Notiz überspringen */ } }
+      setMatchiqMsg(`✅ Import abgeschlossen: ${savedClipsN} Szenen, ${savedNotesN} Trainer-Notizen übernommen.`);
+      setTimeout(() => setMatchiqMsg(null), 6000);
+    } catch (err) {
+      setMatchiqMsg(`❌ Import fehlgeschlagen: ${(err as any)?.message || 'Ungültige JSON-Datei'}`);
+      setTimeout(() => setMatchiqMsg(null), 6000);
+    }
+    evt.target.value = '';
+  };
+
+  const MATCHIQ_HEAT_ZONES = [
+    { key: 'behindDefense', x: 215, y: 10, w: 70, h: 34, label: 'Tiefe Läufe' },
+    { key: 'wingsLeft', x: 10, y: 50, w: 115, h: 115, label: 'Links außen' },
+    { key: 'leftHalfSpace', x: 128, y: 50, w: 85, h: 115, label: 'LV-Halbraum' },
+    { key: 'center', x: 216, y: 50, w: 68, h: 115, label: 'Zentrum' },
+    { key: 'rightHalfSpace', x: 287, y: 50, w: 85, h: 115, label: 'RV-Halbraum' },
+    { key: 'wingsRight', x: 375, y: 50, w: 115, h: 115, label: 'Rechts außen' },
+    { key: 'betweenLines', x: 205, y: 175, w: 90, h: 55, label: 'Zwischenlinien' },
+  ];
+
+  const heatCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    MATCHIQ_HEAT_ZONES.forEach((z) => { counts[z.key] = 0; });
+    (savedClips || []).forEach((c: any) => {
+      const sa = c.spatialAnalysis || {};
+      MATCHIQ_HEAT_ZONES.forEach((z) => { if (sa[z.key]) counts[z.key] = (counts[z.key] || 0) + 1; });
+    });
+    return counts;
+  }, [savedClips]); // eslint-disable-line react-hooks/exhaustive-deps
+  const heatMax = Math.max(1, ...MATCHIQ_HEAT_ZONES.map((z) => heatCounts[z.key] || 0));
+  const heatColor = (cnt: number) => {
+    const t = cnt / heatMax;
+    const r = Math.round(25 + t * 225);
+    const g = Math.round(130 - t * 115);
+    const b = 130;
+    return `rgba(${r},${g},${b},${0.3 + 0.4 * t})`;
+  };
+
   return (
     <div className="w-full max-w-7xl mx-auto p-3 sm:p-6 space-y-6 text-[#F5F5F5]">
       
@@ -2883,6 +2988,40 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
           </button>
 
           <button
+            onClick={handleDownloadCsv}
+            disabled={totalClipsCount === 0}
+            className="px-4 py-3 bg-[#20293A] hover:bg-[#2A374F] disabled:opacity-40 text-[#A7F3D0] hover:text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all border border-[#334155] flex items-center gap-2 cursor-pointer disabled:cursor-not-allowed shadow-md"
+            title="Szenen als CSV für Excel herunterladen (Trennzeichen ;)"
+          >
+            <Download size={16} /> <span>CSV-Export (Excel)</span>
+          </button>
+          <button
+            onClick={handleExportJson}
+            disabled={totalClipsCount === 0}
+            className="px-4 py-3 bg-[#20293A] hover:bg-[#2A374F] disabled:opacity-40 text-[#93C5FD] hover:text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all border border-[#334155] flex items-center gap-2 cursor-pointer disabled:cursor-not-allowed shadow-md"
+            title="Alle Szenen & Trainer-Notizen als JSON-Backup sichern"
+          >
+            <Download size={16} /> <span>MatchIQ-Backup sichern</span>
+          </button>
+          <button
+            onClick={() => jsonFileRef.current?.click()}
+            className="px-4 py-3 bg-[#20293A] hover:bg-[#2A374F] disabled:opacity-40 text-[#FDE68A] hover:text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all border border-[#334155] flex items-center gap-2 cursor-pointer shadow-md"
+            title="MatchIQ-Backup (JSON) importieren"
+          >
+            <Upload size={16} /> <span>Backup importieren</span>
+          </button>
+          <button
+            onClick={() => setHeatmapOpen(true)}
+            disabled={totalClipsCount === 0}
+            className="px-4 py-3 bg-[#20293A] hover:bg-[#2A374F] disabled:opacity-40 text-[#FCA5A5] hover:text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all border border-[#334155] flex items-center gap-2 cursor-pointer disabled:cursor-not-allowed shadow-md"
+            title="MatchIQ Wärmekarte – wo passiert was"
+          >
+            <Target size={16} /> <span>🔥 Wärmekarte</span>
+          </button>
+
+          <input ref={jsonFileRef} type="file" accept="application/json,.json" className="hidden" onChange={handleImportJsonFile} />
+
+          <button
             onClick={() => {
               setPresentationSlideIndex(0);
               setShowPresentationModal(true);
@@ -2893,7 +3032,71 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
             <FileText size={18} /> <span>Präsentation starten / Drucken</span>
           </button>
         </div>
+        {matchiqMsg && (
+          <div className="mt-2 text-xs font-bold px-4 py-2 rounded-xl bg-[#20293A] border border-[#334155] text-[#FDE68A] animate-fadeIn flex items-center gap-2">
+            <CheckCircle2 size={14} className="text-emerald-400 shrink-0" />
+            <span>{matchiqMsg}</span>
+          </div>
+        )}
       </div>
+
+      {/* MODAL: MATCHIQ WÄRMEKARTE */}
+      {heatmapOpen && (
+        <div className="fixed inset-0 z-[310] bg-black/70 flex items-center justify-center p-4 overflow-y-auto" onClick={() => setHeatmapOpen(false)}>
+          <div className="bg-[#0B1220] border-2 border-[#334155] rounded-2xl max-w-3xl w-full p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-black uppercase tracking-wider text-white text-sm flex items-center gap-2">
+                <Target size={16} className="text-red-400" /> MatchIQ Wärmekarte — wo passiert was
+              </h3>
+              <button onClick={() => setHeatmapOpen(false)} className="text-slate-400 hover:text-white"><X size={18} /></button>
+            </div>
+            <p className="text-[11px] text-slate-400 mb-4 font-semibold">
+              Halbfeld-Ansicht (Verein greift Richtung Tor). Intensität = Anzahl erfasster Szenen pro Raum aus der räumlichen Analyse ({heatMax} max).
+            </p>
+            <div className="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden">
+              <svg viewBox="0 0 500 350" className="w-full h-auto" style={{ background: 'linear-gradient(180deg, #063826 0%, #041f15 100%)' }}>
+                <rect x="10" y="10" width="480" height="330" fill="none" stroke="#10B981" strokeWidth="1.5" opacity="0.4" rx="4" />
+                <line x1="10" y1="340" x2="490" y2="340" stroke="#10B981" strokeWidth="1.5" opacity="0.35" />
+                <rect x="175" y="10" width="150" height="50" fill="none" stroke="#10B981" strokeWidth="1.2" opacity="0.35" rx="2" />
+                <circle cx="250" cy="75" r="2.5" fill="#10B981" opacity="0.5" />
+                {MATCHIQ_HEAT_ZONES.map((z, i) => {
+                  const cnt = heatCounts[z.key] || 0;
+                  return (
+                    <g key={z.key}>
+                      <rect
+                        x={z.x} y={z.y} width={z.w} height={z.h}
+                        fill={heatColor(cnt)} rx="4"
+                        stroke="#fff" strokeWidth="0.6" strokeOpacity="0.25"
+                      />
+                      <text x={z.x + z.w / 2} y={z.y + z.h / 2 - 3} textAnchor="middle" fill="#fff" fontSize="10" fontWeight="black">{z.label}</text>
+                      <text x={z.x + z.w / 2} y={z.y + z.h / 2 + 12} textAnchor="middle" fill="#fff" fontSize="13" fontWeight="black">{cnt}</text>
+                    </g>
+                  );
+                })}
+                <g transform="translate(15, 302)">
+                  <rect x="0" y="0" width="470" height="28" fill="#0a0f1a" opacity="0.85" rx="4" />
+                  <rect x="10" y="6" width="24" height="16" fill={heatColor(0)} rx="2" /><text x="40" y="18" fill="#aaa" fontSize="9">0</text>
+                  <rect x="70" y="6" width="24" height="16" fill={heatColor(Math.ceil(heatMax / 3))} rx="2" /><text x="100" y="18" fill="#aaa" fontSize="9">1/3</text>
+                  <rect x="140" y="6" width="24" height="16" fill={heatColor(Math.ceil((2 * heatMax) / 3))} rx="2" /><text x="170" y="18" fill="#aaa" fontSize="9">2/3</text>
+                  <rect x="210" y="6" width="24" height="16" fill={heatColor(heatMax)} rx="2" /><text x="240" y="18" fill="#aaa" fontSize="9">Max</text>
+                  <text x="300" y="18" fill="#94a3b8" fontSize="9">Szenen: {totalClipsCount}</text>
+                </g>
+              </svg>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {MATCHIQ_HEAT_ZONES.map((z) => {
+                const cnt = heatCounts[z.key] || 0;
+                return (
+                  <span key={z.key} className="text-[10px] font-bold px-2.5 py-1 rounded-lg border border-slate-700 bg-slate-900 text-slate-200 flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ backgroundColor: heatColor(cnt) }} />
+                    {z.label}: {cnt}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODAL: CONTINUOUS VIDEO REEL PLAYER (CATEGORY & MASTER) */}
       {reelState && (
