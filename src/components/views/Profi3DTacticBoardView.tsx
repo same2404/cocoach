@@ -917,13 +917,60 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
     }
   }, [presentationLineup, reportSrcId]);
 
+  // Aktuelle Startelf (letzter Spielbericht) → echte Spieler mit Foto als Präsentations-Standard
+  const currentStartelfNodes = useMemo(() => {
+    const report = [...(matchAnalyses || [])]
+      .filter((a: any) => a && (Array.isArray(a.startingLineup) ? a.startingLineup.length > 0 : !!a.startingLineup))
+      .sort((a: any, b: any) => String(b.date || b.createdAt || '').localeCompare(String(a.date || a.createdAt || '')))[0];
+    const squad = (players || []).filter((p: any) => p.category === 'player');
+    const normNum = (s: any) => String(s || '').replace(/\D+/g, '');
+    const shortName = (p: any) => {
+      const fn = (p.firstName || '').trim();
+      const ln = (p.lastName || p.name || '').trim();
+      return fn && ln ? `${fn.charAt(0)}. ${ln}` : ln || fn || '?';
+    };
+    let lines: string[] = [];
+    if (Array.isArray(report?.startingLineup)) lines = (report.startingLineup as string[]).map((l: any) => String(l)).filter(Boolean);
+    else if (typeof report?.startingLineup === 'string') lines = String(report.startingLineup).split('\n').map(l => l.trim()).filter(Boolean);
+    if (!report || lines.length === 0) return { ok: false as const, nodes: [] as Array<any> };
+    const templatePositions = liveFormations['4-2-3-1']?.nodes || FORMATION_PRESETS['4-2-3-1']?.nodes || [];
+    const nodes = lines.slice(0, 11).map((line, idx) => {
+      const numStr = (line.match(/^\s*(\d{1,3})/) || [])[1] || '';
+      const nameStr = (line.replace(/^\s*(\d{1,3})\s*/, '').match(/^[^()]+/) || [''])[0].trim();
+      const posStr = (line.match(/\(([^)]+)\)/) || [])[1] || '';
+      const byNum = numStr ? squad.find((p: any) => normNum(p.number || p.rückennummer) === normNum(numStr)) : undefined;
+      const byName = byNum ? undefined : squad.find((p: any) => {
+        const full = `${p.firstName || ''} ${p.lastName || p.name || ''}`.trim().toLowerCase();
+        const n = nameStr.toLowerCase().replace(/[.,'"]/g, '');
+        const pl = `${p.lastName || p.name || ''}`.toLowerCase();
+        return full.includes(n) || n.includes(pl) || full.includes(n.replace(/^[a-z]\.?\s*/, ''));
+      });
+      const player = byNum || byName;
+      const slot = templatePositions[idx % Math.max(1, templatePositions.length)] || {};
+      return {
+        id: `${idx + 1}`,
+        name: player ? shortName(player) : nameStr,
+        number: player ? String(player.number || player.rückennummer || '') : numStr,
+        position: player?.position || posStr,
+        role: (slot as any).role || '',
+        xPercent: (slot as any).xPercent ?? 50,
+        yPercent: (slot as any).yPercent ?? 50,
+        image: player?.image || undefined,
+      };
+    });
+    return { ok: nodes.length > 0, nodes };
+  }, [matchAnalyses, players, liveFormations]);
+
   // Automatisch sync: Board-Aufstellung spiegeln, aber User-Wechsel respektieren
   useEffect(() => {
     const preset = liveFormations['4-2-3-1']?.nodes || [];
     if (preset.length === 0) return;
     setPresentationLineup((prev) => {
-      // Erstes Mal: direkt übernehmen
+      // Erstes Mal: direkt übernehmen – aktuelle Startelf (echte Spieler mit Foto), sonst Board-Vorlage
       if (prev.length === 0) {
+        if (currentStartelfNodes.ok && currentStartelfNodes.nodes.length > 0) {
+          return currentStartelfNodes.nodes;
+        }
         return preset.map((n: any) => {
           if (n.image) return n;
           const matched = players.find((p: any) => {
@@ -955,6 +1002,29 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
       return merged;
     });
   }, [liveFormations]);
+
+  // Bestehende Präsentation: fehlende Spielerfotos nachrüsten (Nummer/Name → Kader) – "Bild statt Nummer"
+  useEffect(() => {
+    setPresentationLineup((prev) => {
+      let changed = false;
+      const next = prev.map((n: any) => {
+        if (n.image) return n;
+        const numStr = String(n.number || '').replace(/\D+/g, '');
+        const byNum = numStr ? (players || []).find((p: any) => String(p.number || p.rückennummer || '').replace(/\D+/g, '') === numStr) : undefined;
+        const byName = byNum ? undefined : (players || []).find((p: any) => {
+          const full = `${p.firstName || ''} ${p.lastName || p.name || ''}`.trim().toLowerCase();
+          const nm = String(n.name || '').toLowerCase().replace(/[.,'"]/g, '');
+          const pl = `${p.lastName || p.name || ''}`.toLowerCase();
+          return full.includes(nm) || nm.includes(pl) || full.includes(nm.replace(/^[a-z]\.?\s*/, ''));
+        });
+        const pl = byNum || byName;
+        if (!pl?.image) return n;
+        changed = true;
+        return { ...n, image: pl.image };
+      });
+      return changed ? next : prev;
+    });
+  }, [players]);
 
   const swapStartelfWithSub = (subIdx: number, startIdx: number | null = null) => {
     if (subIdx < 0 || subIdx >= (presentationSubstitutes?.length ?? 0)) {
