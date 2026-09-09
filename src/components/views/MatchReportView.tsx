@@ -344,6 +344,68 @@ const ImageGallery = ({ images = [], onUpdate, label }: {
   );
 };
 
+// Vorschau der geladenen Spieltagsdaten (fupa.net)
+const SpieltagPreview: React.FC<{ data: any }> = ({ data }) => {
+  const m = data?.match || {};
+  const row = (list: any[] | undefined) => (Array.isArray(list) ? list : []);
+  return (
+    <div className="space-y-4">
+      <div className="bg-slate-950 border border-cyan-500/40 rounded-xl p-4 flex flex-wrap items-center gap-x-6 gap-y-2">
+        <div className="flex items-center gap-3">
+          <Trophy size={20} className="text-cyan-400" />
+          <div>
+            <div className="text-sm font-black text-white uppercase">FC Auggen vs. {m.opponent || '?'}</div>
+            <div className="text-[10px] font-semibold text-slate-400">{(m.date || '')}{m.time ? ` • ${m.time}` : ''}{m.competition ? ` • ${m.competition}` : ''} • {m.isHome ? 'Heim' : 'Auswärts'}</div>
+          </div>
+        </div>
+        <div className="ml-auto text-2xl font-black text-cyan-300">{m.resultOwn != null ? `${m.resultOwn} : ${m.resultOpponent}` : '–'}</div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-slate-950 border border-slate-800 rounded-xl p-4">
+          <div className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-2">Startelf ({row(data?.starters).length})</div>
+          {row(data?.starters).length === 0 ? <p className="text-[11px] text-slate-600">Keine Daten</p> : row(data?.starters).map((s: any, i: number) => (
+            <div key={i} className="flex gap-2 text-[11px] font-semibold text-slate-200 py-0.5"><span className="w-6 text-cyan-400 font-black">{s.number || '?'}</span><span>{s.name}</span><span className="ml-auto text-slate-500">{s.position}</span></div>
+          ))}
+        </div>
+        <div className="bg-slate-950 border border-slate-800 rounded-xl p-4">
+          <div className="text-[10px] font-black text-amber-400 uppercase tracking-widest mb-2">Bank ({row(data?.bench).length})</div>
+          {row(data?.bench).length === 0 ? <p className="text-[11px] text-slate-600">Keine Daten</p> : row(data?.bench).map((s: any, i: number) => (
+            <div key={i} className="flex gap-2 text-[11px] font-semibold text-slate-200 py-0.5"><span className="w-6 text-amber-400 font-black">{s.number || '?'}</span><span>{s.name}</span><span className="ml-auto text-slate-500">{s.position}</span></div>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-slate-950 border border-slate-800 rounded-xl p-4">
+          <div className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-2">Tore (für uns / Gegner)</div>
+          {row(data?.goals).length === 0 ? <p className="text-[11px] text-slate-600">Keine Tore erkannt</p> : row(data?.goals).map((g: any, i: number) => (
+            <div key={i} className="flex gap-2 text-[11px] font-semibold text-slate-200 py-0.5">
+              <span className={`w-16 font-black ${String(g.team) === 'own' ? 'text-emerald-400' : 'text-red-400'}`}>{String(g.team) === 'own' ? 'FCA' : 'Gegner'}</span>
+              <span>{g.minute ? `${g.minute}′` : ''} {g.scorer}</span><span className="ml-auto text-slate-500">{g.score}</span>
+            </div>
+          ))}
+        </div>
+        <div className="bg-slate-950 border border-slate-800 rounded-xl p-4">
+          <div className="text-[10px] font-black text-red-400 uppercase tracking-widest mb-2">Karten / Wechsel</div>
+          {row(data?.cards).length === 0 && row(data?.substitutions).length === 0 ? <p className="text-[11px] text-slate-600">Keine erkannt (ggf. manuell ergänzen)</p> : (
+            <>
+              {row(data?.cards).map((c: any, i: number) => <div key={`c${i}`} className="text-[11px] font-semibold text-slate-200 py-0.5">🟨 {c.type} {c.player} {c.minute ? `${c.minute}′` : ''}</div>)}
+              {row(data?.substitutions).map((s: any, i: number) => <div key={`s${i}`} className="text-[11px] font-semibold text-slate-200 py-0.5">🔄 {s.minute ? `${s.minute}′ ` : ''}{s.in} für {s.out}</div>)}
+            </>
+          )}
+        </div>
+      </div>
+
+      {data?.notes ? (
+        <div className="bg-amber-950/40 border border-amber-500/40 rounded-xl px-4 py-2 text-[11px] font-semibold text-amber-200">
+          ℹ️ {data.notes}
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
 export const MatchReportView: React.FC<MatchReportViewProps> = ({
   matches,
   testMatches,
@@ -560,6 +622,71 @@ export const MatchReportView: React.FC<MatchReportViewProps> = ({
     } finally {
       setTraceLoading(null);
     }
+  };
+
+  const [spieltagOpen, setSpieltagOpen] = useState(false);
+  const [matchdayLoading, setMatchdayLoading] = useState(false);
+  const [matchdayResult, setMatchdayResult] = useState<any>(null);
+
+  const runMatchdayFetch = async () => {
+    setMatchdayLoading(true);
+    setMatchdayResult(null);
+    try {
+      const resp: any = await apiFetch('/api/matchday/fetch', {
+        method: 'POST',
+        body: JSON.stringify({
+          squadPlayers: (players || []).filter((p: any) => (p.category || 'player') === 'player').map((p: any) => ({
+            number: String(p.number || ''),
+            firstName: p.firstName || '',
+            lastName: p.lastName || p.name || '',
+          })),
+        }),
+      });
+      if (!resp?.ok || !resp?.data) {
+        throw new Error(resp?.error || 'Abruf fehlgeschlagen');
+      }
+      setMatchdayResult(resp.data);
+    } catch (err: any) {
+      console.error('[Matchday Client]', err);
+      setMatchdayResult({ error: err?.message || 'Abruf fehlgeschlagen' });
+    } finally {
+      setMatchdayLoading(false);
+    }
+  };
+
+  const applyMatchdayToReport = () => {
+    if (!currentAnalysis || !matchdayResult || matchdayResult.error) return;
+    const d = matchdayResult;
+    const m = d.match || {};
+    const fmt = (list: any[], tm: string) => (Array.isArray(list) ? list.filter((g: any) => String(g.team) === tm).map((g: any) => `${g.minute ? `${g.minute}′ ` : ''}${g.scorer}${g.score ? ` (${g.score})` : ''}`).join('\n') : '');
+    const startersText = Array.isArray(d.starters) ? d.starters.map((s: any) => `${s.number} ${s.name} (${s.position})`).join('\n') : '';
+    const benchText = Array.isArray(d.bench) ? d.bench.map((s: any) => `${s.number} ${s.name} (${s.position})`).join('\n') : '';
+    const goalsOwn = fmt(d.goals, 'own');
+    const goalsOpp = fmt(d.goals, 'opponent');
+    const cardsText = Array.isArray(d.cards) && d.cards.length ? d.cards.map((c: any) => `${c.minute ? `${c.minute}′ ` : ''}${c.type} ${c.player}`).join('\n') : '';
+    const subsText = Array.isArray(d.substitutions) && d.substitutions.length ? d.substitutions.map((s: any) => `${s.minute ? `${s.minute}′ ` : ''}${s.in} für ${s.out}`).join('\n') : '';
+
+    const next: any = { ...currentAnalysis };
+    if (m.opponent) next.opponent = m.opponent;
+    if (m.date) next.date = m.date;
+    if (typeof m.isHome === 'boolean') next.isHome = m.isHome;
+    if (m.resultOwn != null && m.resultOpponent != null) next.result = `${m.resultOwn}:${m.resultOpponent}`;
+    if (goalsOwn) next.goalsOwn = goalsOwn;
+    if (goalsOpp) next.goalsOpponent = goalsOpp;
+    if (startersText) next.startingLineup = startersText;
+    if (benchText) next.substitutes = benchText;
+    if (cardsText) next.cards = cardsText;
+    if (subsText) next.substitutions = subsText;
+    if (d.notes) next.matchNotes = d.notes;
+    next.isAutoImported = true;
+    next.importedMatchTimestamp = new Date().toISOString();
+    onSaveAnalysis(next)
+      .then(() => {
+        setSyncStatusText(`✅ Spieltag ${m.opponent || ''} (${m.resultOwn != null ? `${m.resultOwn}:${m.resultOpponent}` : '?'}) in den Spielbericht übernommen`);
+        setTimeout(() => setSyncStatusText(null), 5000);
+        setSpieltagOpen(false);
+      })
+      .catch(() => setSyncStatusText('❌ Übernehmen fehlgeschlagen – erneut versuchen.'));
   };
 
   return (
@@ -1452,6 +1579,13 @@ export const MatchReportView: React.FC<MatchReportViewProps> = ({
                       </>
                     )}
                     <button
+                      onClick={() => setSpieltagOpen(true)}
+                      className="bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs uppercase px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all shadow"
+                    >
+                      <Zap size={13} />
+                      ⚡ Spieltags-Automatik (fupa)
+                    </button>
+                    <button
                       onClick={handleSyncFromTacticBoard}
                       className="bg-slate-900 hover:bg-slate-800 text-amber-300 border border-amber-500/40 hover:border-amber-400 font-bold text-xs uppercase px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all"
                     >
@@ -1727,6 +1861,50 @@ export const MatchReportView: React.FC<MatchReportViewProps> = ({
           </div>
         )}
       </div>
+
+      {/* SPIELTAGS-AUTOMATIK MODAL */}
+      {spieltagOpen && (
+        <div className="fixed inset-0 z-[400] bg-black/70 flex items-center justify-center p-4" onClick={() => !matchdayLoading && setSpieltagOpen(false)}>
+          <div className="bg-slate-900 border-2 border-cyan-500/50 rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6 shadow-2xl relative" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-black uppercase tracking-wider text-cyan-300 text-sm flex items-center gap-2"><Zap size={16} /> Spieltags-Automatik (fupa.net)</h3>
+              <button onClick={() => setSpieltagOpen(false)} className="text-slate-400 hover:text-white"><X size={18} /></button>
+            </div>
+
+            {matchdayLoading ? (
+              <div className="py-10 text-center">
+                <div className="w-8 h-8 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+                <p className="text-xs font-bold text-slate-300">Letzter Spieltag wird von fupa.net geladen & analysiert…</p>
+              </div>
+            ) : !matchdayResult ? (
+              <div className="py-6 text-center space-y-3">
+                <p className="text-sm font-semibold text-slate-300">Lädt automatisch den letzten Spieltag von FC Auggen (Spielplan, Aufstellung, Bank, Torschützen, Karten) aus dem Verbandsliga-Spielbericht.</p>
+                <p className="text-[11px] text-slate-500">Vorhandene Inhalte deines Spielberichts bleiben vollständig erhalten – nur nicht-leere Felder werden ergänzt.</p>
+                <button onClick={runMatchdayFetch} className="mt-2 bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs uppercase px-5 py-2.5 rounded-xl flex items-center gap-2 mx-auto transition-all">
+                  <Zap size={14} /> Jetzt letzten Spieltag laden
+                </button>
+              </div>
+            ) : matchdayResult.error ? (
+              <div className="py-6 text-center">
+                <AlertTriangle size={32} className="text-red-400 mx-auto mb-3" />
+                <p className="text-sm font-bold text-red-300">{matchdayResult.error}</p>
+                <button onClick={runMatchdayFetch} className="mt-4 bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs uppercase px-4 py-2 rounded-xl">Erneut versuchen</button>
+              </div>
+            ) : (
+              <SpieltagPreview data={matchdayResult} />
+            )}
+
+            {matchdayResult && !matchdayResult.error && !matchdayLoading && (
+              <div className="mt-5 flex justify-end gap-3">
+                <button onClick={() => setSpieltagOpen(false)} className="text-xs font-black uppercase px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors">Abbrechen</button>
+                <button onClick={applyMatchdayToReport} className="text-xs font-black uppercase px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 flex items-center gap-2 transition-colors">
+                  <Save size={13} /> In Spielbericht übernehmen
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

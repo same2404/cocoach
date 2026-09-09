@@ -1642,6 +1642,117 @@ Beschreibung:\n${String(text || "")}\nBilder: Siehe Referenzbild(er) — zeichne
   });
 
   // ============================================
+  // SPIELTAGS-AUTOMATIK: Letzter Spieltag (fupa.net) → Startelf/Bank/Tore/Karten
+  // ============================================
+
+  const stripToText = (html: string): string => {
+    return String(html || '')
+      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<nav[\s\S]*?<\/nav>/gi, ' ')
+      .replace(/<[^>]+>/g, '\n')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&auml;/g, 'ä').replace(/&ouml;/g, 'ö').replace(/&uuml;/g, 'ü')
+      .replace(/&Auml;/g, 'Ä').replace(/&Ouml;/g, 'Ö').replace(/&Uuml;/g, 'Ü').replace(/&szlig;/g, 'ß')
+      .replace(/\s+/g, ' ');
+  };
+
+  const FUPA_HEADERS = { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36", "Accept-Language": "de-DE,de;q=0.9" };
+
+  app.post("/api/matchday/fetch", async (req, res) => {
+    try {
+      const { squadPlayers } = req.body || {};
+      const matchesUrl = "https://www.fupa.net/team/fc-auggen-m1-2026-27/matches";
+
+      const listResp = await fetch(matchesUrl, { headers: FUPA_HEADERS });
+      if (!listResp.ok) {
+        return res.status(502).json({ error: `fupa.net unerreichbar (HTTP ${listResp.status})` });
+      }
+      const listHtml = await listResp.text();
+
+      const slugSet = new Set<string>();
+      for (const m of listHtml.matchAll(/href="(\/match\/[a-z0-9\-]*[a-z0-9]-\d{6})"/gi)) {
+        slugSet.add(m[1]);
+      }
+      if (slugSet.size === 0) {
+        return res.status(502).json({ error: "Keine Match-Links auf der fupa-Spielplan-Seite gefunden" });
+      }
+      const candidates = [...slugSet]
+        .map((slug) => {
+          const dm = slug.match(/(\d{2})(\d{2})(\d{2})$/);
+          if (!dm) return null;
+          const year = 2000 + Number(dm[1]);
+          const mon = Number(dm[2]);
+          const day = Number(dm[3]);
+          if (mon < 1 || mon > 12 || day < 1 || day > 31) return null;
+          return { slug, date: new Date(year, mon - 1, day) };
+        })
+        .filter(Boolean) as Array<{ slug: string; date: Date }>;
+      if (candidates.length === 0) {
+        return res.status(502).json({ error: "Kein Datum in den Match-Links gefunden" });
+      }
+      const now = new Date();
+      const played = candidates.filter((c) => c.date <= now);
+      const chosen = (played.length > 0 ? played : candidates).sort((a, b) => b.date.getTime() - a.date.getTime())[0];
+      const matchUrl = `https://www.fupa.net${chosen.slug}`;
+      const lineupUrl = `${matchUrl}/lineup`;
+
+      const pageResp = await fetch(matchUrl, { headers: FUPA_HEADERS });
+      const lineupResp = await fetch(lineupUrl, { headers: FUPA_HEADERS });
+      const matchText = pageResp.ok ? stripToText(await pageResp.text()) : '';
+      const lineupText = lineupResp.ok ? stripToText(await lineupResp.text()) : '';
+
+      const systemInstruction = `Du bist der Spieltags-Assistent von CoCoach für den Verein FC Auggen (Verbandsliga Südbaden).
+Die Daten stammen vom fupa.net-Spielbericht. Extrahiere daraus ALLE verfügbaren Angaben PUNKTGENAU.
+Startelf und Bank stehen im Abschnitt "Aufstellung". Die Torschützen stehen im Abschnitt "Highlights".
+HINWEIS ZU KARTEN & WECHSELN: Stehen dazu KEINE Daten im Text (nur wenn ausdrücklich "Gelbe Karte", "Rote Karte", "Auswechslung", "Einwechslung" vorkommen), dann leeres Array zurückgeben – NICHT raten.
+
+Antworte NUR mit valider JSON:
+{
+  "match": { "date": "YYYY-MM-DD", "time": "HH:MM oder leer", "competition": "z.B. Verbandsliga Südbaden", "opponent": "Gegnername ohne M1/Rückennummer", "isHome": true|false, "resultOwn": 0, "resultOpponent": 0 },
+  "goals": [{ "team": "own|opponent", "scorer": "Name", "minute": number, "score": "x:y", "assist": "Name oder leer" }],
+  "starters": [{ "number": number, "name": "Nachname", "position": "TW|Abwehr|Mittelfeld|Angriff" }],
+  "bench": [{ "number": number, "name": "Nachname", "position": "TW|Abwehr|Mittelfeld|Angriff" }],
+  "cards": [{ "player": "Name", "team": "own|opponent", "type": "Gelb|Gelb-Rot|Rot", "minute": number }],
+  "substitutions": [{ "in": "Name", "out": "Name", "minute": number }],
+  "notes": "Kurze Hinweise (z.B. ob Karten/Wechsel fehlen)"
+}`;
+
+      const prompt = `FC Auggen – letzter Spieltag (${chosen.date.toLocaleDateString('de-DE')}).\n\n` +
+        (Array.isArray(squadPlayers) && squadPlayers.length ? `Bekannter Kader von FC Auggen (Nummer, Name) zur Zuordnung:\n${(squadPlayers as any[]).map((p: any) => `${p.number || '?'} ${p.firstName || ''} ${p.lastName || p.name || ''}`).join('\n')}\n\n` : '') +
+        `SPIELBERICHTS-TEXT (fupa):\n${(matchText || '—').substring(0, 6000)}\n\n` +
+        `AUFSTELLUNGS-TEXT (fupa /lineup):\n${(lineupText || '—').substring(0, 6000)}`;
+
+      const response = await safeGenerateContent({
+        contents: [{ text: prompt }],
+        config: { systemInstruction, temperature: 0.1 },
+      });
+      const rawText = typeof response?.text === "string" ? response.text
+        : Array.isArray(response?.text) ? (response.text as readonly { text: string }[]).map(p => p.text).join("")
+        : JSON.stringify(response?.text || response || "");
+      let data: any = null;
+      try {
+        const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+        data = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+      } catch { data = null; }
+
+      if (!data || !data.match) {
+        return res.status(500).json({ error: "Spieltagsdaten konnten nicht erkannt werden – bitte erneut versuchen" });
+      }
+      console.log(`[Matchday] ${data.match.date} vs ${data.match.opponent} ${data.match.resultOwn}:${data.match.resultOpponent} (${data.match.isHome ? 'Heim' : 'Auswärts'}) — Startelf ${data.starters?.length || 0}, Tore ${data.goals?.length || 0}`);
+      return res.json({
+        success: true,
+        slug: chosen.slug,
+        data: { ...data, rawMatchday: chosen.date.toISOString(), lineupUrl, matchUrl },
+      });
+
+    } catch (error: any) {
+      console.error("[Matchday] Fehler:", error?.message || error);
+      return res.status(500).json({ error: error.message || "Spieltags-Automatik fehlgeschlagen" });
+    }
+  });
+
+  // ============================================
   // NAOMI AGENT: Web-Scraping für Vereinsdaten
   // ============================================
 
