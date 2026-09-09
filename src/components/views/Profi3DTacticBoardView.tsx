@@ -2260,6 +2260,13 @@ Gib mir in 3 kurzen, klaren Bullet Points:
   const [highlightedPlayerIds, setHighlightedPlayerIds] = useState<string[]>([]);
   const [lockedPlayerIds, setLockedPlayerIds] = useState<string[]>([]);
 
+  // Spieltags-Automatik: Laufweg per Spieler-Ziehen + Ball-Kette (Klick-Spur 1→11)
+  const [dragRunMode, setDragRunMode] = useState(false);
+  const [dragRunPlayerId, setDragRunPlayerId] = useState<string | null>(null);
+  const [dragRunStart, setDragRunStart] = useState<{ x: number; y: number } | null>(null);
+  const [dragRunPreview, setDragRunPreview] = useState<Array<{ x: number; y: number }>>([]);
+  const [ballChainMode, setBallChainMode] = useState(false);
+
   // Lauf-Positionen der eigenen Spieler aus customRuns entlang des Fortschritts 0..1 berechnen
   const computeRunPositions = useCallback((t: number): Record<string, { x: number; y: number }> => {
     const positions: Record<string, { x: number; y: number }> = {};
@@ -2815,6 +2822,46 @@ Gib mir in 3 kurzen, klaren Bullet Points:
     setCustomRuns(runs);
     syncActiveCustomFormationToFirestore({ runs });
     notify(`Spielaufbau-Variante geladen (${variant})`);
+  }, [currentNodePositions, setCustomRuns, syncActiveCustomFormationToFirestore, notify]);
+
+  const applyAiBuildUpSuggestion = useCallback(() => {
+    const pos = currentNodePositions;
+    const by = (pxs: string[]) => pos.find(n => pxs.includes(n.position));
+    const runs: PlayerRunPath[] = [];
+    let idc = 1;
+    const mk = (playerId: string, targetX: number, targetY: number, color: string) => {
+      const n = pos.find(p => p.id === playerId);
+      if (!n) return;
+      runs.push({
+        id: 'ai_' + Date.now() + '_' + idc++,
+        playerId,
+        path: [
+          { x: Math.round(n.currentX * 20) / 20, y: Math.round(n.currentY * 20) / 20 },
+          { x: Math.round(targetX * 20) / 20, y: Math.round(targetY * 20) / 20 },
+        ],
+        color,
+      });
+    };
+    const dm = by(['DM', 'ZM']);
+    const om = by(['OM', 'ZM']) || by(['RA', 'LA']);
+    const st = by(['ST']);
+    const wing = by(['RA', 'LA', 'RM', 'LM']);
+    const iv = pos.find(n => n.position === 'IV');
+    if (wing) mk(wing.id, wing.currentX <= 50 ? 12 : 88, 16, '#22C55E');
+    if (st) mk(st.id, st.currentX - 10, st.currentY - 8, '#F59E0B');
+    if (dm) mk(dm.id, dm.currentX + 4, dm.currentY - 14, '#0055FF');
+    if (iv) mk(iv.id, iv.currentX + 8, iv.currentY - 8, '#0055FF');
+    const chainRefs = [dm, om || wing, st].filter(Boolean);
+    const stations = chainRefs.map((n: any, i: number) => ({
+      id: `ai_ps_${Date.now()}_${i}`,
+      x: Math.round(n.currentX * 20) / 20,
+      y: Math.round((n.currentY + (i === chainRefs.length - 1 ? -10 : 0)) * 20) / 20,
+      action: i === chainRefs.length - 1 ? 'Steilpass' : (i === 0 ? 'Direktpass' : 'Doppelpass')
+    }));
+    setCustomRuns(runs);
+    syncActiveCustomFormationToFirestore({ runs });
+    setPassStations(stations);
+    notify('⚡ KI-Aufbau vorgeschlagen – Spieler/Stationen frei bewegen, dann ▶️ Abspielen');
   }, [currentNodePositions, setCustomRuns, syncActiveCustomFormationToFirestore, notify]);
 
   const applyDoppelpass = useCallback(() => {
@@ -3433,6 +3480,39 @@ Gib mir in 3 kurzen, klaren Bullet Points:
           </div>
         ))}
 
+        {/* DRAG-LAUFWEG LIVE VORSCHAU + BALL-KETTE (Spieltags-Automatik) */}
+        {(dragRunMode && dragRunPreview.length >= 1) && (
+          <svg className="absolute inset-0 w-full h-full pointer-events-none z-30" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <polyline
+              points={dragRunPreview.map(p => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' ')}
+              fill="none" stroke="#06B6D4" strokeWidth="0.45" strokeDasharray="1.2 0.9" strokeLinecap="round" opacity="0.95"
+            />
+            <circle cx={dragRunPreview[dragRunPreview.length - 1].x} cy={dragRunPreview[dragRunPreview.length - 1].y} r="1.6" fill="#06B6D4" />
+            {dragRunStart && (
+              <circle cx={dragRunStart.x} cy={dragRunStart.y} r="1.6" fill="#22C55E" stroke="#fff" strokeWidth="0.4" />
+            )}
+          </svg>
+        )}
+        {ballChainMode && passStations.length >= 1 && (
+          <svg className="absolute inset-0 w-full h-full pointer-events-none z-30" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <polyline
+              points={passStations.map(s => `${s.x.toFixed(2)},${s.y.toFixed(2)}`).join(' ')}
+              fill="none" stroke="#F59E0B" strokeWidth="0.5" strokeLinecap="round" opacity="0.95"
+            />
+          </svg>
+        )}
+        {ballChainMode && passStations.map((s, i) => (
+          <div
+            key={`chain_${s.id}`}
+            style={{ left: `${s.x}%`, top: `${s.y}%` }}
+            className="absolute -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none"
+          >
+            <span className="flex items-center justify-center w-4.5 h-4.5 min-w-[18px] px-1 rounded-full bg-amber-500 text-slate-950 font-black text-[9px] border-2 border-white shadow-lg">
+              {i + 1}
+            </span>
+          </div>
+        ))}
+
         {/* FOOTER CAPTION FOR THE PITCH */}
         <div className="z-20 flex items-center justify-between bg-slate-950/90 border border-slate-800 p-2 rounded-xl backdrop-blur-md mt-auto">
           <span className="text-[9px] font-black uppercase text-emerald-400 flex items-center gap-1">
@@ -3482,6 +3562,18 @@ Gib mir in 3 kurzen, klaren Bullet Points:
         next[idx] = { ...next[idx], xPercent: Math.max(2, Math.min(98, x)), yPercent: Math.max(2, Math.min(98, y)) };
         return next;
       });
+    }
+
+    // Drag-Laufweg: Live-Vorschau des Zug-Pfads waehrend des Ziehens
+    if (dragRunMode && dragRunPlayerId && dragRunStart) {
+      const pt = pitchPointFromEvent(e);
+      if (pt) {
+        const last = dragRunPreview[dragRunPreview.length - 1];
+        if (!last || Math.hypot(pt.x - last.x, pt.y - last.y) > 0.8) {
+          setDragRunPreview(prev => [...prev, pt]);
+        }
+      }
+      return;
     }
 
     // Gegner bewegen
@@ -3578,6 +3670,26 @@ Gib mir in 3 kurzen, klaren Bullet Points:
       setDraggingMarkerId(null);
       return;
     }
+    // Drag-Laufweg abschließen: run für den gezogenen Spieler speichern (▶️ Abspielen animiert ihn)
+    if (dragRunMode && dragRunPlayerId) {
+      if (dragRunStart && dragRunPreview.length >= 2) {
+        const pNode = currentNodePositions.find(n => n.id === dragRunPlayerId);
+        const newRun: PlayerRunPath = {
+          id: 'run_drag_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+          playerId: dragRunPlayerId,
+          path: [dragRunStart, ...dragRunPreview],
+          color: activePhase === 'defensiv' ? '#EF4444' : activePhase === 'umschalten' ? '#F59E0B' : '#0055FF'
+        };
+        const updatedRuns = [...customRuns, newRun];
+        setCustomRuns(updatedRuns);
+        syncActiveCustomFormationToFirestore({ runs: updatedRuns });
+        notify(pNode ? `Laufweg ${pNode.name} gespeichert – ▶️ Abspielen drücken` : 'Laufweg gespeichert – ▶️ Abspielen drücken');
+      }
+      setDragRunPlayerId(null);
+      setDragRunStart(null);
+      setDragRunPreview([]);
+      return;
+    }
     // Freihand-Pfad abschließen
     if (freeDrawMode && isDrawingFreehand && currentDrawPoints.length > 2) {
       const newId = `drawn-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
@@ -3595,6 +3707,34 @@ Gib mir in 3 kurzen, klaren Bullet Points:
     }
   };
 
+  const nearestNodeAt = (x: number, y: number, limit = 9) => {
+    let best: any = null;
+    let bestD = limit;
+    for (const n of currentNodePositions) {
+      const d = Math.hypot(n.currentX - x, n.currentY - y);
+      if (d < bestD) { bestD = d; best = n; }
+    }
+    return best;
+  };
+
+  const pitchPointFromEvent = (e: any) => {
+    const targetEl = isPitchOnlyFullscreen
+      ? (fullscreenPitchSurfaceRef.current || fullscreenPitchRef.current)
+      : (pitchSurfaceRef.current || pitchRef.current);
+    if (!targetEl) return null;
+    const rect = targetEl.getBoundingClientRect();
+    let cX = 0, cY = 0;
+    if ('touches' in e && e.touches && e.touches.length > 0) { cX = e.touches[0].clientX; cY = e.touches[0].clientY; }
+    else if ('clientX' in e) { cX = (e as MouseEvent).clientX; cY = (e as MouseEvent).clientY; }
+    else return null;
+    let x = ((cX - rect.left) / rect.width) * 100;
+    let y = ((cY - rect.top) / rect.height) * 100;
+    if (viewMode === '3d_tv' || isPitchOnlyFullscreen) { const pc = 1 / Math.cos(12 * Math.PI / 180); y = (y - 50) * pc + 50; }
+    x = Math.max(0, Math.min(100, x));
+    y = Math.max(0, Math.min(100, y));
+    return { x: Math.round(x * 20) / 20, y: Math.round(y * 20) / 20 };
+  };
+
   const handlePitchMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     // Marker placement mode
     if (markerMode && e.button === 0) {
@@ -3607,6 +3747,36 @@ Gib mir in 3 kurzen, klaren Bullet Points:
         color: markerColor,
         label: '',
       }]);
+      return;
+    }
+    if (dragRunMode && e.button === 0) {
+      const pt = pitchPointFromEvent(e);
+      if (pt) {
+        const nearest = nearestNodeAt(pt.x, pt.y);
+        if (nearest) {
+          setDragRunPlayerId(nearest.id);
+          setDragRunStart({ x: nearest.currentX, y: nearest.currentY });
+          setDragRunPreview([]);
+        }
+      }
+      return;
+    }
+    if (ballChainMode && e.button === 0) {
+      const pt = pitchPointFromEvent(e);
+      if (pt) {
+        const nearest = nearestNodeAt(pt.x, pt.y, 11);
+        if (nearest) {
+          setPassStations(prev => [...prev, {
+            id: `ps_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            x: nearest.currentX,
+            y: nearest.currentY,
+            action: 'Direktpass'
+          }]);
+          notify(`Ball-Kette: Station ${passStations.length + 1} – ${nearest.name || nearest.id} ✓`);
+        } else {
+          notify('Klicke auf einen Spieler (1 → 11), um die Ball-Kette aufzubauen.');
+        }
+      }
       return;
     }
     if (multiRunMode && multiRunPlayerId && e.button === 0) {
@@ -4011,6 +4181,56 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                   </div>
                 )}
 
+{/* STUFE 2.5: Drag-Laufweg + Ball-Kette (Spieltags-Automatik) */}
+                <div className="flex items-center gap-0.5 bg-slate-900 border border-slate-700 rounded-md px-1 py-0.5" title="Laufweg: Spieler antippen & ziehen (mehrere Spieler möglich), dann ▶️ Abspielen. Ball-Kette: klicke die Spieler in Reihenfolge 1→11">
+                  <button
+                    onClick={() => { setDragRunMode(p => !p); setBallChainMode(false); if (dragRunMode) { setDragRunPlayerId(null); setDragRunStart(null); setDragRunPreview([]); } }}
+                    className={`px-2 py-0.5 text-[9.5px] font-black uppercase tracking-wider rounded-md border transition-all ${
+                      dragRunMode ? 'bg-cyan-500 text-slate-950 border-cyan-400' : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-cyan-500/50'
+                    }`}
+                    title="Spieler antippen, zum Ziel ziehen, loslassen. Für jeden Spieler wiederholen – ▶️ Abspielen zeigt alle Laufwege gleichzeitig."
+                  >
+                    🖐️ Drag-Laufweg
+                  </button>
+                  <button
+                    onClick={() => { setBallChainMode(p => !p); setDragRunMode(false); }}
+                    className={`px-2 py-0.5 text-[9.5px] font-black uppercase tracking-wider rounded-md border transition-all ${
+                      ballChainMode ? 'bg-amber-500 text-slate-950 border-amber-400' : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-amber-500/50'
+                    }`}
+                    title="Klicke Spieler 1 → 2 → … → 11, der Ball läuft bei ▶️ Abspielen entlang der Kette."
+                  >
+                    ⚡ Ball-Kette
+                  </button>
+                  {dragRunMode && (
+                    <button
+                      onClick={() => { setDragRunPlayerId(null); setDragRunStart(null); setDragRunPreview([]); }}
+                      className="px-1.5 py-0.5 text-[8.5px] font-black rounded hover:bg-rose-500/30 transition-all text-rose-300"
+                      title="Aktuellen Laufweg-Zug abbrechen"
+                    >
+                      ✖ Abbrechen
+                    </button>
+                  )}
+                  {ballChainMode && (
+                    <button
+                      onClick={() => { setPassStations([]); setPassBallPos(null); }}
+                      className="px-1.5 py-0.5 text-[8.5px] font-black rounded hover:bg-rose-500/30 transition-all text-rose-300"
+                      title="Ball-Kette leeren"
+                    >
+                      🧹 Leeren
+                    </button>
+                  )}
+                </div>
+                {dragRunMode && (
+                  <div className="bg-cyan-500/20 border border-cyan-500/40 rounded-xl px-3 py-1.5 flex items-center gap-2 text-[10px] font-black uppercase text-cyan-300">
+                    🖐️ Ziehe einen Spieler – der Cursor zeichnet seinen Laufweg. Jeder Spieler einzeln. Dann ▶️ Abspielen.
+                  </div>
+                )}
+                {ballChainMode && (
+                  <div className="bg-amber-500/20 border border-amber-500/40 rounded-xl px-3 py-1.5 flex items-center gap-2 text-[10px] font-black uppercase text-amber-300">
+                    ⚡ Klicke die Spieler in der Reihenfolge der Ballkette (1 → 2 → … → 11). Drücke ▶️ Abspielen.
+                  </div>
+                )}
+
                 {/* STUFE 3: Spielaufbau-Varianten */}
                 <div className="flex items-center gap-0.5 bg-slate-900 border border-slate-700 rounded-md px-1 py-0.5" title="Spielaufbau-Variante laden (setzt Laufwege)">
                   <span className="text-[8.5px] font-black uppercase text-slate-400 mr-0.5">⚽ Aufbau</span>
@@ -4018,6 +4238,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                   <button onClick={() => applyBuildUpVariant('achter')} className="px-1.5 py-0.5 text-[9px] font-black rounded hover:bg-sky-500/30 transition-all text-slate-300" title="Aufbau über den 8er">8er</button>
                   <button onClick={() => applyBuildUpVariant('langerBall')} className="px-1.5 py-0.5 text-[9px] font-black rounded hover:bg-sky-500/30 transition-all text-slate-300" title="Langer Ball auf den Flügel">⚡ Ball</button>
                   <button onClick={() => applyBuildUpVariant('strafraum')} className="px-1.5 py-0.5 text-[9px] font-black rounded hover:bg-sky-500/30 transition-all text-slate-300" title="Strafraumbesetzung & Torabschluss">🎯 Box</button>
+                  <button onClick={applyAiBuildUpSuggestion} className="px-1.5 py-0.5 text-[9px] font-black rounded hover:bg-emerald-500/30 transition-all text-emerald-300" title="KI-Aufbau vorschlagen – danach frei verschiebbar, ▶️ Abspielen zeigt die Aktion">⚡ KI-Aufbau</button>
                   <button
                     onClick={applyDoppelpass}
                     className="bg-purple-500/20 hover:bg-purple-500/40 text-purple-300 font-bold text-[10px] uppercase px-2 py-1.5 rounded-lg border border-purple-500/30 transition-all flex items-center gap-1"
@@ -4339,6 +4560,42 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                       </g>
                     );
                   })}
+                {/* Drag-Laufweg Live-Vorschau (fullscreen) */}
+                  {dragRunMode && dragRunPreview.length >= 1 && (
+                    <>
+                      <polyline
+                        points={[...(dragRunStart ? [dragRunStart] : []), ...dragRunPreview].map(p => `${p.x}% ${p.y}%`).join(', ')}
+                        fill="none"
+                        stroke="#06B6D4"
+                        strokeWidth="2.5"
+                        strokeDasharray="4 3"
+                        opacity="0.95"
+                      />
+                      {dragRunStart && (
+                        <circle cx={`${dragRunStart.x}%`} cy={`${dragRunStart.y}%`} r="3" fill="#22C55E" stroke="white" strokeWidth="0.4" />
+                      )}
+                      <circle cx={`${dragRunPreview[dragRunPreview.length - 1].x}%`} cy={`${dragRunPreview[dragRunPreview.length - 1].y}%`} r="2.2" fill="#06B6D4" />
+                    </>
+                  )}
+                  {/* Ball-Kette (fullscreen): Linie + Nummern */}
+                  {ballChainMode && passStations.length >= 2 && (
+                    <polyline
+                      points={passStations.map(s => `${s.x}% ${s.y}%`).join(', ')}
+                      fill="none"
+                      stroke="#F59E0B"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      opacity="0.95"
+                    />
+                  )}
+                  {ballChainMode && passStations.map((s, i) => (
+                    <g key={`chain-fs-${s.id}`} pointerEvents="none">
+                      <circle cx={`${s.x}%`} cy={`${s.y}%`} r="4.5" fill="#F59E0B" stroke="white" strokeWidth="0.5" />
+                      <text x={`${s.x}%`} y={`${s.y}%`} textAnchor="middle" dominantBaseline="central" fill="#0F172A" fontSize="3" fontWeight="black">
+                        {i + 1}
+                      </text>
+                    </g>
+                  ))}
                 </svg>
 
                 {/* BALL-MODUS (FULLSCREEN): Draggable Bälle */}
