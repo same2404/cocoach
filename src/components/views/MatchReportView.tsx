@@ -612,13 +612,13 @@ export const MatchReportView: React.FC<MatchReportViewProps> = ({
             <div className="max-w-6xl mx-auto space-y-10 pb-16">
               
               {/* ⚡ 1-CLICK PFLICHTSPIEL-AUTOMATIK IMPORT BANNER */}
-              <div className="bg-gradient-to-r from-amber-950/80 via-slate-900 to-amber-950/80 border-2 border-amber-400 p-5 rounded-2xl shadow-2xl space-y-3">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
+              <div className="relative z-0 isolate w-full max-w-full min-w-0 box-border bg-gradient-to-r from-amber-950/80 via-slate-900 to-amber-950/80 border-2 border-amber-400 p-5 rounded-2xl shadow-2xl space-y-3">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 min-w-0">
+                  <div className="flex items-center gap-3 min-w-0">
                     <div className="w-10 h-10 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center font-black shadow-lg shrink-0">
                       <Zap size={22} className="animate-pulse" />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <h4 className="text-sm sm:text-base font-black uppercase text-amber-300 tracking-wider flex items-center gap-2">
                         1-CLICK PFLICHTSPIEL-AUTOMATIK IMPORT
                       </h4>
@@ -635,11 +635,11 @@ export const MatchReportView: React.FC<MatchReportViewProps> = ({
                   )}
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-3 pt-1">
+                <div className="flex flex-col sm:flex-row gap-3 pt-1 min-w-0">
                   <select
                     value={currentAnalysis.matchId || ''}
                     onChange={(e) => handleSelectMatchImport(e.target.value)}
-                    className="flex-1 bg-slate-950 border-2 border-amber-400/80 hover:border-amber-400 text-xs sm:text-sm font-bold text-amber-200 p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-400 shadow-inner"
+                    className="flex-1 min-w-0 max-w-full bg-slate-950 border-2 border-amber-400/80 hover:border-amber-400 text-xs sm:text-sm font-bold text-amber-200 p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-400 shadow-inner"
                   >
                     <option value="">-- Pflichtspiel für automatischen Import auswählen --</option>
                     {[...(matches || []), ...(testMatches || [])].map((m) => (
