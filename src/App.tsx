@@ -45,6 +45,7 @@ import { NaomiAgentModal, NaomiResult } from './components/NaomiAgentModal';
 import { LicenseModal } from './components/LicenseModal';
 import { useClub } from './contexts/ClubContext';
 import { useLicense } from './hooks/useLicense';
+declare const __COCOACH_BUILD_DATE__: string | undefined;
 import { apiFetch } from './lib/apiClient';
 import { TAB_FEATURE_MAP } from './types';
 import { LandingPage } from './components/LandingPage';
@@ -2977,6 +2978,22 @@ onNavigateToTacticBoard={(_matchId: any, draft?: any) => {
             </div>
           </div>
 
+
+          {/* Build-Stand anzeigen (Hilfe: Cache leeren & neu laden) */}
+          <div className="px-3.5 py-1.5 border-b flex items-center justify-between gap-2" style={{ borderColor: 'rgba(0,212,255,0.08)' }}>
+            <span className="text-[9px] font-bold uppercase" style={{ color: '#7E9BB5' }}>⚡ Build-Version</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[9px] font-bold" style={{ color: '#00D4FF' }}>
+                {typeof __COCOACH_BUILD_DATE__ !== 'undefined' && __COCOACH_BUILD_DATE__ ? new Date(__COCOACH_BUILD_DATE__).toLocaleString('de-DE') : 'dev'}
+              </span>
+              <button
+                onClick={() => { if (typeof window !== 'undefined') window.location.reload(); }}
+                className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase"
+                style={{ background: 'rgba(0,212,255,0.1)', border: '1px solid rgba(0,212,255,0.25)', color: '#00D4FF' }}
+                title="Cache leeren & neu laden"
+              >⟳ Refresh</button>
+            </div>
+          </div>
 
           {/* Active Trainer Profile Indicator & Fast Switcher */}
           <div className="px-3.5 py-2.5 border-b flex items-center justify-between gap-2"
