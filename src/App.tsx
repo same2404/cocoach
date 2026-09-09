@@ -395,6 +395,7 @@ const App: React.FC = () => {
   agentDataRef.current = { players, matches: competitiveMatches, analyses: matchAnalyses };
   const agentLogsRef = useRef(agentLogs);
   agentLogsRef.current = agentLogs;
+  const agentAlertRef = useRef<{ key: string; sentAt: number } | null>(null);
 
   // Hintergrund-Heartbeat: echter Master-Agent-Zyklus alle 60s beim App-Start (nicht nur im Modal)
   useEffect(() => {
@@ -420,6 +421,45 @@ const App: React.FC = () => {
             healthSup: sup.metrics.healthScore
           } as any);
         });
+
+        // Discord-Webhook-Alarm: nur bei neuen Fehlern/Warnungen, mit 15-min-Cooldown (kein Spam)
+        const allAgents = Object.values(result.updatedAgents);
+        const errCount = allAgents.reduce((s, a) => s + a.findings.filter((f) => f.severity === 'ERROR').length, 0);
+        const warnCount = allAgents.reduce((s, a) => s + a.findings.filter((f) => f.severity === 'WARNING').length, 0);
+        const alertKey = `${errCount}/${warnCount}`;
+        const prevAlert = agentAlertRef.current;
+        const cooldownMs = 15 * 60 * 1000;
+        const scoreMap = Object.fromEntries(allAgents.map((a) => [a.id, a.metrics.healthScore]));
+        const fireAlert = () => {
+          const detailsText = allAgents
+            .flatMap((a) => a.findings.filter((f) => f.severity !== 'INFO').map((f) => `[${a.name}] ${f.text}${f.count ? ` (${f.count})` : ''}`))
+            .join('\n');
+          apiFetch('/api/agent-alert', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              severity: errCount ? 'ERROR' : warnCount ? 'WARNING' : 'INFO',
+              title: errCount ? `🚨 ${errCount} Fehler im Agentensystem` : warnCount ? `⚠️ ${warnCount} Warnungen im Agentensystem` : '✅ Agentensystem stabil',
+              message: errCount || warnCount
+                ? `Der SupervisorAgent meldet ${errCount} Fehler und ${warnCount} Warnungen an deinen echten Daten.`
+                : 'Alle Befunde wurden behoben – die Agents sind wieder voll grün.',
+              details: detailsText || 'Keine Befunde.',
+              scores: scoreMap,
+              source: 'app-heartbeat'
+            })
+          }).catch((e) => console.error('[Agent Alert Send Error]', e));
+        };
+        if (errCount > 0 || warnCount > 0) {
+          const changed = !prevAlert || prevAlert.key !== alertKey;
+          const cooldownOk = !prevAlert || (Date.now() - prevAlert.sentAt) > cooldownMs;
+          if (changed && cooldownOk) {
+            fireAlert();
+            agentAlertRef.current = { key: alertKey, sentAt: Date.now() };
+          }
+        } else if (prevAlert && prevAlert.key !== '0/0' && (Date.now() - prevAlert.sentAt) > cooldownMs) {
+          fireAlert();
+          agentAlertRef.current = { key: '0/0', sentAt: Date.now() };
+        }
         // CleanupAgent-Regel: Firestore-Log-Datei schlank halten (max 300 Einträge, älteste zuerst entfernen)
         if (agentLogsRef.current.length > 300) {
           agentLogsRef.current.slice(200).forEach((l: any) => {

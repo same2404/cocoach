@@ -21,7 +21,9 @@ import {
   Clock,
   Brain,
   ListChecks,
-  Loader2
+  Loader2,
+  BellRing,
+  Send
 } from 'lucide-react';
 import { apiFetch } from '../lib/apiClient';
 import { AgentStatus, AgentLog, INITIAL_AGENTS_STATE, runMasterAgentCycle } from '../utils/agentSystemEngine';
@@ -92,6 +94,22 @@ export const AgentSystemControlCenterModal: React.FC<AgentSystemControlCenterMod
   const selectedFindings = activeAgentTab === 'ALL'
     ? (agents.SupervisorAgent?.findings ?? [])
     : (agents[activeAgentTab]?.findings ?? []);
+
+  const [hasTestedAlert, setHasTestedAlert] = useState<boolean | null>(null);
+
+  const handleTestAlert = async () => {
+    try {
+      const res = await apiFetch('/api/agent-alert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ severity: 'INFO', test: true, source: 'control-center' })
+      });
+      setHasTestedAlert(!!(res as any)?.success);
+    } catch (err: any) {
+      setHasTestedAlert(false);
+      console.error('[Test-Agent Alert Error]', err);
+    }
+  };
 
   const handleMonthlyReview = async () => {
     setIsReviewLoading(true);
@@ -329,6 +347,30 @@ export const AgentSystemControlCenterModal: React.FC<AgentSystemControlCenterMod
                 </div>
               )}
             </div>
+
+            <div className="bg-slate-900 border-2 border-slate-800 rounded-lg p-2.5 flex items-center justify-between gap-2">
+              <div className="text-[11px] text-slate-300">
+                <h3 className="text-xs font-black uppercase text-emerald-400 flex items-center gap-1.5">
+                  <BellRing size={14} /> HANDY-ALARM (DISCORD)
+                </h3>
+                <p className="text-[10px] text-slate-500 font-mono mt-0.5">
+                  Fehler/Warnungen → sofortige Push-Meldung aufs Handy
+                </p>
+              </div>
+              <button
+                onClick={handleTestAlert}
+                className={`px-2.5 py-1 rounded-lg border-2 border-black text-[10px] font-black uppercase flex items-center gap-1.5 transition-all text-slate-950 bg-emerald-400 hover:bg-emerald-500 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]`}
+              >
+                <Send size={12} /> Testen
+              </button>
+            </div>
+            {hasTestedAlert !== null && (
+              <p className={`text-[10px] font-mono px-1 ${hasTestedAlert ? 'text-emerald-400' : 'text-red-400'}`}>
+                {hasTestedAlert
+                  ? '✓ Test-Nachricht an Discord gesendet – prüfe dein Handy!'
+                  : '✗ Test fehlgeschlagen – Webhook ist vermutlich nicht eingerichtet (ALERT_WEBHOOK_URL).'}
+              </p>
+            )}
 
             <div className="border-b-2 border-slate-800 pb-2">
               <h3 className="text-xs font-black uppercase text-amber-400 flex items-center gap-1.5">

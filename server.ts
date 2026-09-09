@@ -2173,6 +2173,52 @@ Maximal 5 Absätze, kompakt, markdownfrei, direkt als reiner Text.`;
     }
   });
 
+  // Discord-Webhook-Alarm: benachrichtigt bei Agent-Fehlern/-Warnungen (Handy-Push via Discord-App)
+  const sendDiscordWebhook = async (payload: any) => {
+    const webhookUrl = process.env.ALERT_WEBHOOK_URL;
+    if (!webhookUrl) return { ok: false, reason: 'ALERT_WEBHOOK_URL nicht gesetzt' };
+    try {
+      const res = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      return { ok: res.ok, status: res.status };
+    } catch (err: any) {
+      return { ok: false, reason: err?.message || 'Webhook-Fehler' };
+    }
+  };
+
+  // Wird vom 60s-Herzschlag und aus dem Control Center gerufen - sendet sofort einen Alarm an Discord
+  app.post('/api/agent-alert', async (req, res) => {
+    try {
+      const { severity, title, message, details, scores, source, test } = req.body || {};
+      const level = severity === 'ERROR' ? 'error' : severity === 'WARNING' ? 'warning' : 'info';
+      const color = level === 'error' ? 0xef4444 : level === 'warning' ? 0xf59e0b : 0x22c55e;
+      const user = (process.env.ALERT_MENTION_ID && ` <@${process.env.ALERT_MENTION_ID}>`) || '';
+      const payload = {
+        username: 'FC Auggen Agenten',
+        content: test ? '🔔 **TEST-Benachrichtigung** – dein Agenten-Alarm funktioniert!' + user : `${level === 'error' ? '🚨' : level === 'warning' ? '⚠️' : '✅'} ${title || `Agent-Alarm (${severity})`}${user}`,
+        embeds: [{
+          title: (test ? 'FC Auggen Alarm-Test' : title) || `Agent-Alarm (${severity})`,
+          description: message || '',
+          color,
+          fields: [
+            { name: 'Quelle', value: source || 'Hintergrund-Heartbeat', inline: true },
+            { name: 'Zeit', value: new Date().toLocaleString('de-DE'), inline: true },
+            ...(scores ? [{ name: 'Health-Status', value: Object.entries(scores as any).map(([k, v]) => `${k}: ${v}%`).join(' · '), inline: false }] : []),
+            ...(details ? [{ name: 'Befunde', value: String(details).slice(0, 1000), inline: false }] : [])
+          ]
+        }]
+      };
+      const result = await sendDiscordWebhook(payload);
+      res.json({ success: result.ok, reason: result.reason || null, webhookConfigured: !!process.env.ALERT_WEBHOOK_URL });
+    } catch (err: any) {
+      console.error('[Agent Alert Error]', err.message);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   return app;
 }
 
