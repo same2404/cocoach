@@ -39,7 +39,8 @@ import {
   Compass,
   Brain,
   PenTool,
-  ArrowRight
+  ArrowRight,
+  ClipboardList
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -379,6 +380,35 @@ export const MatchReportView: React.FC<MatchReportViewProps> = ({
   const handleUpdate = (field: keyof MatchAnalysis, value: any) => {
     if (!currentAnalysis) return;
     onSaveAnalysis({ ...currentAnalysis, [field]: value });
+  };
+
+  /** 1-Klick: Startelf & Kader aus dem Spielerkader (TW → Abwehr → Mittelfeld → Angriff) in den Spielbericht schreiben & speichern */
+  const writeLineupFromSquad = () => {
+    if (!currentAnalysis) return;
+    const short = (p: any) => {
+      const fn = (p.firstName || '').trim();
+      const ln = (p.lastName || p.name || '').trim();
+      return fn && ln ? `${fn.charAt(0)}. ${ln}` : (ln || fn || '?');
+    };
+    const posKey = (pos: any) => String(pos || '').toUpperCase().replace(/[^A-ZÄÖÜ]/g, '');
+    const order: Record<string, number> = {
+      TORWART: 0, TW: 0,
+      ABWEHR: 1, VERTEIDIGUNG: 1, IV: 1, RV: 1, LV: 1, DEFENSIV: 1,
+      MITTELFELD: 2, MF: 2, ZM: 2, DM: 2, OM: 2, ZOM: 2, ZDM: 2, OFFENSIV: 2,
+      ANGRIFF: 3, ANG: 3, ST: 3, STURM: 3
+    };
+    const rank = (p: any) => (order[posKey((p.position || '').split('/')[0])] ?? 5);
+    const squad = (players || []).filter((p: any) => (p.category || 'player') === 'player');
+    const sorted = [...squad].sort((a, b) => rank(a) - rank(b) || Number(a.number || 0) - Number(b.number || 0));
+    if (sorted.length === 0) { setSyncStatusText('Keine Spieler im Kader gefunden — bitte zuerst im Kader anlegen.'); return; }
+    const lines: string[] = [];
+    sorted.forEach((p: any) => { lines.push(String(p.number || '')); lines.push(short(p)); lines.push(String(p.position || '')); lines.push(''); });
+    const starters = sorted.slice(0, 11);
+    const bench = sorted.slice(11);
+    const benchText = bench.length ? bench.map((p: any) => `${String(p.number || '')} ${short(p)} (${String(p.position || '')})`).join('\n') : '';
+    onSaveAnalysis({ ...currentAnalysis, startingLineup: lines.join('\n'), substitutes: benchText || currentAnalysis.substitutes })
+      .then(() => setSyncStatusText(`Aufstellung aus dem Kader eingetragen & gespeichert ✓ (${starters.length} Startelf, ${bench.length} Bank)'`))
+      .catch(() => setSyncStatusText('Speichern fehlgeschlagen — erneut versuchen.'));
   };
 
   /**
@@ -767,6 +797,12 @@ export const MatchReportView: React.FC<MatchReportViewProps> = ({
                       value={typeof currentAnalysis.startingLineup === 'string' ? currentAnalysis.startingLineup : Array.isArray(currentAnalysis.startingLineup) ? currentAnalysis.startingLineup.join(', ') : ''}
                       onSave={(val) => handleUpdate('startingLineup', val)}
                     />
+                    <button onClick={writeLineupFromSquad} className="bg-emerald-500/15 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 font-black text-[10px] uppercase px-2.5 py-1.5 rounded-lg transition-all active:scale-95 w-full flex items-center justify-center gap-1.5" title="Startelf & Kader automatisch aus dem Spielerkader (TW → Abwehr → Mittelfeld → Angriff) in den Spielbericht schreiben und speichern">
+                      <ClipboardList size={12} /> Aufstellung aus dem Kader eintragen & speichern
+                    </button>
+                    {syncStatusText && (
+                      <div className="text-[10px] font-bold text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-2.5 py-1.5">{syncStatusText}</div>
+                    )}
                     <div className="text-[10px] text-slate-400 italic">
                       Bank: {typeof currentAnalysis.substitutes === 'string' ? currentAnalysis.substitutes : Array.isArray(currentAnalysis.substitutes) ? currentAnalysis.substitutes.join(', ') : 'Keine Ersatzspieler gelistet'}
                     </div>
