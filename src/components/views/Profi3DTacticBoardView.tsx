@@ -86,6 +86,8 @@ interface Profi3DTacticBoardViewProps {
   onSaveMatch?: (match: any) => Promise<void> | void;
   matchAnalyses?: any[];
   onSaveMatchAnalysis?: (analysis: any) => Promise<void> | void;
+  initialStandardDraft?: any;
+  onDraftConsumed?: () => void;
 }
 
 export type TacticFormation = '4-2-3-1' | '4-4-2' | '4-1-4-1' | '3-4-3' | string;
@@ -344,7 +346,9 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
   opponents,
   onSaveMatch,
   matchAnalyses,
-  onSaveMatchAnalysis
+  onSaveMatchAnalysis,
+  initialStandardDraft,
+  onDraftConsumed
 }) => {
   const { activeClub } = useClub();
 
@@ -1025,6 +1029,31 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
       return changed ? next : prev;
     });
   }, [players]);
+
+  // 📐 Standard-Skizze aus dem Spielbericht exakt nachzeichnen (Text/Bild → Taktiktafel)
+  const [draftReference, setDraftReference] = useState<any>(null);
+  useEffect(() => {
+    if (!initialStandardDraft?.standard) return;
+    const s = initialStandardDraft.standard;
+    const runColors = ['#06B6D4', '#22D3EE', '#38BDF8', '#818CF8', '#A5B4FC'];
+    setStandardMode(s.mode || standardMode);
+    setStandardPlayers(Array.isArray(s.players) ? s.players : []);
+    setStandardZones(Array.isArray(s.zones) ? s.zones : []);
+    setStandardRunPaths(Array.isArray(s.runs)
+      ? s.runs.map((r: any, i: number) => ({ x1: r.x1, y1: r.y1, x2: r.x2, y2: r.y2, color: r.color || runColors[i % runColors.length] }))
+      : []);
+    setStandardDescription(s.description || '');
+    setDraftReference({
+      label: initialStandardDraft.label || 'Standard-Skizze',
+      name: s.name || '',
+      referenceText: initialStandardDraft.referenceText || '',
+      referenceImages: Array.isArray(initialStandardDraft.referenceImages) ? initialStandardDraft.referenceImages : [],
+    });
+    setActiveTabSub('standards');
+    notify(`✅ Standard-Skizze "${s.name || initialStandardDraft.label || 'Standard'}" nachgezeichnet und platziert`);
+    onDraftConsumed?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialStandardDraft]);
 
   const swapStartelfWithSub = (subIdx: number, startIdx: number | null = null) => {
     if (subIdx < 0 || subIdx >= (presentationSubstitutes?.length ?? 0)) {
@@ -7085,6 +7114,31 @@ Gib mir in 3 kurzen, klaren Bullet Points:
       {/* SUB-TAB 3: STANDARDS AUS SPIELBERICHT */}
       {activeTabSub === 'standards' && (
         <div className={`space-y-6 ${standardsFullscreen ? 'fixed inset-0 z-[300] bg-slate-950 overflow-y-auto p-6' : ''}`}>
+          {/* Referenz aus Spielbericht – Inhalt bleibt vollständig erhalten */}
+          {draftReference && (
+            <div className="bg-gradient-to-r from-purple-950/70 via-slate-900 to-slate-950 border-2 border-purple-500/60 rounded-2xl p-4 shadow-xl">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black text-purple-300 uppercase tracking-widest">📐 {draftReference.label || 'Standard-Skizze'}</span>
+                  {draftReference.name ? <span className="text-[10px] font-black text-white uppercase tracking-wider border border-purple-500/50 rounded-lg px-2 py-0.5 bg-purple-600/30">{draftReference.name}</span> : null}
+                </div>
+                <div className="flex gap-2 items-center">
+                  {(draftReference.referenceImages || []).slice(0, 4).map((src: string, i: number) => (
+                    <img key={i} src={src} alt="Standard-Referenz" className="w-14 h-14 object-cover rounded-lg border border-purple-500/40 bg-slate-950" />
+                  ))}
+                </div>
+                <button
+                  onClick={() => setDraftReference(null)}
+                  className="ml-auto text-[10px] font-black uppercase px-3 py-1.5 rounded-lg border border-purple-500/50 bg-slate-900 text-purple-200 hover:bg-purple-600 transition-colors"
+                >🗑 Referenz ausblenden</button>
+              </div>
+              {draftReference.referenceText ? (
+                <p className="mt-2 text-[11px] font-semibold text-slate-200 whitespace-pre-wrap leading-relaxed max-h-24 overflow-y-auto border-t border-slate-800 pt-2">
+                  {draftReference.referenceText}
+                </p>
+              ) : null}
+            </div>
+          )}
           {/* HEADER */}
           <div className="bg-gradient-to-br from-purple-950/60 via-slate-900 to-slate-950 border-2 border-purple-500/50 rounded-2xl p-6 shadow-2xl">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">

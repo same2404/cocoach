@@ -1553,6 +1553,95 @@ ERSTELLE EINEN ${days}-TAGE TRAININGSPLAN mit folgender Struktur als JSON:
   });
 
   // ============================================
+  // TAKTIKTAFEL: Standard aus Text/Bild nachzeichnen
+  // ============================================
+
+  app.post("/api/tacticboard/standard-from-text", async (req, res) => {
+    try {
+      const { text, images, name, mode, side } = req.body || {};
+      if (!text && !(Array.isArray(images) && images.length > 0)) {
+        return res.status(400).json({ error: "Text oder Bild erforderlich" });
+      }
+      const parts: any[] = [];
+      if (text && String(text).trim().length > 0) parts.push({ text: String(text) });
+      const imageList = (Array.isArray(images) ? images : []).slice(0, 2);
+      for (const img of imageList) {
+        try {
+          if (typeof img !== "string" || !img) continue;
+          if (String(img).startsWith("data:")) {
+            const m = String(img).match(/^data:([^;]+);base64,(.+)$/);
+            if (!m || m[2].length > 12000000) continue;
+            parts.push({ inlineData: { mimeType: m[1] || "image/jpeg", data: m[2] } });
+          } else {
+            const ctrl = new AbortController();
+            const timer = setTimeout(() => ctrl.abort(), 15000);
+            const r = await fetch(String(img), {
+              signal: ctrl.signal,
+              headers: { "User-Agent": "Mozilla/5.0", "Accept-Language": "de-DE,de;q=0.9" },
+            });
+            clearTimeout(timer);
+            if (!r.ok) continue;
+            const ct = String(r.headers.get("content-type") || "image/jpeg").split(";")[0];
+            const buf = Buffer.from(await r.arrayBuffer());
+            if (buf.length > 12000000) continue;
+            parts.push({ inlineData: { mimeType: ct, data: buf.toString("base64") } });
+          }
+        } catch (e) { /* Bild überspringen */ }
+      }
+
+      const systemInstruction = `Du bist der CoCoach-Standard-Aufzeichner für die 3D-Taktiktafel von FC Auggen.
+Du zeichnest eine Standardsituation auf einem HALBFELD exakt nach – sowohl nach der Beschreibung als auch nach dem Referenzbild. NICHTS aus Beschreibung oder Bild darf verloren gehen.
+
+KOORDINATENSYSTEM (SVG 0..500 × 0..350, TOR OBEN — kleinere y-Werte sind am Tor):
+- Eckflaggen oben: links (10,10), rechts (490,10)
+- 5-Meter-Raum: x 185..315, y 10..50
+- Strafraum: x 120..380, y 10..110
+- Elfmeterpunkt: (250,75), Strafraumlinie unten y=110, Mittellinie unten y=340
+
+AUFGABE:
+1. Positioniere ALLE beschriebenen Spieler beider Teams mit Nummer, Name (falls genannt) und korrekter Farbe (Haus-Team = #e94560, Gegner = #6366F1). Beachte die Handlungsidee (z.B. Eckstoß-Referenz beim ersten bzw. zweiten Pfosten, Freistoß-Einläufer, Blockermannschaft etc.).
+2. Zeichne JEDEN beschriebenen LAUFWEG als Pfeil (Laufweg von Spieler A nach Position B) — x1,y1 = Start, x2,y2 = Ende.
+3. Markiere beschriebene ZONEN als Rechtecke.
+4. Halte die Beschreibung/Bild-Vorgaben EXAKT ein: Positionen, Anzahl Spieler, Abfolge der Läufe, Zonen. Übertrage auch die textliche Anweisung in "description".
+
+Antworte NUR mit valider JSON:
+{
+  "mode": "ecke_links | ecke_rechts | freistoss_zentral | freistoss_seitlich | elfmeter | frei",
+  "name": "Kurzer Variationsname (z.B. 'Ecke 1. Pfosten lang')",
+  "description": "Die Textanweisung/Skizzen-Anmerkung aus Beschreibung und Bild",
+  "players": [{ "x": number, "y": number, "number": string, "name": string, "color": "#e94560 | #6366F1" }],
+  "runs": [{ "x1": number, "y1": number, "x2": number, "y2": number, "color": "#06B6D4" }],
+  "zones": [{ "x": number, "y": number, "w": number, "h": number, "color": "#8B5CF6 | #EC4899 | #F59E0B | #10B981 | #3B82F6 | #EF4444" }]
+}`;
+
+      const prompt = `Zeichne die folgende Standardsituation im Halbfeld exakt nach. Standard-Seite: ${side === "opponent" ? "DEFENSIV / GEGNER (Gegner-Farbschema #6366F1)" : "OFFENSIV / FÜR UNS (Haus-Farbschema #e94560)"}. Variation: ${name || "Standard"}. Modus-Vorwahl: ${mode || "auto"}.
+Beschreibung:\n${String(text || "")}\nBilder: Siehe Referenzbild(er) — zeichne die Situation GENAU wie im Bild.`;
+
+      const response = await safeGenerateContent({
+        contents: [{ role: "user", parts }],
+        config: { systemInstruction, temperature: 0.2 },
+      });
+      const rawText = typeof response?.text === "string" ? response.text
+        : Array.isArray(response?.text) ? (response.text as readonly { text: string }[]).map(p => p.text).join("")
+        : JSON.stringify(response?.text || response || "");
+      let standard: any = null;
+      try {
+        const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+        standard = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+      } catch { standard = null; }
+      if (!standard || !Array.isArray(standard.players)) {
+        return res.status(500).json({ error: "Keine valide Skizze erkannt – bitte erneut versuchen" });
+      }
+      console.log(`[Standard-Trace] Skizze "${standard.name || name || ''}" erstellt: ${standard.players.length} Spieler, ${Array.isArray(standard.runs) ? standard.runs.length : 0} Läufe, ${Array.isArray(standard.zones) ? standard.zones.length : 0} Zonen`);
+      return res.json({ success: true, standard });
+
+    } catch (error: any) {
+      console.error("[Standard-Trace] Fehler:", error?.message || error);
+      return res.status(500).json({ error: error.message || "Standard-Nachzeichnung fehlgeschlagen" });
+    }
+  });
+
+  // ============================================
   // NAOMI AGENT: Web-Scraping für Vereinsdaten
   // ============================================
 

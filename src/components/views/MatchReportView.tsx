@@ -44,6 +44,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+import { apiFetch } from '../../lib/apiClient';
 import { VideoSection } from '../VideoSection';
 
 interface MatchReportViewProps {
@@ -54,7 +55,7 @@ interface MatchReportViewProps {
   onDeleteAnalysis: (id: string) => Promise<void>;
   opponents?: { id: string | number; name: string }[];
   players?: Spieler[];
-  onNavigateToTacticBoard?: (matchId?: string | number) => void;
+  onNavigateToTacticBoard?: (matchId?: string | number, draft?: any) => void;
   sessionLogs?: any[];
 }
 
@@ -517,6 +518,47 @@ export const MatchReportView: React.FC<MatchReportViewProps> = ({
       console.error(e);
       setSyncStatusText('Fehler beim Synchronisieren.');
       setTimeout(() => setSyncStatusText(null), 4000);
+    }
+  };
+
+  const [traceLoading, setTraceLoading] = useState<'own' | 'opponent' | null>(null);
+
+  // 📐 In der 3D-Taktiktafel exakt nachzeichnen – Text & Bilder werden übergeben, NICHT verändert
+  const traceStandardToBoard = async (side: 'own' | 'opponent') => {
+    if (!onNavigateToTacticBoard) return;
+    const text = side === 'own' ? (currentAnalysis.standardsOwn || '') : (currentAnalysis.standardsOpponent || '');
+    const images = side === 'own' ? (currentAnalysis.standardsOwnImages || []) : (currentAnalysis.standardsOpponentImages || []);
+    if (!String(text).trim() && images.length === 0) {
+      setSyncStatusText('Bitte zuerst eine Standard-Beschreibung oder ein Bild eintragen – vorhandene Inhalte bleiben vollständig erhalten.');
+      setTimeout(() => setSyncStatusText(null), 5000);
+      return;
+    }
+    setTraceLoading(side);
+    try {
+      const resp: any = await apiFetch('/api/tacticboard/standard-from-text', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: side === 'own' ? (currentAnalysis.opponent ? `Offensiv vs. ${currentAnalysis.opponent}` : 'Offensiv') : (currentAnalysis.opponent ? `Defensiv vs. ${currentAnalysis.opponent}` : 'Defensiv'),
+          side,
+          text,
+          images,
+        }),
+      });
+      if (!resp?.ok || !resp?.standard) {
+        throw new Error(resp?.error || 'Zeichnung fehlgeschlagen');
+      }
+      onNavigateToTacticBoard(currentAnalysis.matchId || currentAnalysis.id, {
+        standard: resp.standard,
+        label: side === 'own' ? 'STANDARDS OFFENSIV' : 'STANDARDS DEFENSIV',
+        referenceText: text,
+        referenceImages: images,
+      });
+    } catch (err: any) {
+      console.error('[Trace-Standard Client]', err);
+      setSyncStatusText(`❌ Nachzeichnen fehlgeschlagen: ${err?.message || 'Unbekannter Fehler'}`);
+      setTimeout(() => setSyncStatusText(null), 6000);
+    } finally {
+      setTraceLoading(null);
     }
   };
 
@@ -1390,13 +1432,24 @@ export const MatchReportView: React.FC<MatchReportViewProps> = ({
                   </div>
                   <div className="flex items-center gap-2">
                     {onNavigateToTacticBoard && (
-                      <button
-                        onClick={() => onNavigateToTacticBoard(currentAnalysis.matchId || currentAnalysis.id)}
-                        className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs uppercase px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all shadow"
-                      >
-                        <PenTool size={13} />
-                        📐 In 3D-Taktiktafel nachzeichnen
-                      </button>
+                      <>
+                        <button
+                          onClick={() => traceStandardToBoard('own')}
+                          disabled={!!traceLoading}
+                          className="bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-black text-xs uppercase px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all shadow"
+                        >
+                          <PenTool size={13} />
+                          {traceLoading === 'own' ? '⏳ Zeichne…' : '📐 Nachzeichnen Offensiv'}
+                        </button>
+                        <button
+                          onClick={() => traceStandardToBoard('opponent')}
+                          disabled={!!traceLoading}
+                          className="bg-red-500 hover:bg-red-400 disabled:opacity-50 text-white font-black text-xs uppercase px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all shadow"
+                        >
+                          <ShieldAlert size={13} />
+                          {traceLoading === 'opponent' ? '⏳ Zeichne…' : '🛡 Nachzeichnen Gegner'}
+                        </button>
+                      </>
                     )}
                     <button
                       onClick={handleSyncFromTacticBoard}
@@ -1610,9 +1663,9 @@ export const MatchReportView: React.FC<MatchReportViewProps> = ({
                         maxSpeedKmh: player.number === 11 ? 32.8 : player.number === 23 ? 26.4 : 31.0,
                         sprintCount: player.number === 11 ? 28 : player.number === 23 ? 8 : 18,
                         tacticalSummary: player.number === 11 ? 'Julian Ehret zeigte herausragende 11,4 km Laufleistung als ZM mit 28 Vollsprints.' : player.number === 23 ? 'Stefan Lauer mit sehr stabilen Torwart-Bewegungswerten (5,3 km) und reaktionsschnellem Rausrücken.' : 'Gutes Laufprofil.'
-                      };
+};
 
-                      return (
+  return (
                         <div key={player.id} className="bg-slate-800 border-2 border-black p-4 space-y-3 relative">
                           <div className="flex items-center justify-between border-b border-gray-700 pb-2">
                             <div>

@@ -326,6 +326,7 @@ const App: React.FC = () => {
 
   const [toast, setToast] = useState<{ message: string, id: number } | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
+  const [tacticBoardDraft, setTacticBoardDraft] = useState<any>(null);
   const [navCategory, setNavCategory] = useState<'all' | 'ubersicht' | 'kader' | 'training' | 'match' | 'orga'>('all');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
@@ -2417,6 +2418,8 @@ saveSpieler(updatedPlayer as Spieler);
             onSaveMatchAnalysis={saveMatchAnalysis}
             onNavigateToVideo={() => setActiveTab('video_analysis')}
             isEditing={isEditing}
+            initialStandardDraft={tacticBoardDraft}
+            onDraftConsumed={() => setTacticBoardDraft(null)}
           />
         );
       case 'trainer_view':
@@ -2527,7 +2530,8 @@ saveSpieler(updatedPlayer as Spieler);
 opponents={opponents}
 players={sortedPlayers}
 sessionLogs={playerSessionLogs}
-onNavigateToTacticBoard={() => {
+onNavigateToTacticBoard={(_matchId: any, draft?: any) => {
+              setTacticBoardDraft(draft || null);
               setActiveTab('profi_3d_taktiktafel');
             }}
           />
