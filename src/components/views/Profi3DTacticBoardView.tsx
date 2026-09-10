@@ -54,7 +54,6 @@ import {
   Bot,
   Route,
   Circle,
-  Repeat,
   ClipboardPaste
 } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
@@ -2532,43 +2531,6 @@ Gib mir in 3 kurzen, klaren Bullet Points:
     setPassStations(prev => prev.filter(s => s.id !== id));
   }, []);
 
-  const loadPassTemplate = useCallback((n: number) => {
-    const templates: Record<number, Array<{ x: number; y: number }>> = {
-      3: [
-        { x: 15, y: 62 },
-        { x: 48, y: 45 },
-        { x: 82, y: 40 }
-      ],
-      6: [
-        { x: 12, y: 55 },
-        { x: 26, y: 40 },
-        { x: 42, y: 52 },
-        { x: 58, y: 35 },
-        { x: 72, y: 48 },
-        { x: 86, y: 40 }
-      ],
-      9: [
-        { x: 10, y: 60 },
-        { x: 18, y: 35 },
-        { x: 30, y: 55 },
-        { x: 38, y: 30 },
-        { x: 50, y: 65 },
-        { x: 58, y: 35 },
-        { x: 70, y: 62 },
-        { x: 76, y: 30 },
-        { x: 88, y: 45 }
-      ]
-    };
-    const coords = templates[n] || templates[6];
-    const ts = Date.now();
-    setPassStations(coords.map((c, i) => ({
-      id: `ps_${ts}_${i}`,
-      x: c.x,
-      y: c.y,
-      action: PASS_ACTIONS[i % PASS_ACTIONS.length]
-    })));
-  }, []);
-
   // Manuelles Scrubben: Fortschritt setzen + Spielerpositionen sofort berechnen
   const handleScrub = useCallback((value: number) => {
     const p = Math.max(0, Math.min(1, value));
@@ -3078,128 +3040,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
   const selectedNode = selectedNodeId ? (currentNodePositions.find(n => n.id === selectedNodeId) || null) : null;
   const contextMenuPlayerNode = currentNodePositions.find(n => n.id === contextMenuPlayerId);
 
-  // ═══ STUFE 3: Spielaufbau-Varianten (vordefinierte Laufwege nach Position setzen) ═══
-  const applyBuildUpVariant = useCallback((variant: 'sechser' | 'achter' | 'langerBall' | 'strafraum') => {
-    const pos = currentNodePositions;
-    const by = (px: string) => pos.find(n => n.position === px);
-    const runs: PlayerRunPath[] = [];
-    let idc = 1;
-    const mk = (playerId: string, targetX: number, targetY: number, color: string) => {
-      const n = pos.find(p => p.id === playerId);
-      if (!n) return;
-      runs.push({
-        id: 'bu_' + Date.now() + '_' + idc++,
-        playerId,
-        path: [
-          { x: Math.round(n.currentX * 20) / 20, y: Math.round(n.currentY * 20) / 20 },
-          { x: Math.round(targetX * 20) / 20, y: Math.round(targetY * 20) / 20 },
-        ],
-        color,
-      });
-    };
-    const dm = by('DM') || by('ZM');
-    const dmId = dm?.id;
-
-    if (variant === 'sechser' && dmId) {
-      mk(dmId, dm!.currentX + 4, dm!.currentY - 14, '#0055FF');
-      pos.filter(n => n.position === 'IV').forEach((iv, i) => {
-        mk(iv.id, iv.currentX + (i === 0 ? -6 : 6), iv.currentY - 6, '#0055FF');
-      });
-      pos.filter(n => n.position === 'RV' || n.position === 'LV').forEach(av => {
-        mk(av.id, av.currentX, av.currentY - 18, '#22C55E');
-      });
-    } else if (variant === 'achter') {
-      const acht = by('ZM') || by('OM');
-      if (acht) mk(acht.id, 50, acht.currentY - 16, '#0055FF');
-      const st = by('ST');
-      if (st) mk(st.id, st.currentX + 8, 12, '#EF4444');
-    } else if (variant === 'langerBall') {
-      const wing = by('RA') || by('LA') || by('RM') || by('LM');
-      if (wing) mk(wing.id, wing.currentX <= 50 ? 12 : 88, 14, '#F59E0B');
-      const st = by('ST');
-      if (st) mk(st.id, st.currentX - 6, st.currentY - 6, '#EF4444');
-    } else if (variant === 'strafraum') {
-      const st = by('ST');
-      if (st) mk(st.id, 38, 5, '#EF4444');
-      const om = by('OM') || by('ZM') || by('RA');
-      if (om) mk(om.id, 62, 8, '#0055FF');
-      const dm2 = by('DM') || by('ZM');
-      if (dm2 && dm2.id !== om?.id) mk(dm2.id, 50, 20, '#F59E0B');
-    }
-    setCustomRuns(runs);
-    syncActiveCustomFormationToFirestore({ runs });
-    notify(`Spielaufbau-Variante geladen (${variant})`);
-  }, [currentNodePositions, setCustomRuns, syncActiveCustomFormationToFirestore, notify]);
-
-  const applyAiBuildUpSuggestion = useCallback(() => {
-    const pos = currentNodePositions;
-    const by = (pxs: string[]) => pos.find(n => pxs.includes(n.position));
-    const runs: PlayerRunPath[] = [];
-    let idc = 1;
-    const mk = (playerId: string, targetX: number, targetY: number, color: string) => {
-      const n = pos.find(p => p.id === playerId);
-      if (!n) return;
-      runs.push({
-        id: 'ai_' + Date.now() + '_' + idc++,
-        playerId,
-        path: [
-          { x: Math.round(n.currentX * 20) / 20, y: Math.round(n.currentY * 20) / 20 },
-          { x: Math.round(targetX * 20) / 20, y: Math.round(targetY * 20) / 20 },
-        ],
-        color,
-      });
-    };
-    const dm = by(['DM', 'ZM']);
-    const om = by(['OM', 'ZM']) || by(['RA', 'LA']);
-    const st = by(['ST']);
-    const wing = by(['RA', 'LA', 'RM', 'LM']);
-    const iv = pos.find(n => n.position === 'IV');
-    if (wing) mk(wing.id, wing.currentX <= 50 ? 12 : 88, 16, '#22C55E');
-    if (st) mk(st.id, st.currentX - 10, st.currentY - 8, '#F59E0B');
-    if (dm) mk(dm.id, dm.currentX + 4, dm.currentY - 14, '#0055FF');
-    if (iv) mk(iv.id, iv.currentX + 8, iv.currentY - 8, '#0055FF');
-    const chainRefs = [dm, om || wing, st].filter(Boolean);
-    const stations = chainRefs.map((n: any, i: number) => ({
-      id: `ai_ps_${Date.now()}_${i}`,
-      x: Math.round(n.currentX * 20) / 20,
-      y: Math.round((n.currentY + (i === chainRefs.length - 1 ? -10 : 0)) * 20) / 20,
-      action: i === chainRefs.length - 1 ? 'Steilpass' : (i === 0 ? 'Direktpass' : 'Doppelpass')
-    }));
-    setCustomRuns(runs);
-    syncActiveCustomFormationToFirestore({ runs });
-    setPassStations(stations);
-    notify('⚡ KI-Aufbau vorgeschlagen – Spieler/Stationen frei bewegen, dann ▶️ Abspielen');
-  }, [currentNodePositions, setCustomRuns, syncActiveCustomFormationToFirestore, notify]);
-
-  const applyDoppelpass = useCallback(() => {
-    const passTemplate = [
-      { id: `dp_pass_1`, x: 30, y: 50, action: 'Doppelpass' },
-      { id: `dp_pass_2`, x: 55, y: 35, action: 'Klatschball' },
-      { id: `dp_pass_3`, x: 45, y: 60, action: 'Steilpass' },
-      { id: `dp_pass_4`, x: 70, y: 45, action: 'Direktpass' },
-      { id: `dp_pass_5`, x: 85, y: 50, action: 'Torschuss' },
-    ];
-    setPassStations(passTemplate);
-
-    const runA: PlayerRunPath = {
-      id: `dp_run_a_${Date.now()}`,
-      playerId: presentationLineup[7]?.id || 'om',
-      path: [{ x: 70, y: 35 }, { x: 50, y: 50 }, { x: 35, y: 40 }],
-      color: '#A78BFA',
-      type: 'lauf',
-    };
-    const runB: PlayerRunPath = {
-      id: `dp_run_b_${Date.now()}`,
-      playerId: presentationLineup[6]?.id || 'ra',
-      path: [{ x: 25, y: 55 }, { x: 50, y: 45 }, { x: 70, y: 55 }],
-      color: '#34D399',
-      type: 'lauf',
-    };
-    setCustomRuns(prev => [...prev.filter(r => !r.id.startsWith('dp_')), runA, runB]);
-    notify('Doppelpass-Variante geladen: 2 Kreuzlaufwege + 5 Ballstationen');
-  }, [presentationLineup, setPassStations, setCustomRuns, notify]);
-
-  // Helper render pitch for presentation slides (Main View + TV Mode Sync)
+  // ═══ Helper render pitch for presentation slides (Main View + TV Mode Sync) ═══
   const renderPitchForSlide = (sIndex: number) => {
     return (
       <div 
@@ -4526,6 +4367,14 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                       🧹 Leeren
                     </button>
                   )}
+                  <button
+                    onClick={() => loadFupaStartelf(true)}
+                    disabled={fupaLoading}
+                    className="px-1.5 py-0.5 text-[9px] font-black rounded hover:bg-sky-500/30 transition-all text-sky-300 disabled:opacity-40 flex items-center gap-1"
+                    title="Startelf vom letzten Spieltag von fupa holen (echte Spieler auf dem Taktikfeld)"
+                  >
+                    {fupaLoading ? '⏳' : '🔄'} Startelf
+                  </button>
                 </div>
                 {dragRunMode && (
                   <div className="bg-cyan-500/20 border border-cyan-500/40 rounded-xl px-3 py-1.5 flex items-center gap-2 text-[10px] font-black uppercase text-cyan-300">
@@ -4538,25 +4387,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                   </div>
                 )}
 
-                {/* STUFE 3: Spielaufbau-Varianten */}
-                <div className="flex items-center gap-0.5 bg-slate-900 border border-slate-700 rounded-md px-1 py-0.5" title="Spielaufbau-Variante laden (setzt Laufwege)">
-                  <span className="text-[8.5px] font-black uppercase text-slate-400 mr-0.5">⚽ Aufbau</span>
-                  <button onClick={() => applyBuildUpVariant('sechser')} className="px-1.5 py-0.5 text-[9px] font-black rounded hover:bg-sky-500/30 transition-all text-slate-300" title="Aufbau über den 6er">6er</button>
-                  <button onClick={() => applyBuildUpVariant('achter')} className="px-1.5 py-0.5 text-[9px] font-black rounded hover:bg-sky-500/30 transition-all text-slate-300" title="Aufbau über den 8er">8er</button>
-                  <button onClick={() => applyBuildUpVariant('langerBall')} className="px-1.5 py-0.5 text-[9px] font-black rounded hover:bg-sky-500/30 transition-all text-slate-300" title="Langer Ball auf den Flügel">⚡ Ball</button>
-                  <button onClick={() => applyBuildUpVariant('strafraum')} className="px-1.5 py-0.5 text-[9px] font-black rounded hover:bg-sky-500/30 transition-all text-slate-300" title="Strafraumbesetzung & Torabschluss">🎯 Box</button>
-                  <button onClick={applyAiBuildUpSuggestion} className="px-1.5 py-0.5 text-[9px] font-black rounded hover:bg-emerald-500/30 transition-all text-emerald-300" title="KI-Aufbau vorschlagen – danach frei verschiebbar, ▶️ Abspielen zeigt die Aktion">⚡ KI-Aufbau</button>
-                  <button onClick={() => loadFupaStartelf(true)} disabled={fupaLoading} className="px-1.5 py-0.5 text-[9px] font-black rounded hover:bg-sky-500/30 transition-all text-sky-300 disabled:opacity-40" title="Aktuelle Startelf vom letzten Spieltag von fupa holen (echte Spieler auf dem Taktikfeld)">{fupaLoading ? '⏳' : '🔄'} Startelf</button>
-                  <button
-                    onClick={applyDoppelpass}
-                    className="bg-purple-500/20 hover:bg-purple-500/40 text-purple-300 font-bold text-[10px] uppercase px-2 py-1.5 rounded-lg border border-purple-500/30 transition-all flex items-center gap-1"
-                    title="Doppelpass: 2 Spieler kreuzen, Ball durch 5 Stationen"
-                  >
-                    <Repeat size={11} /> Doppelpass
-                  </button>
-                </div>
-
-                {/* STUFE 4: Passstafette */}
+{/* STUFE 4: Passstafette */}
                 <div className="flex items-center gap-0.5 bg-slate-900 border border-slate-700 rounded-md px-1 py-0.5" title="Passstafette (Pass-Sequenz)">
                   <button
                     onClick={togglePassMode}
@@ -4571,9 +4402,6 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                   >
                     {PASS_ACTIONS.map(a => <option key={a} value={a}>{a}</option>)}
                   </select>
-                  <button onClick={() => loadPassTemplate(3)} className="px-1 py-0.5 text-[8.5px] font-black rounded hover:bg-sky-500/30 transition-all text-slate-300" title="3-Stationen-Vorlage laden">3</button>
-                  <button onClick={() => loadPassTemplate(6)} className="px-1 py-0.5 text-[8.5px] font-black rounded hover:bg-sky-500/30 transition-all text-slate-300" title="6-Stationen-Vorlage laden">6</button>
-                  <button onClick={() => loadPassTemplate(9)} className="px-1 py-0.5 text-[8.5px] font-black rounded hover:bg-sky-500/30 transition-all text-slate-300" title="9-Stationen-Vorlage laden (Tiki-Taka)">9</button>
                   {passStations.length > 0 && (
                     <button onClick={() => { setPassStations([]); setPassBallPos(null); }} className="px-1 py-0.5 text-[8.5px] font-black rounded hover:bg-rose-500/30 transition-all text-rose-300" title="Passstafette leeren">🧹 Leeren</button>
                   )}
@@ -6059,7 +5887,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
               </div>
             )}
 
-            {/* STUFE 2.5: Drag-Laufweg + Ball-Kette + KI-Aufbau */}
+            {/* STUFE 2.5: Drag-Laufweg + Ball-Kette + Startelf (fupa) */}
             <div className="flex items-center gap-0.5 bg-slate-900 border border-slate-700 rounded-md px-1 py-0.5" title="Laufweg: Spieler antippen & ziehen (mehrere Spieler möglich), dann ▶️ Abspielen. Ball-Kette: klicke die Spieler in Reihenfolge 1→11">
               <button
                 onClick={() => { setDragRunMode(p => !p); setBallChainMode(false); if (dragRunMode) { setDragRunPlayerId(null); setDragRunStart(null); setDragRunPreview([]); } }}
@@ -6078,13 +5906,6 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                 title="Klicke Spieler 1 → 2 → … → 11, der Ball läuft bei ▶️ Abspielen entlang der Kette."
               >
                 ⚡ Ball-Kette
-              </button>
-              <button
-                onClick={applyAiBuildUpSuggestion}
-                className="px-2 py-0.5 text-[9.5px] font-black uppercase tracking-wider rounded-md border transition-all cursor-pointer text-emerald-300 border-slate-800 hover:border-emerald-500/60"
-                title="KI-Aufbau vorschlagen – danach frei verschiebbar, ▶️ Abspielen zeigt die Aktion"
-              >
-                ⚡ KI-Aufbau
               </button>
               <button
                 onClick={() => loadFupaStartelf(true)}
@@ -6112,22 +5933,6 @@ Gib mir in 3 kurzen, klaren Bullet Points:
               </div>
             )}
 
-            {/* STUFE 3: Spielaufbau-Varianten */}
-            <div className="flex items-center gap-0.5 bg-slate-900 border border-slate-700 rounded-md px-1 py-0.5" title="Spielaufbau-Variante laden (setzt Laufwege)">
-              <span className="text-[8.5px] font-black uppercase text-slate-400 mr-0.5">⚽ Aufbau</span>
-              <button onClick={() => applyBuildUpVariant('sechser')} className="px-1.5 py-0.5 text-[9px] font-black rounded cursor-pointer hover:bg-sky-500/30 transition-all text-slate-300" title="Aufbau über den 6er">6er</button>
-              <button onClick={() => applyBuildUpVariant('achter')} className="px-1.5 py-0.5 text-[9px] font-black rounded cursor-pointer hover:bg-sky-500/30 transition-all text-slate-300" title="Aufbau über den 8er">8er</button>
-              <button onClick={() => applyBuildUpVariant('langerBall')} className="px-1.5 py-0.5 text-[9px] font-black rounded cursor-pointer hover:bg-sky-500/30 transition-all text-slate-300" title="Langer Ball auf den Flügel">⚡ Ball</button>
-              <button onClick={() => applyBuildUpVariant('strafraum')} className="px-1.5 py-0.5 text-[9px] font-black rounded cursor-pointer hover:bg-sky-500/30 transition-all text-slate-300" title="Strafraumbesetzung & Torabschluss">🎯 Box</button>
-              <button
-                onClick={applyDoppelpass}
-                className="bg-purple-500/20 hover:bg-purple-500/40 text-purple-300 font-bold text-[10px] uppercase px-2 py-1.5 rounded-lg border border-purple-500/30 transition-all flex items-center gap-1"
-                title="Doppelpass: 2 Spieler kreuzen, Ball durch 5 Stationen"
-              >
-                <Repeat size={11} /> Doppelpass
-              </button>
-            </div>
-
             {/* STUFE 4: Passstafette */}
             <div className="flex items-center gap-0.5 bg-slate-900 border border-slate-700 rounded-md px-1 py-0.5" title="Passstafette (Pass-Sequenz)">
               <button
@@ -6143,9 +5948,6 @@ Gib mir in 3 kurzen, klaren Bullet Points:
               >
                 {PASS_ACTIONS.map(a => <option key={a} value={a}>{a}</option>)}
               </select>
-              <button onClick={() => loadPassTemplate(3)} className="px-1 py-0.5 text-[8.5px] font-black rounded cursor-pointer hover:bg-sky-500/30 transition-all text-slate-300" title="3-Stationen-Vorlage laden">3</button>
-              <button onClick={() => loadPassTemplate(6)} className="px-1 py-0.5 text-[8.5px] font-black rounded cursor-pointer hover:bg-sky-500/30 transition-all text-slate-300" title="6-Stationen-Vorlage laden">6</button>
-              <button onClick={() => loadPassTemplate(9)} className="px-1 py-0.5 text-[8.5px] font-black rounded cursor-pointer hover:bg-sky-500/30 transition-all text-slate-300" title="9-Stationen-Vorlage laden (Tiki-Taka)">9</button>
               {passStations.length > 0 && (
                 <button onClick={() => { setPassStations([]); setPassBallPos(null); }} className="px-1 py-0.5 text-[8.5px] font-black rounded cursor-pointer hover:bg-rose-500/30 transition-all text-rose-300" title="Passstafette leeren">🧹 Leeren</button>
               )}
