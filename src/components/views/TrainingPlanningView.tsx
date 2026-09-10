@@ -1062,7 +1062,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
   // für dieses Datum werden nur angereichert (Inhalte bleiben erhalten).
   // Früher wurde hier immer die aktuelle Session-ID weiterverwendet → alle Tage
   // überschrieben sich gegenseitig, Einheiten + Inhalte der Kollegen gingen verloren.
-  const upsertForDate = (iso: string, tag: TagesPlan): TrainingSession | null => {
+  const upsertForDate = async (iso: string, tag: TagesPlan): Promise<TrainingSession | null> => {
     const existing = sessions.find((s: any) => s.date === iso);
     const stufe = BELASTUNGS_STUFEN[tag.stufe];
     const base = existing
@@ -1077,7 +1077,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
           duration: tag.dauer,
           weeklyFocus: '',
           sessionFocus: tag.schwerpunkt,
-          trainer: localSession?.trainer || '',
+          trainer: localSession?.trainer || 'Amin, marcel',
           intensity: stufe?.intensity || '',
           status: 'Geplant',
           opponent: '',
@@ -1101,17 +1101,25 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
       duration: tag.dauer,
       sessionFocus: tag.schwerpunkt,
     };
-    saveSession(updated);
+    try {
+      saveSession(updated);
+      // Zusätzlicher direkter DB-Write (sichtbarer Fehler bei Blockade/Regeln statt stilles Schlucken)
+      const { id: _skip, ...dataToSave } = updated as any;
+      await setDoc(doc(db, 'training_sessions', updated.id), dataToSave, { merge: true });
+    } catch (e: any) {
+      setHealStatus(`Fehler beim Speichern ${updated.id}: ${e?.message || e}`);
+      throw e;
+    }
     return updated;
   };
 
   // Einheit anpassen — setzt Datum, Wochentag, Ort, Stufe, Intensität, Schwerpunkt, Dauer
-  const applyPlanToCurrentSession = (tag: TagesPlan, dayIndex: number) => {
+  const applyPlanToCurrentSession = async (tag: TagesPlan, dayIndex: number) => {
     if (!localSession) return;
     const dateBase = new Date(KW_START_DATES[weekIndex] || KW_START_DATES[0]);
     dateBase.setDate(dateBase.getDate() + dayIndex);
     const dateStr = dateBase.toISOString().split('T')[0];
-    const saved = upsertForDate(dateStr, tag);
+    const saved = await upsertForDate(dateStr, tag);
     if (saved) {
       setLocalSession(saved);
       onSelectSession(saved.id);
@@ -1136,7 +1144,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
         const stufe = BELASTUNGS_STUFEN[tag.stufe];
         saveSession({ ...match, loadLevel: tag.stufe, load: stufe?.label || '', intensity: stufe?.intensity || '', duration: tag.dauer, sessionFocus: tag.schwerpunkt });
       } else {
-        upsertForDate(targetIso, tag);
+        upsertForDate(targetIso, tag).catch((e: any) => setHealStatus(`Fehler beim Anlegen ${targetIso}: ${e?.message || e}`));
       }
       synced++;
     });
@@ -1227,13 +1235,13 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
   };
 
   // Einzelnen Block-Tag in die konkrete Session übernehmen (eigenes Datum, eigene ID!)
-  const applyBlockDayToSession = (wIdx: number, tag: TagesPlan, dayIndex: number) => {
+  const applyBlockDayToSession = async (wIdx: number, tag: TagesPlan, dayIndex: number) => {
     if (!localSession) return;
     const wkBase = new Date(KW_START_DATES[(blockStartWeek + wIdx) % KW_START_DATES.length] || KW_START_DATES[0]);
     const dateStr = new Date(wkBase);
     dateStr.setDate(wkBase.getDate() + dayIndex);
     const iso = dateStr.toISOString().split('T')[0];
-    const saved = upsertForDate(iso, tag);
+    const saved = await upsertForDate(iso, tag);
     if (saved) {
       setLocalSession(saved);
       onSelectSession(saved.id);
@@ -1263,7 +1271,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
           const stufe = BELASTUNGS_STUFEN[tag.stufe];
           saveSession({ ...existing, loadLevel: tag.stufe, load: stufe?.label || '', intensity: stufe?.intensity || '', duration: tag.dauer, sessionFocus: tag.schwerpunkt });
         } else if (localSession) {
-          upsertForDate(iso, tag);
+          upsertForDate(iso, tag).catch((e: any) => setHealStatus(`Fehler beim Anlegen ${iso}: ${e?.message || e}`));
         }
         synced++;
       });
@@ -1744,35 +1752,39 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
   // (z. B. Dienstag 08.09.2026). Bestehende Einheiten mit Inhalten bleiben unangetastet.
   const healCurrentWeekRef = useRef(false);
   const [healStatus, setHealStatus] = useState<string>('');
-  const healCurrentWeek = (showFeedback = false) => {
+  const healCurrentWeek = async (showFeedback = false): Promise<number> => {
     const template = currentWeekPlans[templateIndexForWeek(currentWeekIdx)] || currentWeekPlans[0];
     if (!template?.tage?.length) return 0;
     const wkBase = new Date(KW_START_DATES[currentWeekIdx % KW_START_DATES.length] || KW_START_DATES[0]);
     wkBase.setHours(0, 0, 0, 0);
     let created = 0;
-    template.tage.forEach((tag, dayIndex) => {
-      if (tag.stufe === 0) return;
+    let errors = 0;
+    for (const tag of template.tage) {
+      if (tag.stufe === 0) continue;
       const d = new Date(wkBase);
-      d.setDate(wkBase.getDate() + dayIndex);
+      d.setDate(wkBase.getDate() + template.tage.indexOf(tag));
       const iso = d.toISOString().split('T')[0];
       if (!sessions.some((s: any) => s.date === iso)) {
         try {
-          upsertForDate(iso, tag);
+          await upsertForDate(iso, tag);
           created++;
-        } catch (e: any) {
-          setHealStatus(`Fehler beim Anlegen ${iso}: ${e?.message || e}`);
-          return;
+        } catch {
+          errors++;
         }
       }
-    });
+    }
+    if (errors > 0) {
+      setHealStatus(`${errors} Einheit(en) konnten NICHT gespeichert werden – Berechtigung/Regeln prüfen.`);
+    }
     return created;
   };
   useEffect(() => {
     if (sessions.length === 0) return;
     if (healCurrentWeekRef.current) return;
     healCurrentWeekRef.current = true;
-    const created = healCurrentWeek();
-    setHealStatus(created > 0 ? `${created} Einheit(en) der aktuellen Woche neu angelegt (08.09 inkl.)` : 'Aktuelle Woche vollständig – nichts anzulegen.');
+    healCurrentWeek().then((created) => {
+      setHealStatus(created > 0 ? `${created} Einheit(en) der aktuellen Woche neu angelegt (08.09 inkl.)` : 'Aktuelle Woche vollständig – nichts anzulegen.');
+    });
   }, [sessions]);
 
   useEffect(() => {
@@ -3030,6 +3042,30 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
           <span className="font-black uppercase tracking-widest text-[9px] flex items-center gap-1.5"><Calendar size={11} /> Alle Einheiten</span>
           <span className="text-[8px] font-bold bg-white/20 px-1.5 py-0.5 rounded">{sessions.length}</span>
         </div>
+        {(() => {
+          const template = currentWeekPlans[templateIndexForWeek(currentWeekIdx)] || currentWeekPlans[0];
+          const wkBase = new Date(KW_START_DATES[currentWeekIdx % KW_START_DATES.length] || KW_START_DATES[0]);
+          wkBase.setHours(0, 0, 0, 0);
+          const missing = (template?.tage || []).map((tag, i) => {
+            if (tag.stufe === 0) return null;
+            const d = new Date(wkBase);
+            d.setDate(wkBase.getDate() + i);
+            const iso = d.toISOString().split('T')[0];
+            return sessions.some((s: any) => s.date === iso) ? null : { iso, weekday: tag.weekday };
+          }).filter(Boolean) as { iso: string; weekday: string }[];
+          if (missing.length === 0) return null;
+          return (
+            <div className="shrink-0 bg-red-600 text-white px-2 py-1.5 border-b-2 border-black">
+              <div className="text-[8px] font-black uppercase">⚠ {missing.length} Einheit(en) der aktuellen Woche fehlen: {missing.map(m => `${m.weekday} ${m.iso.slice(8, 10)}.${m.iso.slice(5, 7)}.`).join(' · ')}</div>
+              <button
+                onClick={() => healCurrentWeek().then((created) => setHealStatus(created > 0 ? `${created} Einheit(en) wiederhergestellt.` : 'Bereits vorhanden.'))}
+                className="mt-1 text-[8px] font-black uppercase bg-white text-red-700 rounded px-2 py-1 hover:bg-red-50 cursor-pointer"
+              >
+                Jetzt wiederherstellen
+              </button>
+            </div>
+          );
+        })()}
         <div className={containerClass}>
           {sortedSessions.map(s => {
             const isActive = s.id === (localSession?.id || selectedSessionId);
@@ -3442,10 +3478,11 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
               </span>
               <button
                 onClick={() => {
-                  const created = healCurrentWeek(true);
-                  setHealStatus(created > 0 ? `${created} Einheit(en) neu angelegt (08.09 inkl.)` : 'Aktuelle Woche vollständig – nichts anzulegen.');
-                  setNotification(created > 0 ? `${created} Einheit(en) angelegt.` : 'Bereits vorhanden.');
-                  setTimeout(() => setNotification(null), 3000);
+                  healCurrentWeek(true).then((created) => {
+                    setHealStatus(created > 0 ? `${created} Einheit(en) neu angelegt (08.09 inkl.)` : 'Aktuelle Woche vollständig – nichts anzulegen.');
+                    setNotification(created > 0 ? `${created} Einheit(en) angelegt.` : 'Bereits vorhanden.');
+                    setTimeout(() => setNotification(null), 3000);
+                  });
                 }}
                 className="px-2 py-0.5 rounded text-[7px] font-black uppercase border bg-emerald-600 text-white border-emerald-400 hover:bg-emerald-500 cursor-pointer"
                 title="Fehlende Einheiten der aktuellen Woche (z. B. Di 08.09) neu anlegen – bestehende werden nicht angerührt"
