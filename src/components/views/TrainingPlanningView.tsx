@@ -1840,12 +1840,13 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
   const [finderBusy, setFinderBusy] = useState<boolean>(false);
   const [showHistory, setShowHistory] = useState(false);
   const [historyEntries, setHistoryEntries] = useState<{ id: string; readable: string; ts: number; action: string; data: any }[]>([]);
+  const [historyCount, setHistoryCount] = useState(0);
   const [historyLoading, setHistoryLoading] = useState(false);
 
   // Verlauf der AUSGEWÄHLTEN Einheit laden (jede Änderung wird minutengenau archiviert)
-  const loadHistory = async (itemId: string) => {
-    if (!itemId) { setHistoryEntries([]); return; }
-    setHistoryLoading(true);
+  const loadHistory = async (itemId: string, quiet = false) => {
+    if (!itemId) { setHistoryEntries([]); setHistoryCount(0); return; }
+    if (!quiet) setHistoryLoading(true);
     try {
       const q = query(
         collection(db, 'training_sessions_history'),
@@ -1857,18 +1858,46 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
       const entries: any[] = [];
       snap.forEach(d => entries.push({ id: d.id, ...d.data() as any }));
       setHistoryEntries(entries);
+      setHistoryCount(entries.length);
     } catch (e: any) {
       console.error('History Fehler:', e);
       setHistoryEntries([]);
+      setHistoryCount(0);
     } finally {
-      setHistoryLoading(false);
+      if (!quiet) setHistoryLoading(false);
     }
   };
   useEffect(() => {
     if (showHistory && localSession?.id) {
       loadHistory(localSession.id);
+    } else if (localSession?.id) {
+      loadHistory(localSession.id, true);
     }
   }, [showHistory, localSession?.id]);
+
+  // Heutigen Stand ALLER Einheiten als Version sichern (einmaliger Klick → jede Einheit hat sofort eine Version)
+  const seedBaselineVersions = async (): Promise<number> => {
+    let done = 0;
+    const ts = Date.now();
+    const readable = `Stand ${new Date(ts).toLocaleString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`;
+    for (const s of sessions) {
+      try {
+        const { id: _sid, ...snapshot } = s as any;
+        await setDoc(doc(db, 'training_sessions_history', `${s.id}_baseline`), {
+          itemId: s.id,
+          ts,
+          tsIso: new Date(ts).toISOString(),
+          readable,
+          action: 'save',
+          data: snapshot
+        });
+        done++;
+      } catch (e) {
+        console.error('Baseline Fehler', s.id, e);
+      }
+    }
+    return done;
+  };
 
   // Eine gespeicherte Version WIEDERHERSTELLEN (Datensatz wird mit dem archivierten Stand überschrieben)
   const restoreHistoryVersion = async (entry: { id: string; readable: string; data: any }) => {
@@ -1924,8 +1953,21 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
     if (sessions.length === 0) return;
     if (healCurrentWeekRef.current) return;
     healCurrentWeekRef.current = true;
-    healCurrentWeek().then((created) => {
-      setHealStatus(created > 0 ? `${created} Einheit(en) der aktuellen Woche neu angelegt (08.09 inkl.)` : 'Aktuelle Woche vollständig – nichts anzulegen.');
+    healCurrentWeek().then(async (created) => {
+      // Garantierte Erzeugung der Einheit Di 08.09.2026 (Pressing & Gegenpressing, Stufe 8, 90 Min)
+      // Falls sie NICHT existiert, wird sie deterministisch angelegt – erscheint dann zwischen
+      // Fr 04.09.2026 und Do 10.09.2026 in der Einheitenliste.
+      const has0809 = sessions.some((s: any) => s.date === '2026-09-08');
+      if (!has0809) {
+        try {
+          await upsertForDate('2026-09-08', { weekday: 'Dienstag', stufe: 8, dauer: '90 Min', schwerpunkt: 'Pressing & Gegenpressing', uhrzeit: '18:45', inhalt: '' });
+          setHealStatus('Einheit Di., 08.09.2026 wurde angelegt: Pressing & Gegenpressing · Stufe 8 · 90 Min.');
+        } catch (e: any) {
+          setHealStatus(`Di., 08.09.2026 konnte NICHT angelegt werden: ${e?.message || e}`);
+        }
+      } else if (created === 0) {
+        setHealStatus('Aktuelle Woche vollständig – nichts anzulegen.');
+      }
     });
   }, [sessions]);
 
@@ -2428,6 +2470,8 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
       await saveSession(cleanedSession);
       setLocalSession(cleanedSession);
       setIsEditing(false);
+      setShowHistory(true);
+      loadHistory(cleanedSession.id);
 
       setNotification('Einheit erfolgreich gespeichert!');
       setTimeout(() => setNotification(null), 2500);
@@ -3681,7 +3725,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
                 className={`px-2 py-0.5 rounded text-[7px] font-black uppercase border cursor-pointer ${showHistory ? 'bg-indigo-600 text-white border-indigo-400' : 'bg-indigo-900/40 text-indigo-200 border-indigo-600 hover:bg-indigo-800'}`}
                 title="Speicherverlauf der geöffneten Einheit – jede Änderung wird automatisch mit Datum & Uhrzeit gesichert"
               >
-                🕘 Versionen
+                🕘 Versionen{historyCount > 0 ? ` (${historyCount})` : ''}
               </button>
               {healStatus && (
                 <span className="text-[7px] font-bold uppercase text-slate-400 max-w-[300px] truncate" title={healStatus}>{healStatus}</span>
@@ -3695,26 +3739,44 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
                 {historyLoading ? (
                   <div className="text-[8px] text-slate-400">Lade Versionen…</div>
                 ) : historyEntries.length === 0 ? (
-                  <div className="text-[8px] text-slate-500">Noch keine Versionen. Ab jetzt wird jede Änderung (auch von Kollegen) automatisch hier gesichert – mit Datum & Uhrzeit.</div>
+                  <div className="flex flex-col gap-1.5">
+                    <div className="text-[8px] text-slate-500">Noch keine Versionen. Ab jetzt wird jede Änderung (auch von Kollegen) automatisch hier gesichert – mit Datum & Uhrzeit.</div>
+                    <button
+                      onClick={async () => {
+                        const n = await seedBaselineVersions();
+                        setNotification(`${n} Einheiten: heutiger Stand als Version gesichert.`);
+                        setTimeout(() => setNotification(null), 3000);
+                        if (localSession?.id) loadHistory(localSession.id);
+                      }}
+                      className="self-start px-2 py-1 rounded text-[8px] font-black uppercase bg-emerald-600 text-white hover:bg-emerald-500 cursor-pointer"
+                    >
+                      ▶ Stand aller Einheiten einmalig sichern
+                    </button>
+                  </div>
                 ) : (
                   <div className="max-h-[180px] overflow-auto flex flex-col gap-1">
-                    {historyEntries.map((h, i) => (
-                      <div key={h.id} className="flex items-center gap-2 bg-slate-800/60 rounded px-1.5 py-1">
-                        <span className={`text-[7px] font-black uppercase px-1 py-0.5 rounded ${h.action === 'delete' ? 'bg-red-900 text-red-200' : 'bg-emerald-900 text-emerald-200'}`}>
-                          {h.action === 'delete' ? 'gelöscht' : i === 0 ? 'aktuell' : 'Version'}
-                        </span>
-                        <span className="text-[8px] font-bold text-slate-200 whitespace-nowrap">{h.readable}</span>
-                        {h.action !== 'delete' && (
-                          <button
-                            onClick={() => restoreHistoryVersion(h)}
-                            disabled={historyLoading}
-                            className="ml-auto text-[7px] font-black uppercase bg-indigo-600 text-white rounded px-2 py-0.5 hover:bg-indigo-500 cursor-pointer disabled:opacity-40"
-                          >
-                            Wiederherstellen
-                          </button>
-                        )}
-                      </div>
-                    ))}
+                    {historyEntries.map((h, i) => {
+                      const c = h.data?.content || {};
+                      const preview = [c.warmup, c.main1, c.main2, c.closing, h.data?.importantInfo, h.data?.remarks].filter(x => x && String(x).trim()).join(' | ').trim().slice(0, 90);
+                      return (
+                        <div key={h.id} className="flex items-center gap-2 bg-slate-800/60 rounded px-1.5 py-1">
+                          <span className={`text-[7px] font-black uppercase px-1 py-0.5 rounded ${h.action === 'delete' ? 'bg-red-900 text-red-200' : 'bg-emerald-900 text-emerald-200'}`}>
+                            {h.action === 'delete' ? 'gelöscht' : i === 0 ? 'aktuell' : 'Version'}
+                          </span>
+                          <span className="text-[8px] font-bold text-slate-200 whitespace-nowrap">{h.readable}</span>
+                          {preview && <span className="text-[7px] text-slate-400 truncate max-w-[160px]">{preview}</span>}
+                          {h.action !== 'delete' && (
+                            <button
+                              onClick={() => restoreHistoryVersion(h)}
+                              disabled={historyLoading}
+                              className="ml-auto text-[7px] font-black uppercase bg-indigo-600 text-white rounded px-2 py-0.5 hover:bg-indigo-500 cursor-pointer disabled:opacity-40"
+                            >
+                              Wiederherstellen
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
