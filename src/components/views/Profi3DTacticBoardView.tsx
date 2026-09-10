@@ -145,6 +145,21 @@ export const PASS_ACTION_COLORS: Record<string, string> = {
   Torschuss: '#EF4444',
 };
 
+// Foto statt Nummer: zeigt das Kaderfoto, fällt automatisch auf die Rückennummer zurück (Bild defekt/leer)
+const PhotoOrNumber: React.FC<{ image?: string; number?: any; className?: string; circleClass?: string }> = ({ image, number, className = 'w-5 h-5', circleClass = 'bg-emerald-400 text-slate-950' }) => (
+  <span className={`relative shrink-0 ${className}`}>
+    <span className={`absolute inset-0 rounded-full font-black text-[9px] flex items-center justify-center ${circleClass}`}>{number}</span>
+    {image ? (
+      <img
+        src={image}
+        alt=""
+        onError={(e) => { (e.currentTarget).style.display = 'none'; }}
+        className="absolute inset-0 w-full h-full rounded-full object-cover"
+      />
+    ) : null}
+  </span>
+);
+
 export interface CustomFormationData {
   id: string;
   name: string;
@@ -963,7 +978,7 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
           role: (slot as any).role || '',
           xPercent: (slot as any).xPercent ?? 50,
           yPercent: (slot as any).yPercent ?? 50,
-          image: player?.image || undefined,
+          image: player?.image || player?.additionalImages?.[0] || undefined,
         };
       });
       return { ok: nodes.length > 0, nodes };
@@ -989,7 +1004,7 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
         role: (slot as any).role || '',
         xPercent: (slot as any).xPercent ?? 50,
         yPercent: (slot as any).yPercent ?? 50,
-        image: player?.image || undefined,
+        image: player?.image || player?.additionalImages?.[0] || undefined,
       };
     });
     return { ok: nodes.length > 0, nodes };
@@ -1011,7 +1026,7 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
             const full = `${p.firstName || ''} ${p.lastName || p.name || ''}`.trim().toLowerCase();
             return full.includes(String(n.name || '').toLowerCase()) || String(n.name || '').toLowerCase().includes((p.lastName || p.name || '').toLowerCase());
           });
-          return { ...n, image: matched?.image || n.image };
+return { ...n, image: matched?.image || matched?.additionalImages?.[0] || n.image };
         });
       }
       // Danach: nur nicht-getauschte Positionen vom Board holen
@@ -1031,7 +1046,7 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
           const full = `${p.firstName || ''} ${p.lastName || p.name || ''}`.trim().toLowerCase();
           return full.includes(String(boardNode.name || '').toLowerCase()) || String(boardNode.name || '').toLowerCase().includes((p.lastName || p.name || '').toLowerCase());
         });
-        return { ...boardNode, image: matched?.image || boardNode.image };
+        return { ...boardNode, image: matched?.image || matched?.additionalImages?.[0] || boardNode.image };
       });
       return merged;
     });
@@ -1052,9 +1067,9 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
           return full.includes(nm) || nm.includes(pl) || full.includes(nm.replace(/^[a-z]\.?\s*/, ''));
         });
         const pl = byNum || byName;
-        if (!pl?.image) return n;
+        if (!pl?.image && !pl?.additionalImages?.[0]) return n;
         changed = true;
-        return { ...n, image: pl.image };
+        return { ...n, image: pl.image || pl.additionalImages?.[0] };
       });
       return changed ? next : prev;
     });
@@ -1136,7 +1151,7 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
       const fullName = `${p.firstName || ''} ${p.lastName || p.name || ''}`.trim().toLowerCase();
       return fullName.includes(sub.name.toLowerCase()) || sub.name.toLowerCase().includes((p.lastName || p.name || '').toLowerCase());
     });
-    const subImage = subPlayer?.image || undefined;
+    const subImage = subPlayer?.image || subPlayer?.additionalImages?.[0] || undefined;
     swappedPositionsRef.current.add(targetIdx);
     setPresentationLineup((prev) => {
       const next = [...prev];
@@ -1185,7 +1200,7 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
     setPresentationLineup((prev) => {
       const next = [...prev];
       if (!next[idx]) return prev;
-      next[idx] = { ...next[idx], name: shortNameOf(player), number: String(player.number || next[idx].number), position: player.position || next[idx].position, image: player.image || next[idx].image };
+      next[idx] = { ...next[idx], name: shortNameOf(player), number: String(player.number || next[idx].number), position: player.position || next[idx].position, image: player.image || player.additionalImages?.[0] || next[idx].image };
       return next;
     });
     swappedPositionsRef.current.add(idx);
@@ -1205,7 +1220,7 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
     if (!player) return;
     setPresentationSubstitutes((prev) => {
       if (prev.some((s) => s.name === shortNameOf(player) && String(s.num) === String(player.number || ''))) return prev;
-      return [...prev, { num: String(player.number || ''), name: shortNameOf(player), pos: player.position || '', note: '', image: player.image }];
+      return [...prev, { num: String(player.number || ''), name: shortNameOf(player), pos: player.position || '', note: '', image: player.image || player.additionalImages?.[0] }];
     });
     notify(`Bank: ${shortNameOf(player)} hinzugefügt (automatisch gespeichert ✓)`);
   };
@@ -7992,7 +8007,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                           <div className="space-y-1.5">
                             {presentationLineup.map((p: any, idx: number) => (
                               <div key={idx} className="flex items-center gap-2 bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2">
-                                <span className="w-6 h-6 rounded-full bg-emerald-400 text-slate-950 font-black text-[10px] flex items-center justify-center shrink-0">{p.number}</span>
+                                <PhotoOrNumber image={p.image} number={p.number} className="w-6 h-6" circleClass="bg-emerald-400 text-slate-950" />
                                 <span className="text-[11px] text-white font-bold truncate flex-1">{p.name || '— freier Platz —'}</span>
                                 <span className="text-[9px] text-slate-500 uppercase font-mono shrink-0">{p.position}</span>
                                 {startelfEditMode ? (
@@ -8024,7 +8039,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                           <div className="space-y-1.5">
                             {presentationSubstitutes.map((sub, idx) => (
                               <div key={idx} className="flex items-center gap-2 bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2">
-                                <span className="w-6 h-6 rounded-full bg-slate-700 text-slate-300 font-black text-[10px] flex items-center justify-center shrink-0">{sub.num}</span>
+                                <PhotoOrNumber image={(sub as any).image} number={sub.num} className="w-6 h-6" circleClass="bg-slate-700 text-slate-300" />
                                 <span className="text-[11px] text-slate-300 font-bold truncate flex-1">{sub.name}</span>
                                 <span className="text-[9px] text-slate-500 uppercase font-mono shrink-0">{sub.pos}</span>
                                 {startelfEditMode ? (
@@ -8614,7 +8629,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                           <div className="space-y-1">
                             {presentationLineup.map((p: any, idx: number) => (
                               <div key={idx} className="flex items-center gap-2 bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-1.5">
-                                <span className="w-5 h-5 rounded-full bg-emerald-400 text-slate-950 font-black text-[9px] flex items-center justify-center shrink-0">{p.number}</span>
+                                <PhotoOrNumber image={p.image} number={p.number} className="w-5 h-5" circleClass="bg-emerald-400 text-slate-950" />
                                 <span className="text-[11px] text-white font-bold truncate flex-1">{p.name}</span>
                                 <span className="text-[9px] text-slate-500 uppercase font-mono shrink-0">{p.position}</span>
                               </div>
@@ -8628,7 +8643,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                           <div className="space-y-1">
                             {presentationSubstitutes.map((sub, idx) => (
                               <div key={idx} className="flex items-center gap-2 bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-1.5">
-                                <span className="w-5 h-5 rounded-full bg-slate-700 text-slate-300 font-black text-[9px] flex items-center justify-center shrink-0">{sub.num}</span>
+                                <PhotoOrNumber image={(sub as any).image} number={sub.num} className="w-5 h-5" circleClass="bg-slate-700 text-slate-300" />
                                 <span className="text-[11px] text-slate-300 font-bold truncate flex-1">{sub.name}</span>
                                 <span className="text-[9px] text-slate-500 uppercase font-mono shrink-0">{sub.pos}</span>
                               </div>
