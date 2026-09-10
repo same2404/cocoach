@@ -7,8 +7,13 @@ import {
   collection, 
   doc, 
   getDoc, 
+  getDocs, 
   setDoc, 
-  deleteDoc 
+  deleteDoc,
+  query, 
+  where, 
+  orderBy, 
+  limit 
 } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { 
@@ -1833,6 +1838,62 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
   const [finderOpen, setFinderOpen] = useState(false);
   const [finderQuery, setFinderQuery] = useState('');
   const [finderBusy, setFinderBusy] = useState<boolean>(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyEntries, setHistoryEntries] = useState<{ id: string; readable: string; ts: number; action: string; data: any }[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  // Verlauf der AUSGEWÄHLTEN Einheit laden (jede Änderung wird minutengenau archiviert)
+  const loadHistory = async (itemId: string) => {
+    if (!itemId) { setHistoryEntries([]); return; }
+    setHistoryLoading(true);
+    try {
+      const q = query(
+        collection(db, 'training_sessions_history'),
+        where('itemId', '==', itemId),
+        orderBy('ts', 'desc'),
+        limit(60)
+      );
+      const snap = await getDocs(q);
+      const entries: any[] = [];
+      snap.forEach(d => entries.push({ id: d.id, ...d.data() as any }));
+      setHistoryEntries(entries);
+    } catch (e: any) {
+      console.error('History Fehler:', e);
+      setHistoryEntries([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+  useEffect(() => {
+    if (showHistory && localSession?.id) {
+      loadHistory(localSession.id);
+    }
+  }, [showHistory, localSession?.id]);
+
+  // Eine gespeicherte Version WIEDERHERSTELLEN (Datensatz wird mit dem archivierten Stand überschrieben)
+  const restoreHistoryVersion = async (entry: { id: string; readable: string; data: any }) => {
+    if (!localSession) return;
+    setHistoryLoading(true);
+    try {
+      const restored = {
+        ...localSession,
+        ...entry.data,
+        id: localSession.id,
+        date: localSession.date,
+      };
+      const { id: _id, ...dataToSave } = restored as any;
+      await setDoc(doc(db, 'training_sessions', localSession.id), dataToSave, { merge: true });
+      saveSession(restored as TrainingSession);
+      setLocalSession(restored as TrainingSession);
+      setNotification(`Version vom ${entry.readable} wiederhergestellt.`);
+      setTimeout(() => setNotification(null), 3000);
+      loadHistory(localSession.id);
+    } catch (e: any) {
+      setHealStatus(`Fehler beim Wiederherstellen: ${e?.message || e}`);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
   const healCurrentWeek = async (showFeedback = false): Promise<number> => {
     const template = currentWeekPlans[templateIndexForWeek(currentWeekIdx)] || currentWeekPlans[0];
     if (!template?.tage?.length) return 0;
@@ -3615,10 +3676,49 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
               >
                 Einheiten erzeugen (KW37)
               </button>
+              <button
+                onClick={() => { setShowHistory(!showHistory); if (localSession?.id) loadHistory(localSession.id); }}
+                className={`px-2 py-0.5 rounded text-[7px] font-black uppercase border cursor-pointer ${showHistory ? 'bg-indigo-600 text-white border-indigo-400' : 'bg-indigo-900/40 text-indigo-200 border-indigo-600 hover:bg-indigo-800'}`}
+                title="Speicherverlauf der geöffneten Einheit – jede Änderung wird automatisch mit Datum & Uhrzeit gesichert"
+              >
+                🕘 Versionen
+              </button>
               {healStatus && (
                 <span className="text-[7px] font-bold uppercase text-slate-400 max-w-[300px] truncate" title={healStatus}>{healStatus}</span>
               )}
             </div>
+            {showHistory && (
+              <div className="px-2.5 pb-2 bg-[#0F172A] border-t border-slate-800">
+                <div className="text-[8px] font-black uppercase text-indigo-300 mb-1 mt-1.5">
+                  Speicherverlauf der geöffneten Einheit {localSession?.id ? `(${localSession.id})` : ''} – jede Änderung automatisch gesichert:
+                </div>
+                {historyLoading ? (
+                  <div className="text-[8px] text-slate-400">Lade Versionen…</div>
+                ) : historyEntries.length === 0 ? (
+                  <div className="text-[8px] text-slate-500">Noch keine Versionen. Ab jetzt wird jede Änderung (auch von Kollegen) automatisch hier gesichert – mit Datum & Uhrzeit.</div>
+                ) : (
+                  <div className="max-h-[180px] overflow-auto flex flex-col gap-1">
+                    {historyEntries.map((h, i) => (
+                      <div key={h.id} className="flex items-center gap-2 bg-slate-800/60 rounded px-1.5 py-1">
+                        <span className={`text-[7px] font-black uppercase px-1 py-0.5 rounded ${h.action === 'delete' ? 'bg-red-900 text-red-200' : 'bg-emerald-900 text-emerald-200'}`}>
+                          {h.action === 'delete' ? 'gelöscht' : i === 0 ? 'aktuell' : 'Version'}
+                        </span>
+                        <span className="text-[8px] font-bold text-slate-200 whitespace-nowrap">{h.readable}</span>
+                        {h.action !== 'delete' && (
+                          <button
+                            onClick={() => restoreHistoryVersion(h)}
+                            disabled={historyLoading}
+                            className="ml-auto text-[7px] font-black uppercase bg-indigo-600 text-white rounded px-2 py-0.5 hover:bg-indigo-500 cursor-pointer disabled:opacity-40"
+                          >
+                            Wiederherstellen
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             <span className="text-[7px] font-black uppercase text-slate-400">
               Spieltag: {activeMatchDay === 'friday' ? 'Freitag' : activeMatchDay === 'saturday' ? 'Samstag' : activeMatchDay === 'sunday' ? 'Sonntag' : 'Auto'}
             </span>

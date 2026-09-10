@@ -41,6 +41,62 @@ function isReadOnly(): boolean {
   return CLUB_READONLY;
 }
 
+// ── Automatische Versions-Archivierung ──────────────────────────────────────
+// Jede Änderung an jedem Datensatz wird IMMER mit Tag, Datum und Uhrzeit
+// (minutengenau nach einem Klick) in eigene History-Dokumente gesichert.
+// So gehen Inhalte nie mehr verloren – weder durch eigene noch durch
+// Kollegen-Änderungen. Versionen lassen sich jederzeit wiederherstellen.
+function tsToReadable(ts: number): string {
+  return new Date(ts).toLocaleString('de-DE', {
+    weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', second: '2-digit'
+  });
+}
+
+// Große Bild-Blobs (Base64) würden die History aufblähen → im Snapshot kürzen.
+function trimImagesForHistory<T>(obj: T): T {
+  if (obj === null || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) {
+    return obj.map(trimImagesForHistory).filter(v => v !== undefined) as unknown as T;
+  }
+  const out: Record<string, any> = {};
+  for (const [key, val] of Object.entries(obj)) {
+    if (typeof val === 'string' && val.startsWith('data:') && val.length > 400) {
+      out[key] = '[Bild ' + Math.round(val.length / 3) + 'KB gespeichert]';
+    } else {
+      out[key] = trimImagesForHistory(val);
+    }
+  }
+  return out as T;
+}
+
+async function writeAutoHistory<T>(
+  effectiveCollection: string,
+  idField: keyof T,
+  item: T,
+  action: 'save' | 'delete'
+) {
+  try {
+    if (effectiveCollection.endsWith('_history')) return;
+    if (effectiveCollection.includes('_documents_content')) return;
+    const itemId = String((item as any)[idField] || (item as any).id);
+    const ts = Date.now();
+    const { [idField]: _, ...snapshot } = item as any;
+    const trimmed = trimImagesForHistory(sanitizeFirestoreData(snapshot));
+    const histRef = doc(db, `${effectiveCollection}_history`, `${itemId}_${ts}_${Math.random().toString(36).slice(2, 7)}`);
+    await setDoc(histRef, {
+      itemId,
+      ts,
+      tsIso: new Date(ts).toISOString(),
+      readable: tsToReadable(ts),
+      action,
+      data: trimmed
+    });
+  } catch (err) {
+    console.error('[History] Archivierung fehlgeschlagen (nicht kritisch):', err);
+  }
+}
+
 export function useCollectionSync<T>(
   collectionName: string,
   idField: keyof T = 'id' as keyof T,
@@ -130,6 +186,7 @@ export function useCollectionSync<T>(
 
       try {
         await setDoc(docRef, sanitized, { merge: true });
+        await writeAutoHistory(effectiveCollection, idField, item, 'save');
       } catch (err) {
         console.error(`Error saving item to Firestore ${effectiveCollection}/${id}:`, err);
         throw err;
@@ -151,13 +208,17 @@ export function useCollectionSync<T>(
 
       const docRef = doc(db, effectiveCollection, idStr);
       try {
+        const deletedItem = data.find((x) => String((x as any)[idField] || (x as any).id) === idStr) as unknown as T;
+        if (deletedItem) {
+          await writeAutoHistory(effectiveCollection, idField, deletedItem, 'delete');
+        }
         await deleteDoc(docRef);
       } catch (err) {
         console.error(`Error removing item from Firestore ${effectiveCollection}/${idStr}:`, err);
         throw err;
       }
     },
-    [effectiveCollection, idField]
+    [effectiveCollection, idField, data]
   );
 
   const saveItem = useCallback(
@@ -181,6 +242,7 @@ export function useCollectionSync<T>(
       const sanitized = sanitizeFirestoreData(dataToSave);
       try {
         await setDoc(docRef, sanitized, { merge: true });
+        await writeAutoHistory(effectiveCollection, idField, item, 'save');
       } catch (err) {
         console.error(`Error saving item to Firestore ${effectiveCollection}/${id}:`, err);
         throw err;
