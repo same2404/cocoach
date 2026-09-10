@@ -1740,6 +1740,28 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
     saveSession(seedSession);
   }, [sessions, saveSession]);
 
+  // Selbstheilung: fehlende Einheiten der AKTUELLEN Kalenderwoche automatisch anlegen
+  // (z. B. Dienstag 08.09.2026). Bestehende Einheiten mit Inhalten bleiben unangetastet.
+  const healCurrentWeekRef = useRef(false);
+  useEffect(() => {
+    if (sessions.length === 0) return;
+    if (healCurrentWeekRef.current) return;
+    const template = currentWeekPlans[templateIndexForWeek(currentWeekIdx)] || currentWeekPlans[0];
+    if (!template?.tage?.length) return;
+    healCurrentWeekRef.current = true;
+    const wkBase = new Date(KW_START_DATES[currentWeekIdx % KW_START_DATES.length] || KW_START_DATES[0]);
+    wkBase.setHours(0, 0, 0, 0);
+    template.tage.forEach((tag, dayIndex) => {
+      if (tag.stufe === 0) return;
+      const d = new Date(wkBase);
+      d.setDate(wkBase.getDate() + dayIndex);
+      const iso = d.toISOString().split('T')[0];
+      if (!sessions.some((s: any) => s.date === iso)) {
+        upsertForDate(iso, tag);
+      }
+    });
+  }, [sessions]);
+
   useEffect(() => {
     const session = sessions.find(s => s.id === selectedSessionId);
     if (session) {
