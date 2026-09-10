@@ -645,6 +645,9 @@ export const MatchReportView: React.FC<MatchReportViewProps> = ({
       });
       const parsed = await raw.json().catch(() => ({}));
       if (!raw.ok || !parsed?.data) {
+        if (raw.status === 401) {
+          throw new Error('Ungültiger API-Key – bitte die offizielle Adresse https://cocoach-app.vercel.app öffnen.');
+        }
         throw new Error(parsed?.error || 'Abruf fehlgeschlagen');
       }
       setMatchdayResult(parsed.data);
