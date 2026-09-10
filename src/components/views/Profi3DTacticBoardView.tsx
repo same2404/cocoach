@@ -2927,6 +2927,20 @@ Gib mir in 3 kurzen, klaren Bullet Points:
       const isLocked = lockedPlayerIds.includes(node.id);
       const zoneObj = customZones.find(z => z.playerId === node.id);
 
+      let image = node.image;
+      if (!image) {
+        const numStr = String(node.number || '').replace(/\D+/g, '');
+        const byNum = numStr ? (players || []).find((p: any) => String(p.number || p.rückennummer || '').replace(/\D+/g, '') === numStr) : undefined;
+        const byName = byNum ? undefined : (players || []).find((p: any) => {
+          const full = `${p.firstName || ''} ${p.lastName || p.name || ''}`.trim().toLowerCase();
+          const nm = String(node.name || '').toLowerCase().replace(/[.,'"]/g, '');
+          const pl = `${p.lastName || p.name || ''}`.toLowerCase();
+          return full.includes(nm) || nm.includes(pl) || full.includes(nm.replace(/^[a-z]\.?\s*/, ''));
+        });
+        const p = byNum || byName;
+        image = p?.image || p?.additionalImages?.[0];
+      }
+
       return { 
         ...node, 
         role: activeRole, 
@@ -2934,10 +2948,11 @@ Gib mir in 3 kurzen, klaren Bullet Points:
         currentY: y,
         isHighlighted,
         isLocked,
-        markedZone: zoneObj?.zoneType
+        markedZone: zoneObj?.zoneType,
+        image,
       };
     });
-  }, [basePreset, activePhase, customPositionsMap, customRoles, highlightedPlayerIds, lockedPlayerIds, customZones]);
+  }, [basePreset, activePhase, customPositionsMap, customRoles, highlightedPlayerIds, lockedPlayerIds, customZones, players]);
 
   const selectedNode = selectedNodeId ? (currentNodePositions.find(n => n.id === selectedNodeId) || null) : null;
   const contextMenuPlayerNode = currentNodePositions.find(n => n.id === contextMenuPlayerId);
@@ -4859,8 +4874,20 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                             ? 'bg-gradient-to-tr from-[#e94560] to-[#ff6b81] border-white text-white shadow-[#e94560]/50'
                             : 'bg-gradient-to-tr from-[#e94560] to-[#c0392b] border-white text-white shadow-[#e94560]/40'
                         }`}>
-                          {node.position}
+                          {node.image ? (
+                            <img
+                              src={node.image}
+                              alt=""
+                              onError={(e) => { (e.currentTarget).style.display = 'none'; }}
+                              className="w-full h-full rounded-full object-cover"
+                            />
+                          ) : (
+                            node.position
+                          )}
                         </div>
+                        {node.image && node.position && (
+                          <span className="mt-0.5 text-[7px] font-mono font-black bg-slate-950/90 text-slate-300 px-1 rounded border border-slate-800 leading-tight">{node.position}</span>
+                        )}
 
                         {/* Role tag badge under node */}
                         {node.role && (
@@ -5910,6 +5937,51 @@ Gib mir in 3 kurzen, klaren Bullet Points:
               </div>
             )}
 
+            {/* STUFE 2.5: Drag-Laufweg + Ball-Kette + KI-Aufbau */}
+            <div className="flex items-center gap-0.5 bg-slate-900 border border-slate-700 rounded-md px-1 py-0.5" title="Laufweg: Spieler antippen & ziehen (mehrere Spieler möglich), dann ▶️ Abspielen. Ball-Kette: klicke die Spieler in Reihenfolge 1→11">
+              <button
+                onClick={() => { setDragRunMode(p => !p); setBallChainMode(false); if (dragRunMode) { setDragRunPlayerId(null); setDragRunStart(null); setDragRunPreview([]); } }}
+                className={`px-2 py-0.5 text-[9.5px] font-black uppercase tracking-wider rounded-md border transition-all cursor-pointer ${
+                  dragRunMode ? 'bg-cyan-500 text-slate-950 border-cyan-400' : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-cyan-500/50'
+                }`}
+                title="Spieler antippen, zum Ziel ziehen, loslassen. Für jeden Spieler wiederholen – ▶️ Abspielen zeigt alle Laufwege gleichzeitig."
+              >
+                🖐️ Drag-Laufweg
+              </button>
+              <button
+                onClick={() => { setBallChainMode(p => !p); setDragRunMode(false); }}
+                className={`px-2 py-0.5 text-[9.5px] font-black uppercase tracking-wider rounded-md border transition-all cursor-pointer ${
+                  ballChainMode ? 'bg-amber-500 text-slate-950 border-amber-400' : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-amber-500/50'
+                }`}
+                title="Klicke Spieler 1 → 2 → … → 11, der Ball läuft bei ▶️ Abspielen entlang der Kette."
+              >
+                ⚡ Ball-Kette
+              </button>
+              <button
+                onClick={applyAiBuildUpSuggestion}
+                className="px-2 py-0.5 text-[9.5px] font-black uppercase tracking-wider rounded-md border transition-all cursor-pointer text-emerald-300 border-slate-800 hover:border-emerald-500/60"
+                title="KI-Aufbau vorschlagen – danach frei verschiebbar, ▶️ Abspielen zeigt die Aktion"
+              >
+                ⚡ KI-Aufbau
+              </button>
+              {dragRunMode && (
+                <button onClick={() => { setDragRunPlayerId(null); setDragRunStart(null); setDragRunPreview([]); }} className="px-1.5 py-0.5 text-[8.5px] font-black rounded cursor-pointer hover:bg-rose-500/30 transition-all text-rose-300" title="Aktuellen Laufweg-Zug abbrechen">✖ Abbrechen</button>
+              )}
+              {ballChainMode && (
+                <button onClick={() => { setPassStations([]); setPassBallPos(null); }} className="px-1.5 py-0.5 text-[8.5px] font-black rounded cursor-pointer hover:bg-rose-500/30 transition-all text-rose-300" title="Ball-Kette leeren">🧹 Leeren</button>
+              )}
+            </div>
+            {dragRunMode && (
+              <div className="bg-cyan-500/20 border border-cyan-500/40 rounded-xl px-3 py-1.5 flex items-center gap-2 text-[10px] font-black uppercase text-cyan-300">
+                🖐️ Ziehe einen Spieler – der Cursor zeichnet seinen Laufweg. Jeder Spieler einzeln. Dann ▶️ Abspielen.
+              </div>
+            )}
+            {ballChainMode && (
+              <div className="bg-amber-500/20 border border-amber-500/40 rounded-xl px-3 py-1.5 flex items-center gap-2 text-[10px] font-black uppercase text-amber-300">
+                ⚡ Klicke die Spieler in der Reihenfolge der Ballkette (1 → 2 → … → 11). Drücke ▶️ Abspielen.
+              </div>
+            )}
+
             {/* STUFE 3: Spielaufbau-Varianten */}
             <div className="flex items-center gap-0.5 bg-slate-900 border border-slate-700 rounded-md px-1 py-0.5" title="Spielaufbau-Variante laden (setzt Laufwege)">
               <span className="text-[8.5px] font-black uppercase text-slate-400 mr-0.5">⚽ Aufbau</span>
@@ -6389,8 +6461,20 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                             ? 'bg-gradient-to-tr from-[#e94560] to-[#ff6b81] border-white text-white shadow-[#e94560]/50'
                             : 'bg-gradient-to-tr from-[#e94560] to-[#c0392b] border-white text-white shadow-[#e94560]/40'
                         }`}>
-                          {node.position}
+                          {node.image ? (
+                            <img
+                              src={node.image}
+                              alt=""
+                              onError={(e) => { (e.currentTarget).style.display = 'none'; }}
+                              className="w-full h-full rounded-full object-cover"
+                            />
+                          ) : (
+                            node.position
+                          )}
                         </div>
+                        {node.image && node.position && (
+                          <span className="mt-0.5 text-[7px] font-mono font-black bg-slate-950/90 text-slate-300 px-1 rounded border border-slate-800 leading-tight">{node.position}</span>
+                        )}
 
                         {/* Role tag badge under node */}
                         {node.role && (
