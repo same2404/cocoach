@@ -160,6 +160,52 @@ const PhotoOrNumber: React.FC<{ image?: string; number?: any; className?: string
   </span>
 );
 
+type StartelfStarter = { number?: string | number; name?: string; position?: string };
+
+// fupa-Startelf → Board-Knoten: echte Spieler (mit Foto) auf die Positionen des gewählten Systems
+const buildStartelfNodes = (starters: StartelfStarter[], tpl: any, squad: any[]) => {
+  const slots = (tpl?.nodes || []);
+  const normNum = (s: any) => String(s ?? '').replace(/\D+/g, '');
+  const shortName = (p: any) => {
+    const fn = (p.firstName || '').trim();
+    const ln = (p.lastName || p.name || '').trim();
+    return fn && ln ? `${fn.charAt(0)}. ${ln}` : ln || fn || '?';
+  };
+  const resolve = (st: any) => {
+    const sn = st?.number != null && st?.number !== '' ? normNum(st.number) : '';
+    const byNum = sn ? squad.find((p: any) => normNum(p.number || p.rückennummer) === sn) : undefined;
+    if (byNum) return byNum;
+    return squad.find((p: any) => {
+      const full = `${p.firstName || ''} ${p.lastName || p.name || ''}`.trim().toLowerCase();
+      const n = String(st?.name || '').toLowerCase().replace(/[.,'"]/g, '');
+      const pl = `${p.lastName || p.name || ''}`.toLowerCase();
+      return full.includes(n) || n.includes(pl) || full.includes(n.replace(/^[a-z]\.?\s*/, ''));
+    });
+  };
+  return starters.slice(0, 11).map((st: any, idx: number) => {
+    const slot = slots[idx] || {};
+    const player = resolve(st);
+    return {
+      id: String(slot.id ?? idx + 1),
+      name: player ? shortName(player) : String(st?.name || '?'),
+      number: player ? String(player.number || player.rückennummer || '') : String(st?.number ?? ''),
+      position: player?.position || slot.position || st?.position || '',
+      role: slot.role || '',
+      xPercent: slot.xPercent ?? 50,
+      yPercent: slot.yPercent ?? 50,
+      offensivX: slot.offensivX ?? slot.xPercent ?? 50,
+      offensivY: slot.offensivY ?? slot.yPercent ?? 50,
+      defensivX: slot.defensivX ?? slot.xPercent ?? 50,
+      defensivY: slot.defensivY ?? slot.yPercent ?? 50,
+      umschaltX: slot.umschaltX ?? slot.xPercent ?? 50,
+      umschaltY: slot.umschaltY ?? slot.yPercent ?? 50,
+      speedKmh: slot.speedKmh ?? 28,
+      distanceKm: slot.distanceKm ?? 10,
+      image: player?.image || player?.additionalImages?.[0] || undefined,
+    };
+  });
+};
+
 export interface CustomFormationData {
   id: string;
   name: string;
@@ -609,6 +655,9 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
   const [isTvMode, setIsTvMode] = useState<boolean>(false);
   const [isPitchOnlyFullscreen, setIsPitchOnlyFullscreen] = useState<boolean>(false);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [lastFupaStartelf, setLastFupaStartelf] = useState<StartelfStarter[] | null>(null);
+  const [fupaLoading, setFupaLoading] = useState(false);
+  const [fupaLineupActive, setFupaLineupActive] = useState(false);
 
   // Dynamische Formation-Overlays: Spieler des aktiven Vereins werden den Formation-Positionen zugeordnet
   const liveFormations = useMemo(() => {
@@ -1015,6 +1064,7 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
     const preset = liveFormations['4-2-3-1']?.nodes || [];
     if (preset.length === 0) return;
     setPresentationLineup((prev) => {
+      if (fupaLineupActive) return prev;
       // Erstes Mal: direkt übernehmen – aktuelle Startelf (echte Spieler mit Foto), sonst Board-Vorlage
       if (prev.length === 0) {
         if (currentStartelfNodes.ok && currentStartelfNodes.nodes.length > 0) {
@@ -2762,6 +2812,70 @@ Gib mir in 3 kurzen, klaren Bullet Points:
     setTimeout(() => setNotification(null), 3000);
   };
 
+  // ⚡ Startelf automatisch vom letzten Spieltag via fupa laden (mit Tages-Cache), Board + Präsentation
+  const loadFupaStartelf = useCallback(async (force: boolean) => {
+    if (!force) {
+      try {
+        const cached = localStorage.getItem('fca_fupa_startelf_cache');
+        if (cached) {
+          const c = JSON.parse(cached);
+          const sameDay = c?.day === new Date().toISOString().slice(0, 10);
+          if (sameDay && Array.isArray(c?.starters) && c.starters.length >= 11) {
+            setLastFupaStartelf(c.starters);
+            setFupaLineupActive(true);
+            const tpl = liveFormations[selectedFormation] || liveFormations['4-2-3-1'];
+            const squad = (players || []).filter((p: any) => (p.category || 'player') === 'player');
+            setPresentationLineup(buildStartelfNodes(c.starters, tpl, squad));
+            swappedPositionsRef.current = new Set();
+            return;
+          }
+        }
+      } catch { /* ignore */ }
+    }
+    setFupaLoading(true);
+    try {
+      const raw: any = await apiFetch('/api/matchday/fetch', {
+        method: 'POST',
+        body: JSON.stringify({
+          squadPlayers: (players || []).filter((p: any) => (p.category || 'player') === 'player').map((p: any) => ({
+            number: String(p.number || ''),
+            firstName: p.firstName || '',
+            lastName: p.lastName || p.name || '',
+          })),
+        }),
+      });
+      const parsed = await raw.json().catch(() => ({}));
+      if (!raw.ok || !parsed?.data) {
+        if (raw.status === 401) notify('Ungültiger API-Key – bitte die offizielle Adresse https://cocoach-app.vercel.app öffnen.');
+        else notify(parsed?.error || 'fupa-Startelf konnte nicht geladen werden.');
+        return;
+      }
+      const starters = Array.isArray(parsed.data.starters) ? parsed.data.starters.filter((s: any) => s && s.name) : [];
+      if (starters.length < 11) { notify('fupa-Startelf unvollständig – System-Vorlage bleibt aktiv.'); return; }
+      setLastFupaStartelf(starters);
+      setFupaLineupActive(true);
+      try { localStorage.setItem('fca_fupa_startelf_cache', JSON.stringify({ day: new Date().toISOString().slice(0, 10), starters, match: parsed.data.match || null })); } catch { /* ignore */ }
+      const tpl = liveFormations[selectedFormation] || liveFormations['4-2-3-1'];
+      const squad = (players || []).filter((p: any) => (p.category || 'player') === 'player');
+      const nodes = buildStartelfNodes(starters, tpl, squad);
+      setPresentationLineup(nodes);
+      swappedPositionsRef.current = new Set();
+      const m = parsed.data.match || {};
+      const withFoto = nodes.filter((n: any) => n.image).length;
+      notify(`✅ Startelf ${m.opponent ? 'vs. ' + m.opponent + ' ' : ''}von fupa übernommen (${starters.length} Spieler, ${withFoto} mit Foto)`);
+    } catch (err: any) {
+      notify('fupa-Startelf konnte nicht geladen werden: ' + (err?.message || 'Netzwerkfehler'));
+    } finally {
+      setFupaLoading(false);
+    }
+  }, [players, liveFormations, selectedFormation, notify]);
+
+  // Automatisch beim Öffnen der Taktiktafel: aktuelle fupa-Startelf (Cache = 1 Tag)
+  useEffect(() => {
+    loadFupaStartelf(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Sync saved custom formations from Firestore
   useEffect(() => {
     const q = query(collection(db, 'custom_formations'));
@@ -2798,8 +2912,15 @@ Gib mir in 3 kurzen, klaren Bullet Points:
     }
   }, [selectedFormation, customFormationsList]);
 
-  // Active Base preset data
-  const basePreset = liveFormations[selectedFormation] || liveFormations['4-2-3-1'];
+  // Active Base preset data (mit aktueller fupa-Startelf, sofern vorhanden)
+  const basePreset = useMemo(() => {
+    const tpl = liveFormations[selectedFormation] || liveFormations['4-2-3-1'];
+    if (lastFupaStartelf && lastFupaStartelf.length >= 11) {
+      const squad = (players || []).filter((p: any) => (p.category || 'player') === 'player');
+      return { ...tpl, nodes: buildStartelfNodes(lastFupaStartelf, tpl, squad) };
+    }
+    return tpl;
+  }, [selectedFormation, liveFormations, lastFupaStartelf, players]);
 
   // Helper: Persist active custom formation (or auto-create one if preset is edited)
   const syncActiveCustomFormationToFirestore = async (overrides: Partial<{
@@ -4425,6 +4546,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                   <button onClick={() => applyBuildUpVariant('langerBall')} className="px-1.5 py-0.5 text-[9px] font-black rounded hover:bg-sky-500/30 transition-all text-slate-300" title="Langer Ball auf den Flügel">⚡ Ball</button>
                   <button onClick={() => applyBuildUpVariant('strafraum')} className="px-1.5 py-0.5 text-[9px] font-black rounded hover:bg-sky-500/30 transition-all text-slate-300" title="Strafraumbesetzung & Torabschluss">🎯 Box</button>
                   <button onClick={applyAiBuildUpSuggestion} className="px-1.5 py-0.5 text-[9px] font-black rounded hover:bg-emerald-500/30 transition-all text-emerald-300" title="KI-Aufbau vorschlagen – danach frei verschiebbar, ▶️ Abspielen zeigt die Aktion">⚡ KI-Aufbau</button>
+                  <button onClick={() => loadFupaStartelf(true)} disabled={fupaLoading} className="px-1.5 py-0.5 text-[9px] font-black rounded hover:bg-sky-500/30 transition-all text-sky-300 disabled:opacity-40" title="Aktuelle Startelf vom letzten Spieltag von fupa holen (echte Spieler auf dem Taktikfeld)">{fupaLoading ? '⏳' : '🔄'} Startelf</button>
                   <button
                     onClick={applyDoppelpass}
                     className="bg-purple-500/20 hover:bg-purple-500/40 text-purple-300 font-bold text-[10px] uppercase px-2 py-1.5 rounded-lg border border-purple-500/30 transition-all flex items-center gap-1"
@@ -5963,6 +6085,14 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                 title="KI-Aufbau vorschlagen – danach frei verschiebbar, ▶️ Abspielen zeigt die Aktion"
               >
                 ⚡ KI-Aufbau
+              </button>
+              <button
+                onClick={() => loadFupaStartelf(true)}
+                disabled={fupaLoading}
+                className="px-2 py-0.5 text-[9.5px] font-black uppercase tracking-wider rounded-md border transition-all cursor-pointer disabled:opacity-40 text-sky-300 border-slate-800 hover:border-sky-500/60 flex items-center gap-1"
+                title="Aktuelle Startelf vom letzten Spieltag von fupa holen (aktualisiert das Taktikfeld automatisch mit den echten Spielern)"
+              >
+                {fupaLoading ? '⏳' : '🔄'} Startelf (fupa)
               </button>
               {dragRunMode && (
                 <button onClick={() => { setDragRunPlayerId(null); setDragRunStart(null); setDragRunPreview([]); }} className="px-1.5 py-0.5 text-[8.5px] font-black rounded cursor-pointer hover:bg-rose-500/30 transition-all text-rose-300" title="Aktuellen Laufweg-Zug abbrechen">✖ Abbrechen</button>
