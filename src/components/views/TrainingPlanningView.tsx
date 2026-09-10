@@ -1049,52 +1049,98 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
     setWeekDays((prev) => prev.filter((_, idx) => idx !== i));
   };
 
-  // Einheit anpassen — setzt Datum, Wochentag, Ort, Stufe, Intensität, Schwerpunkt, Dauer
-  const applyPlanToCurrentSession = (tag: TagesPlan, dayIndex: number) => {
-    if (!localSession) return;
-    const dateBase = new Date(KW_START_DATES[weekIndex] || KW_START_DATES[0]);
-    dateBase.setDate(dateBase.getDate() + dayIndex);
-    const dateStr = dateBase.toISOString().split('T')[0];
+  // Leere Inhalte für neue Einheiten (keine Übernahme aus einer fremden Session!)
+  const makeEmptyContent = (): TrainingSession['content'] => ({
+    warmup: '', warmupDuration: '', warmupImages: [],
+    main1: '', main1Duration: '', main1Images: [],
+    main2: '', main2Duration: '', main2Images: [],
+    closing: '', closingDuration: '', closingImages: []
+  });
+
+  // Einheit für ein konkretes Datum anlegen/aktualisieren.
+  // WICHTIG: Jede Einheit bekommt eine EIGENE ID (gen_<Datum>) und bestehende Einheiten
+  // für dieses Datum werden nur angereichert (Inhalte bleiben erhalten).
+  // Früher wurde hier immer die aktuelle Session-ID weiterverwendet → alle Tage
+  // überschrieben sich gegenseitig, Einheiten + Inhalte der Kollegen gingen verloren.
+  const upsertForDate = (iso: string, tag: TagesPlan): TrainingSession | null => {
+    const existing = sessions.find((s: any) => s.date === iso);
     const stufe = BELASTUNGS_STUFEN[tag.stufe];
-    const updated = {
-      ...localSession,
-      date: dateStr,
+    const base = existing
+      ? { ...existing }
+      : {
+          id: `gen_${iso}`,
+          date: iso,
+          weekday: tag.weekday,
+          group: 'FC Auggen',
+          load: stufe?.label || '',
+          loadLevel: tag.stufe,
+          duration: tag.dauer,
+          weeklyFocus: '',
+          sessionFocus: tag.schwerpunkt,
+          trainer: localSession?.trainer || '',
+          intensity: stufe?.intensity || '',
+          status: 'Geplant',
+          opponent: '',
+          location: '',
+          players: localSession?.players || null,
+          content: makeEmptyContent() as TrainingSession['content'],
+          importantInfo: '',
+          importantInfoImages: [],
+          remarks: '',
+          remarksImages: []
+        };
+    const updated: TrainingSession = {
+      ...base,
+      id: existing ? existing.id : `gen_${iso}`,
+      date: iso,
       weekday: tag.weekday,
-      location: tag.stufe === 0 ? (localSession.location || '') : 'Rasenplatz Auggen',
+      location: tag.stufe === 0 ? (base.location || '') : 'Rasenplatz Auggen',
       loadLevel: tag.stufe,
       load: stufe?.label || '',
       intensity: stufe?.intensity || '',
       duration: tag.dauer,
       sessionFocus: tag.schwerpunkt,
     };
-    setLocalSession(updated);
     saveSession(updated);
-    setNotification(`${tag.weekday} · ${dateStr}: Stufe ${tag.stufe} — ${stufe?.label || ''} | ${tag.schwerpunkt}`);
-    setTimeout(() => setNotification(null), 3000);
+    return updated;
   };
 
-  // Woche synchronisieren (taggenau: exaktes Datum der Einheit, sonst Wochentag-Rückfall)
+  // Einheit anpassen — setzt Datum, Wochentag, Ort, Stufe, Intensität, Schwerpunkt, Dauer
+  const applyPlanToCurrentSession = (tag: TagesPlan, dayIndex: number) => {
+    if (!localSession) return;
+    const dateBase = new Date(KW_START_DATES[weekIndex] || KW_START_DATES[0]);
+    dateBase.setDate(dateBase.getDate() + dayIndex);
+    const dateStr = dateBase.toISOString().split('T')[0];
+    const saved = upsertForDate(dateStr, tag);
+    if (saved) {
+      setLocalSession(saved);
+      onSelectSession(saved.id);
+      const stufe = BELASTUNGS_STUFEN[tag.stufe];
+      setNotification(`${tag.weekday} · ${dateStr}: Stufe ${tag.stufe} — ${stufe?.label || ''} | ${tag.schwerpunkt}`);
+      setTimeout(() => setNotification(null), 3000);
+    }
+  };
+
+  // Woche synchronisieren (nur exaktes Datum: bestehende Einheiten anreichern, fehlende neu anlegen)
   const syncFullWeek = (plan: WochenPlan) => {
     const wkBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || KW_START_DATES[0]);
     wkBase.setHours(0, 0, 0, 0);
-    const dayNames = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
+    let synced = 0;
     plan.tage.forEach((tag, dayIndex) => {
+      if (tag.stufe === 0) return;
       const targetDate = new Date(wkBase);
       targetDate.setDate(wkBase.getDate() + dayIndex);
       const targetIso = targetDate.toISOString().split('T')[0];
-      const match = sessions.find((s: any) => s.date === targetIso) ||
-                    sessions.find((s: any) => {
-        if (!s.date) return false;
-        const d = new Date(s.date);
-        if (isNaN(d.getTime())) return false;
-        return dayNames[d.getDay()] === tag.weekday;
-      });
-      if (match && tag.stufe > 0) {
-        const updated = { ...match, loadLevel: tag.stufe, load: BELASTUNGS_STUFEN[tag.stufe].label, intensity: tag.schwerpunkt, duration: tag.dauer, sessionFocus: tag.schwerpunkt };
-        saveSession(updated);
+      const match = sessions.find((s: any) => s.date === targetIso);
+      if (match) {
+        const stufe = BELASTUNGS_STUFEN[tag.stufe];
+        saveSession({ ...match, loadLevel: tag.stufe, load: stufe?.label || '', intensity: stufe?.intensity || '', duration: tag.dauer, sessionFocus: tag.schwerpunkt });
+      } else {
+        upsertForDate(targetIso, tag);
       }
+      synced++;
     });
-    setNotification('Woche synchronisiert! Alle Einheiten angepasst.');
+    setNotification(`${synced} Einheiten der Woche synchronisiert (bestehende angepasst, fehlende neu angelegt).`);
     setTimeout(() => setNotification(null), 3000);
   };
 
@@ -1180,32 +1226,25 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
     }));
   };
 
-  // Einzelnen Block-Tag in die aktuelle/konkrete Session übernehmen (echtes Datum!)
+  // Einzelnen Block-Tag in die konkrete Session übernehmen (eigenes Datum, eigene ID!)
   const applyBlockDayToSession = (wIdx: number, tag: TagesPlan, dayIndex: number) => {
     if (!localSession) return;
     const wkBase = new Date(KW_START_DATES[(blockStartWeek + wIdx) % KW_START_DATES.length] || KW_START_DATES[0]);
     const dateStr = new Date(wkBase);
     dateStr.setDate(wkBase.getDate() + dayIndex);
     const iso = dateStr.toISOString().split('T')[0];
-    const stufe = BELASTUNGS_STUFEN[tag.stufe];
-    const updated = {
-      ...localSession,
-      date: iso,
-      weekday: tag.weekday,
-      location: tag.stufe === 0 ? (localSession.location || '') : 'Rasenplatz Auggen',
-      loadLevel: tag.stufe,
-      load: stufe?.label || '',
-      intensity: stufe?.intensity || '',
-      duration: tag.dauer,
-      sessionFocus: tag.schwerpunkt,
-    };
-    setLocalSession(updated);
-    saveSession(updated);
-    setNotification(`KW ${wIdx + 1} · ${tag.weekday} · ${iso}: Stufe ${tag.stufe} — ${stufe?.label || ''} | ${tag.schwerpunkt}`);
-    setTimeout(() => setNotification(null), 3000);
+    const saved = upsertForDate(iso, tag);
+    if (saved) {
+      setLocalSession(saved);
+      onSelectSession(saved.id);
+      const stufe = BELASTUNGS_STUFEN[tag.stufe];
+      setNotification(`KW ${wIdx + 1} · ${tag.weekday} · ${iso}: Stufe ${tag.stufe} — ${stufe?.label || ''} | ${tag.schwerpunkt}`);
+      setTimeout(() => setNotification(null), 3000);
+    }
   };
 
-  // Gesamten Block (alle Wochen) in Sessions synchronisieren
+  // Gesamten Block (alle Wochen) in Sessions synchronisieren — jede Einheit mit eigener ID,
+  // bestehende Einheiten (mit Inhalten!) werden NIE überschrieben oder versetzt.
   const syncFullBlock = () => {
     const count = blockWeeks;
     const firstWeek = blockStartWeek;
@@ -1220,25 +1259,16 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
         dateStr.setDate(wkBase.getDate() + dayIndex);
         const iso = dateStr.toISOString().split('T')[0];
         const existing = sessions.find((s: any) => s.date === iso);
-        const payload = {
-          date: iso,
-          weekday: tag.weekday,
-          location: 'Rasenplatz Auggen',
-          loadLevel: tag.stufe,
-          load: BELASTUNGS_STUFEN[tag.stufe]?.label || '',
-          intensity: BELASTUNGS_STUFEN[tag.stufe]?.intensity || '',
-          duration: tag.dauer,
-          sessionFocus: tag.schwerpunkt,
-        };
         if (existing) {
-          saveSession({ ...existing, ...payload });
+          const stufe = BELASTUNGS_STUFEN[tag.stufe];
+          saveSession({ ...existing, loadLevel: tag.stufe, load: stufe?.label || '', intensity: stufe?.intensity || '', duration: tag.dauer, sessionFocus: tag.schwerpunkt });
         } else if (localSession) {
-          saveSession({ ...localSession, ...payload });
+          upsertForDate(iso, tag);
         }
         synced++;
       });
     }
-    setNotification(`${synced} Einheiten aus ${count}-Wochen-Block synchronisiert.`);
+    setNotification(`${synced} Einheiten aus ${count}-Wochen-Block synchronisiert (fehlende angelegt, bestehende nur aktualisiert).`);
     setTimeout(() => setNotification(null), 3000);
   };
 
