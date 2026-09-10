@@ -861,9 +861,9 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
     4: { label: 'Technik-Arbeit', intensity: '55-65%', hf: '65-75%', farbe: '#facc15' },
     5: { label: 'Mittlere Belastung', intensity: '60-70%', hf: '70-80%', farbe: '#fbbf24' },
     6: { label: 'Mittel-Hoch', intensity: '60-80%', hf: '75-85%', farbe: '#f97316' },
-    7: { label: 'Spielnahe Aktivierung', intensity: '70-80%', hf: '80-90%', farbe: '#ef4444' },
-    8: { label: 'Hohe Intensität', intensity: '70-90%', hf: '85-95%', farbe: '#dc2626' },
-    9: { label: 'Maximale Belastung', intensity: '80-100%', hf: '90-100%', farbe: '#991b1b' },
+    7: { label: 'Spielnahe Aktivierung', intensity: '70-80%', hf: '80-90%', farbe: '#fb8c2b' },
+    8: { label: 'Hohe Intensität', intensity: '70-90%', hf: '85-95%', farbe: '#ea580c' },
+    9: { label: 'Maximale Belastung', intensity: '80-100%', hf: '90-100%', farbe: '#dc2626' },
   };
 
   // WOCHENPLÄNE nach PDF-Vorgaben
@@ -974,6 +974,15 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
 
   const currentWeekPlans = activeMatchDay ? WOCHENPLAENNE[activeMatchDay] : WOCHENPLAENNE.friday;
 
+  // KW → passende Wochenplan-Vorlage (Templates sind für KW 36 = 31.08.2026 beginnend definiert;
+  // bisher wurde per Modulo zugeordnet → falsche Vorlage bei Wochen außerhalb 0..n-1, z. B. KW 37 (Dienstag 08.09)).
+  const templateIndexForWeek = (wi: number): number => {
+    const len = currentWeekPlans.length || 1;
+    const alignedStart = 34; // weekIndex der Woche ab 31.08.2026 (= Template 0)
+    const aligned = wi - alignedStart;
+    return ((aligned % len) + len) % len;
+  };
+
   // Editierbare Wochen-Tage (für Trainingstage hinzufügen/entfernen & Stufe wählen)
   // Ganzes Jahr: 52 Kalenderwochen dynamisch erzeugen (ISO-Woche + Datumsbereich).
   const getIsoWeek = (d: Date): number => {
@@ -1015,10 +1024,10 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
     return fallback;
   };
   const [weekIndex, setWeekIndex] = useState<number>(() => loadIdx('fca_trainingplan_week', currentWeekIdx));
-  const [weekDays, setWeekDays] = useState<TagesPlan[]>(() => currentWeekPlans[0]?.tage?.map((t) => ({ ...t })) || []);
+  const [weekDays, setWeekDays] = useState<TagesPlan[]>(() => currentWeekPlans[templateIndexForWeek(weekIndex)]?.tage?.map((t) => ({ ...t })) || []);
   useEffect(() => { try { localStorage.setItem('fca_trainingplan_week', String(weekIndex)); } catch { /* ignore */ } }, [weekIndex]);
   useEffect(() => {
-    const template = currentWeekPlans[weekIndex % currentWeekPlans.length] || currentWeekPlans[0];
+    const template = currentWeekPlans[templateIndexForWeek(weekIndex)] || currentWeekPlans[0];
     setWeekDays(template?.tage?.map((t) => ({ ...t })) || []);
   }, [activeMatchDay, weekIndex]);
 
@@ -1064,13 +1073,20 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
     setTimeout(() => setNotification(null), 3000);
   };
 
-  // Woche synchronisieren
+  // Woche synchronisieren (taggenau: exaktes Datum der Einheit, sonst Wochentag-Rückfall)
   const syncFullWeek = (plan: WochenPlan) => {
-    plan.tage.forEach((tag) => {
-      const match = sessions.find((s: any) => {
+    const wkBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || KW_START_DATES[0]);
+    wkBase.setHours(0, 0, 0, 0);
+    const dayNames = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
+    plan.tage.forEach((tag, dayIndex) => {
+      const targetDate = new Date(wkBase);
+      targetDate.setDate(wkBase.getDate() + dayIndex);
+      const targetIso = targetDate.toISOString().split('T')[0];
+      const match = sessions.find((s: any) => s.date === targetIso) ||
+                    sessions.find((s: any) => {
         if (!s.date) return false;
         const d = new Date(s.date);
-        const dayNames = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
+        if (isNaN(d.getTime())) return false;
         return dayNames[d.getDay()] === tag.weekday;
       });
       if (match && tag.stufe > 0) {
@@ -1111,7 +1127,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
   ];
 
   // Basis-Woche des aktiven Spieltagstyps (thematisch) — für Stufen-Rotation
-  const basePlan: WochenPlan | null = (currentWeekPlans[blockStartWeek % currentWeekPlans.length] || currentWeekPlans[0] || null);
+  const basePlan: WochenPlan | null = (currentWeekPlans[templateIndexForWeek(blockStartWeek)] || currentWeekPlans[0] || null);
 
   // Eigenständige Wochenplan-Rotation im Block: Stufen je Woche anheben/abflachen,
   // ohne die Spieltag-Vorlagen zu mutieren. Bearbeitbar per State.
@@ -2703,11 +2719,12 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
 
   const calculateTotalDuration = () => {
     if (!localSession) return 0;
+    const content: any = localSession.content || {};
     const durations = [
-      localSession.content.warmupDuration,
-      localSession.content.main1Duration,
-      localSession.content.main2Duration,
-      localSession.content.closingDuration,
+      content.warmupDuration,
+      content.main1Duration,
+      content.main2Duration,
+      content.closingDuration,
     ];
     
     return durations.reduce((total, d) => {
@@ -2716,6 +2733,19 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
       return total + (matches ? parseInt(matches[0], 10) : 0);
     }, 0);
   };
+
+  // Automatische Gesamtdauer: Summe der Abschnitts-Minuten direkt ins "Dauer"-Feld oben übernehmen.
+  const autoTotalMinutes = useMemo(() => calculateTotalDuration(), [localSession?.content?.warmupDuration, localSession?.content?.main1Duration, localSession?.content?.main2Duration, localSession?.content?.closingDuration]);
+
+  useEffect(() => {
+    if (!localSession || !localSession.content) return;
+    const total = autoTotalMinutes;
+    if (total <= 0) return;
+    const current = parseInt(String(localSession.duration || '').match(/\d+/)?.[0] || '0', 10);
+    if (current !== total) {
+      updateField('duration', `${total} Min`);
+    }
+  }, [autoTotalMinutes]);
 
   const updateContent = (field: keyof TrainingSession['content'], value: string) => {
     pushUndoState();
@@ -3699,8 +3729,8 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                         {[1,2,3,4,5,6,7,8,9].map(n => {
                           const lvl = localSession.loadLevel || 5;
                           const color = n <= lvl
-                            ? n <= 2 ? '#22c55e' : n <= 4 ? '#84cc16' : n <= 6 ? '#eab308' : n <= 7 ? '#f97316' : '#ef4444'
-                            : '#e2e8f0';
+                          ? n <= 2 ? '#22c55e' : n <= 4 ? '#84cc16' : n <= 6 ? '#eab308' : n <= 8 ? '#fb923c' : '#dc2626'
+                          : '#e2e8f0';
                           return <div key={n} className="w-2 h-3 rounded-sm" style={{ backgroundColor: color }} />;
                         })}
                       </div>
@@ -3718,7 +3748,10 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                       className="w-full bg-white text-slate-900 border border-slate-300 rounded px-1 font-bold text-xs outline-none focus:border-black"
                     />
                   ) : (
-                    <div className="font-bold text-xs text-slate-900">{localSession.duration}</div>
+                    <div className="font-bold text-xs text-slate-900">{localSession.duration || (autoTotalMinutes > 0 ? `${autoTotalMinutes} Min` : '—')}</div>
+                  )}
+                  {autoTotalMinutes > 0 && (
+                    <div className="text-[8px] font-black uppercase text-emerald-600 mt-0.5">auto · Teile: {autoTotalMinutes} Min</div>
                   )}
                 </div>
                 <div className="p-2 border-r-2 border-black">
