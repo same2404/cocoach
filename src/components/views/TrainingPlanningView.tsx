@@ -1129,6 +1129,84 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
     }
   };
 
+  // ── Inhalte wiederfinden: Der Bug hat Inhalte nicht gelöscht, sondern verschoben/überschrieben.
+  //    Diese Helfer suchen ALLE Sessions mit nicht-leerem Inhalt, damit der Nutzer den
+  //    passenden (Kollegen-)Inhalt manuell der Einheit 08.09 zuordnen kann.
+  const contentFields = (s: TrainingSession): Record<string, string | readonly string[]> => {
+    const c = (s as any).content || {};
+    return {
+      warmup: c.warmup || '', main1: c.main1 || '', main2: c.main2 || '', closing: c.closing || '',
+      important: s.importantInfo || '', remarks: s.remarks || '',
+      focus: s.sessionFocus || '', focus2: (s as any).weeklyFocus || '',
+      opponent: s.opponent || ''
+    };
+  };
+  const hasAnyContent = (s: TrainingSession): boolean => {
+    const fields = contentFields(s);
+    return Object.values(fields).some(v => typeof v === 'string' && v.trim().length > 2)
+      || (s as any).importantInfoImages?.length > 0
+      || (s as any).remarksImages?.length > 0
+      || (s as any).content?.warmupImages?.length > 0
+      || (s as any).content?.main1Images?.length > 0
+      || (s as any).content?.main2Images?.length > 0
+      || (s as any).content?.closingImages?.length > 0;
+  };
+  const finderText = (s: TrainingSession): string => Object.values(contentFields(s)).join(' ').toLowerCase();
+  const finderHits = (): TrainingSession[] => {
+    const q = finderQuery.trim().toLowerCase();
+    const all = [...sessions].filter(hasAnyContent);
+    return q ? all.filter(s => finderText(s).includes(q)) : all;
+  };
+  // Inhalte einer Spender-Session AUF die Einheit 08.09.2026 kopieren (Spender bleibt erhalten).
+  const restoreContentTo0809 = async (donor: TrainingSession): Promise<void> => {
+    setFinderBusy(true);
+    const targetIso = '2026-09-08';
+    const existingTarget = sessions.find((s: any) => s.date === targetIso && s.id !== donor.id);
+    const targetId = existingTarget ? existingTarget.id : `gen_${targetIso}`;
+    const donorC = (donor as any).content || {};
+    const restored: TrainingSession = {
+      ...(existingTarget ? { ...existingTarget } : {
+        id: targetId, date: targetIso, weekday: 'Dienstag', group: 'FC Auggen',
+        load: donor.load || 'Hoch', loadLevel: donor.loadLevel ?? 8, duration: donor.duration || '90 Min',
+        weeklyFocus: (donor as any).weeklyFocus || '', sessionFocus: donor.sessionFocus || '',
+        trainer: donor.trainer || 'Amin, marcel', intensity: donor.intensity || 'Hoch',
+        status: 'Geplant', opponent: donor.opponent || '', location: donor.location || 'Rasenplatz Auggen',
+        players: donor.players || null, content: makeEmptyContent() as TrainingSession['content'],
+        importantInfo: donor.importantInfo || '', importantInfoImages: donor.importantInfoImages || [],
+        remarks: donor.remarks || '', remarksImages: donor.remarksImages || []
+      }),
+      date: targetIso,
+      weekday: 'Dienstag',
+      sessionFocus: donor.sessionFocus || (existingTarget ? existingTarget.sessionFocus : ''),
+      content: {
+        warmup: donorC.warmup || '', warmupDuration: donorC.warmupDuration || '', warmupImages: donorC.warmupImages || [],
+        main1: donorC.main1 || '', main1Duration: donorC.main1Duration || '', main1Images: donorC.main1Images || [],
+        main2: donorC.main2 || '', main2Duration: donorC.main2Duration || '', main2Images: donorC.main2Images || [],
+        closing: donorC.closing || '', closingDuration: donorC.closingDuration || '', closingImages: donorC.closingImages || []
+      },
+      importantInfo: donor.importantInfo || (existingTarget ? existingTarget.importantInfo || '' : ''),
+      importantInfoImages: donor.importantInfoImages || (existingTarget ? existingTarget.importantInfoImages || [] : []),
+      remarks: donor.remarks || (existingTarget ? existingTarget.remarks || '' : ''),
+      remarksImages: donor.remarksImages || (existingTarget ? existingTarget.remarksImages || [] : [])
+    };
+    try {
+      saveSession(restored);
+      const { id: _id, ...dataToSave } = restored as any;
+      await setDoc(doc(db, 'training_sessions', restored.id), dataToSave, { merge: true });
+      setLocalSession(restored);
+      onSelectSession(restored.id);
+      setIsEditing(true);
+      setFinderOpen(false);
+      setHealStatus(`08.09 wiederhergestellt – Inhalt übernommen aus ${donor.id} (${donor.date || 'ohne Datum'}). Spender blieb erhalten.`);
+      setNotification(`08.09.2026: Inhalt aus ${donor.date || donor.id} übernommen.`);
+    } catch (e: any) {
+      setHealStatus(`Fehler beim Wiederherstellen: ${e?.message || e}`);
+    } finally {
+      setFinderBusy(false);
+      setTimeout(() => setNotification(null), 4000);
+    }
+  };
+
   // Woche synchronisieren (nur exaktes Datum: bestehende Einheiten anreichern, fehlende neu anlegen)
   const syncFullWeek = (plan: WochenPlan) => {
     const wkBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || KW_START_DATES[0]);
@@ -1752,6 +1830,9 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
   // (z. B. Dienstag 08.09.2026). Bestehende Einheiten mit Inhalten bleiben unangetastet.
   const healCurrentWeekRef = useRef(false);
   const [healStatus, setHealStatus] = useState<string>('');
+  const [finderOpen, setFinderOpen] = useState(false);
+  const [finderQuery, setFinderQuery] = useState('');
+  const [finderBusy, setFinderBusy] = useState<boolean>(false);
   const healCurrentWeek = async (showFeedback = false): Promise<number> => {
     const template = currentWeekPlans[templateIndexForWeek(currentWeekIdx)] || currentWeekPlans[0];
     if (!template?.tage?.length) return 0;
@@ -3066,6 +3147,51 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
             </div>
           );
         })()}
+        <div className="shrink-0 bg-[#0F172A] text-white px-2 py-1.5 border-b-2 border-black flex items-center justify-between gap-2">
+          <span className="text-[8px] font-black uppercase">🔍 Inhalt wiederfinden</span>
+          <button
+            onClick={() => setFinderOpen(!finderOpen)}
+            className="text-[8px] font-black uppercase bg-emerald-500 text-emerald-950 rounded px-2 py-1 hover:bg-emerald-400 cursor-pointer"
+          >
+            {finderOpen ? 'Schließen' : `Suchen (${sessions.filter(hasAnyContent).length})`}
+          </button>
+        </div>
+        {finderOpen && (
+          <div className="shrink-0 max-h-[240px] overflow-auto bg-slate-50 border-b-2 border-black px-2 py-1.5 flex flex-col gap-1.5">
+            <input
+              value={finderQuery}
+              onChange={(e) => setFinderQuery(e.target.value)}
+              placeholder="Inhalt filtern (z. B. Pressing, Rondo, Gegner …)"
+              className="text-[9px] border border-gray-400 rounded px-2 py-1 bg-white w-full"
+            />
+            {finderHits().length === 0 && (
+              <div className="text-[8px] text-slate-500 font-bold">Keine Einheit mit Inhalt gefunden (sonst Wo: Liste unten).</div>
+            )}
+            {finderHits().map(hit => (
+              <div key={hit.id} className="flex items-center justify-between gap-2 bg-white border border-gray-300 rounded p-1.5">
+                <div className="min-w-0 flex-1">
+                  <div className="text-[8px] font-black uppercase text-slate-900 truncate">
+                    {formatSessionShort((hit as any).date, (hit as any).weekday)} · {hit.sessionFocus || 'kein Fokus'}
+                  </div>
+                  <div className="text-[7px] text-slate-500 truncate">
+                    {(() => {
+                      const c = (hit as any).content || {};
+                      const t = [c.warmup, c.main1, c.main2, c.closing, hit.importantInfo, hit.remarks].filter(x => x).join(' | ');
+                      return t.trim().slice(0, 110) + (t.trim().length > 110 ? '…' : '');
+                    })()}
+                  </div>
+                </div>
+                <button
+                  disabled={finderBusy}
+                  onClick={() => restoreContentTo0809(hit)}
+                  className={`text-[7px] font-black uppercase rounded px-2 py-1 cursor-pointer ${finderBusy ? 'bg-slate-200 text-slate-400' : 'bg-emerald-600 text-white hover:bg-emerald-500'}`}
+                >
+                  → Di 08.09
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
         <div className={containerClass}>
           {sortedSessions.map(s => {
             const isActive = s.id === (localSession?.id || selectedSessionId);
@@ -5105,7 +5231,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                                         </label>
                                     </div>
                                 );
-                            })()}
+})()}
                         </div>
 
                      <div className="p-4 border-t-2 border-black bg-purple-600 text-white flex items-center justify-between">
