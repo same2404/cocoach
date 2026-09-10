@@ -1743,23 +1743,36 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
   // Selbstheilung: fehlende Einheiten der AKTUELLEN Kalenderwoche automatisch anlegen
   // (z. B. Dienstag 08.09.2026). Bestehende Einheiten mit Inhalten bleiben unangetastet.
   const healCurrentWeekRef = useRef(false);
-  useEffect(() => {
-    if (sessions.length === 0) return;
-    if (healCurrentWeekRef.current) return;
+  const [healStatus, setHealStatus] = useState<string>('');
+  const healCurrentWeek = (showFeedback = false) => {
     const template = currentWeekPlans[templateIndexForWeek(currentWeekIdx)] || currentWeekPlans[0];
-    if (!template?.tage?.length) return;
-    healCurrentWeekRef.current = true;
+    if (!template?.tage?.length) return 0;
     const wkBase = new Date(KW_START_DATES[currentWeekIdx % KW_START_DATES.length] || KW_START_DATES[0]);
     wkBase.setHours(0, 0, 0, 0);
+    let created = 0;
     template.tage.forEach((tag, dayIndex) => {
       if (tag.stufe === 0) return;
       const d = new Date(wkBase);
       d.setDate(wkBase.getDate() + dayIndex);
       const iso = d.toISOString().split('T')[0];
       if (!sessions.some((s: any) => s.date === iso)) {
-        upsertForDate(iso, tag);
+        try {
+          upsertForDate(iso, tag);
+          created++;
+        } catch (e: any) {
+          setHealStatus(`Fehler beim Anlegen ${iso}: ${e?.message || e}`);
+          return;
+        }
       }
     });
+    return created;
+  };
+  useEffect(() => {
+    if (sessions.length === 0) return;
+    if (healCurrentWeekRef.current) return;
+    healCurrentWeekRef.current = true;
+    const created = healCurrentWeek();
+    setHealStatus(created > 0 ? `${created} Einheit(en) der aktuellen Woche neu angelegt (08.09 inkl.)` : 'Aktuelle Woche vollständig – nichts anzulegen.');
   }, [sessions]);
 
   useEffect(() => {
@@ -3421,6 +3434,26 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
                     Block sync
                   </button>
                 </div>
+              )}
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[8px] font-black uppercase text-slate-400">
+                Sessions: {sessions.length}
+              </span>
+              <button
+                onClick={() => {
+                  const created = healCurrentWeek(true);
+                  setHealStatus(created > 0 ? `${created} Einheit(en) neu angelegt (08.09 inkl.)` : 'Aktuelle Woche vollständig – nichts anzulegen.');
+                  setNotification(created > 0 ? `${created} Einheit(en) angelegt.` : 'Bereits vorhanden.');
+                  setTimeout(() => setNotification(null), 3000);
+                }}
+                className="px-2 py-0.5 rounded text-[7px] font-black uppercase border bg-emerald-600 text-white border-emerald-400 hover:bg-emerald-500 cursor-pointer"
+                title="Fehlende Einheiten der aktuellen Woche (z. B. Di 08.09) neu anlegen – bestehende werden nicht angerührt"
+              >
+                Einheiten erzeugen (KW37)
+              </button>
+              {healStatus && (
+                <span className="text-[7px] font-bold uppercase text-slate-400 max-w-[300px] truncate" title={healStatus}>{healStatus}</span>
               )}
             </div>
             <span className="text-[7px] font-black uppercase text-slate-400">
