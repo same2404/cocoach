@@ -32,11 +32,22 @@ import {
   CheckCircle2,
    Info,
    ListOrdered,
-   Users,
+Users,
    Loader2,
    Calendar,
-   Search
- } from 'lucide-react';
+   Search,
+   Camera,
+   Save,
+   Undo2,
+   MousePointer2,
+   Eraser,
+   MousePointerClick,
+   MoveUpRight,
+   Waypoints,
+   Footprints,
+   Square,
+   Crosshair
+  } from 'lucide-react';
 import { useCollectionSync } from '../../hooks/useCollectionSync';
 import { Spieler, Player } from '../../types';
 import { VideoReelPlayerModal } from '../video/VideoReelPlayerModal';
@@ -283,8 +294,10 @@ export interface SceneTacticBoard {
   attackDirection?: string;
   players?: Array<{ label: string; team: string; x: number; y: number }>;
   ball?: { x: number; y: number };
+  chains?: Array<{ label?: string; fromX: number; fromY: number; toX: number; toY: number; color?: string }>;
   passes?: Array<{ fromLabel?: string; toLabel?: string; fromX: number; fromY: number; toX: number; toY: number; action?: string; color?: string }>;
   runs?: Array<{ label?: string; points: Array<{ x: number; y: number }>; color?: string }>;
+  ballPath?: Array<{ points: Array<{ x: number; y: number }>; color?: string }>;
   zones?: Array<{ x: number; y: number; w: number; h: number; label?: string; color?: string }>;
   optimalPositions?: Array<{ label?: string; fromX?: number; fromY?: number; toX: number; toY: number; note?: string }>;
 }
@@ -305,6 +318,8 @@ const SceneTacticDiagram: React.FC<{ board?: SceneTacticBoard; expanded: boolean
   const runs = board.runs || [];
   const zones = board.zones || [];
   const optimals = board.optimalPositions || [];
+  const chains = board.chains || [];
+  const ballPaths = board.ballPath || [];
 
   return (
     <div className="mt-1">
@@ -343,6 +358,24 @@ const SceneTacticDiagram: React.FC<{ board?: SceneTacticBoard; expanded: boolean
                   {z.label ? <text x={clampPct(z.x) + 1.5} y={flipY(clampPct(z.y)) + 3} fontSize="3" fontWeight="900" fill={z.color || '#F59E0B'}>{z.label}</text> : null}
                 </g>
               ))}
+
+              {/* Spielerketten (Linien verbinden) */}
+              {chains.map((ch, i) => (
+                <line
+                  key={`chain-${i}`}
+                  x1={clampPct(ch.fromX)} y1={flipY(clampPct(ch.fromY))} x2={clampPct(ch.toX)} y2={flipY(clampPct(ch.toY))}
+                  stroke={ch.color || '#22D3EE'} strokeWidth="0.9" opacity="0.8" strokeLinecap="round"
+                />
+              ))}
+
+              {/* Ballweg */}
+              {ballPaths.map((bp, i) => bp.points && bp.points.length >= 2 ? (
+                <polyline
+                  key={`ballpath-${i}`}
+                  points={bp.points.map(p => `${clampPct(p.x)},${flipY(clampPct(p.y))}`).join(' ')}
+                  fill="none" stroke={bp.color || '#F59E0B'} strokeWidth="1" strokeDasharray="1.5 1.5" opacity="0.95" strokeLinecap="round"
+                />
+              ) : null)}
 
               {/* Laufwege */}
               {runs.map((r, i) => r.points && r.points.length >= 2 ? (
@@ -436,6 +469,506 @@ const SceneTacticDiagram: React.FC<{ board?: SceneTacticBoard; expanded: boolean
         </div>
       )}
     </div>
+  );
+};
+
+// Once-Style Taktik-Tagger: auf eingefrorenem Frame Linien, Räume, Pässe, Läufe, Ballweg
+// und bessere Positionen zeichnen – Ergebnis als annotiertes Bild + Taktikdaten speichern.
+const OnceTaggerModal: React.FC<{
+  videoRef: React.RefObject<HTMLVideoElement | null>;
+  videoName: string;
+  videoSource: string;
+  initialTime: number;
+  onSave: (thumbnailDataUrl: string, board: SceneTacticBoard, timeSeconds: number) => void;
+  onClose: () => void;
+}> = ({ videoRef, videoName, videoSource, initialTime, onSave, onClose }) => {
+  const [frameDataUrl, setFrameDataUrl] = useState<string | null>(null);
+  const [frameDims, setFrameDims] = useState<{ w: number; h: number }>({ w: 1280, h: 720 });
+  const [snapshotTime, setSnapshotTime] = useState<number>(initialTime);
+  const [tool, setTool] = useState<'pointer' | 'player' | 'chain' | 'pass' | 'run' | 'zone' | 'ball' | 'optimal'>('pointer');
+  const [team, setTeam] = useState<'FC Auggen' | 'Gegner'>('FC Auggen');
+  const [playerLabel, setPlayerLabel] = useState<string>('#9');
+  const [strokeColor, setStrokeColor] = useState<string>('#3B82F6');
+  const [zoneLabel, setZoneLabel] = useState<string>('Freier Raum');
+  const [optimalNote, setOptimalNote] = useState<string>('Besser stehen – Raum sichern');
+  const [board, setBoard] = useState<SceneTacticBoard>({ attackDirection: 'DOWN', players: [], chains: [], passes: [], runs: [], ballPath: [], zones: [], optimalPositions: [], ball: undefined });
+  const [history, setHistory] = useState<SceneTacticBoard[]>([]);
+  const [draftStart, setDraftStart] = useState<{ x: number; y: number } | null>(null);
+  const [draftEnd, setDraftEnd] = useState<{ x: number; y: number } | null>(null);
+  const [runPoints, setRunPoints] = useState<Array<{ x: number; y: number }>>([]);
+  const imgRef = useRef<HTMLImageElement | null>(null);
+  const frameCanvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  const toPct = (px: number, total: number) => Math.max(0, Math.min(100, (px / total) * 100));
+  const pushHist = () => setHistory(prev => [...prev.slice(-30), board]);
+
+  const captureFrame = () => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.pause();
+    const w = v.videoWidth || 1280;
+    const h = v.videoHeight || 720;
+    const c = document.createElement('canvas');
+    c.width = w;
+    c.height = h;
+    const ctx = c.getContext('2d');
+    if (ctx) {
+      ctx.drawImage(v, 0, 0, w, h);
+      frameCanvasRef.current = c;
+      setFrameDataUrl(c.toDataURL('image/png'));
+      setFrameDims({ w, h });
+      setSnapshotTime(v.currentTime || initialTime);
+    }
+  };
+
+  const getPos = (e: React.PointerEvent): { x: number; y: number } | null => {
+    const img = imgRef.current;
+    if (!img) return null;
+    const rect = img.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return null;
+    return {
+      x: Math.max(0, Math.min(frameDims.w, ((e.clientX - rect.left) / rect.width) * frameDims.w)),
+      y: Math.max(0, Math.min(frameDims.h, ((e.clientY - rect.top) / rect.height) * frameDims.h)),
+    };
+  };
+
+  const commitDragged = (from: { x: number; y: number }, to: { x: number; y: number }) => {
+    const a = { x: toPct(from.x, frameDims.w), y: toPct(from.y, frameDims.h) };
+    const b = { x: toPct(to.x, frameDims.w), y: toPct(to.y, frameDims.h) };
+    pushHist();
+    setBoard(prev => {
+      const next = { ...prev, players: prev.players ? [...prev.players] : [], chains: prev.chains ? [...prev.chains] : [], passes: prev.passes ? [...prev.passes] : [], runs: prev.runs ? [...prev.runs] : [], ballPath: prev.ballPath ? [...prev.ballPath] : [], zones: prev.zones ? [...prev.zones] : [], optimalPositions: prev.optimalPositions ? [...prev.optimalPositions] : [] };
+      if (tool === 'chain') next.chains!.push({ fromX: a.x, fromY: a.y, toX: b.x, toY: b.y, color: strokeColor });
+      if (tool === 'pass') next.passes!.push({ fromX: a.x, fromY: a.y, toX: b.x, toY: b.y, action: 'Pass', color: strokeColor });
+      if (tool === 'zone') next.zones!.push({ x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), w: Math.abs(b.x - a.x), h: Math.abs(b.y - a.y), label: zoneLabel, color: strokeColor });
+      return next;
+    });
+  };
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    const p = getPos(e);
+    if (!p) return;
+    if (tool === 'pointer') {
+      removeNearest(p);
+      return;
+    }
+    if (tool === 'player' || tool === 'optimal') {
+      pushHist();
+      const x = toPct(p.x, frameDims.w), y = toPct(p.y, frameDims.h);
+      setBoard(prev => {
+        const next = { ...prev, players: prev.players ? [...prev.players] : [], optimalPositions: prev.optimalPositions ? [...prev.optimalPositions] : [] };
+        if (tool === 'player') next.players!.push({ label: playerLabel, team, x, y });
+        if (tool === 'optimal') next.optimalPositions!.push({ label: playerLabel, toX: x, toY: y, note: optimalNote });
+        return next;
+      });
+      return;
+    }
+    if (tool === 'run' || tool === 'ball') {
+      const pt = { x: toPct(p.x, frameDims.w), y: toPct(p.y, frameDims.h) };
+      setRunPoints(prev => [...prev, pt]);
+      return;
+    }
+    setDraftStart(p);
+    setDraftEnd(p);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!draftStart) return;
+    const p = getPos(e);
+    if (p) setDraftEnd(p);
+  };
+
+  const handlePointerUp = () => {
+    if (draftStart && draftEnd) {
+      commitDragged(draftStart, draftEnd);
+    }
+    setDraftStart(null);
+    setDraftEnd(null);
+  };
+
+  const finishPolyline = () => {
+    if (runPoints.length < 2) { setRunPoints([]); return; }
+    pushHist();
+    const pts = [...runPoints];
+    if (tool === 'ball') {
+      setBoard(prev => ({ ...prev, ballPath: [...(prev.ballPath || []), { points: pts, color: '#F59E0B' }] }));
+    } else {
+      setBoard(prev => ({ ...prev, runs: [...(prev.runs || []), { label: 'Laufweg', points: pts, color: strokeColor }] }));
+    }
+    setRunPoints([]);
+  };
+
+  const removeNearest = (p: { x: number; y: number }) => {
+    const px = toPct(p.x, frameDims.w), py = toPct(p.y, frameDims.h);
+    const dist = (a: { x: number; y: number }) => Math.hypot(a.x - px, a.y - py);
+    const elemDist = (pts: Array<{ x: number; y: number }>) => Math.min(...pts.map(dist));
+    const tol = 8;
+    pushHist();
+    setBoard(prev => {
+      const next = { ...prev, players: prev.players ? [...prev.players] : [], chains: prev.chains ? [...prev.chains] : [], passes: prev.passes ? [...prev.passes] : [], runs: prev.runs ? [...prev.runs] : [], ballPath: prev.ballPath ? [...prev.ballPath] : [], zones: prev.zones ? [...prev.zones] : [], optimalPositions: prev.optimalPositions ? [...prev.optimalPositions] : [] };
+      const candidate: Array<{ d: number; remove: () => void }> = [];
+      next.players!.forEach((pl, i) => candidate.push({ d: dist({ x: pl.x, y: pl.y }), remove: () => next.players!.splice(i, 1) }));
+      next.optimalPositions!.forEach((o, i) => candidate.push({ d: dist({ x: o.toX, y: o.toY }), remove: () => next.optimalPositions!.splice(i, 1) }));
+      next.zones!.forEach((z, i) => candidate.push({ d: Math.min(Math.abs(px - z.x), Math.abs(px - (z.x + z.w))) + Math.min(Math.abs(py - z.y), Math.abs(py - (z.y + z.h))), remove: () => next.zones!.splice(i, 1) }));
+      if (next.runs!.length) next.runs!.forEach((r, i) => candidate.push({ d: r.points.length ? elemDist(r.points) : 999, remove: () => next.runs!.splice(i, 1) }));
+      if (next.ballPath!.length) next.ballPath!.forEach((b, i) => candidate.push({ d: b.points.length ? elemDist(b.points) : 999, remove: () => next.ballPath!.splice(i, 1) }));
+      if (next.chains!.length) next.chains!.forEach((c, i) => {
+        const pts = [{ x: c.fromX, y: c.fromY }, { x: c.toX, y: c.toY }];
+        candidate.push({ d: elemDist(pts), remove: () => next.chains!.splice(i, 1) });
+      });
+      if (next.passes!.length) next.passes!.forEach((p2, i) => {
+        const pts = [{ x: p2.fromX, y: p2.fromY }, { x: p2.toX, y: p2.toY }];
+        candidate.push({ d: elemDist(pts), remove: () => next.passes!.splice(i, 1) });
+      });
+      candidate.sort((a, b) => a.d - b.d);
+      const best = candidate[0];
+      if (best && best.d < tol) best.remove();
+      return next;
+    });
+  };
+
+  const undo = () => {
+    setHistory(prev => {
+      if (prev.length === 0) return prev;
+      const last = prev[prev.length - 1];
+      setBoard(last);
+      return prev.slice(0, -1);
+    });
+  };
+
+  const composeAnnotatedImage = (): string => {
+    const c = document.createElement('canvas');
+    c.width = frameDims.w;
+    c.height = frameDims.h;
+    const ctx = c.getContext('2d')!;
+    const src = frameCanvasRef.current;
+    if (src) ctx.drawImage(src, 0, 0, frameDims.w, frameDims.h);
+    else if (frameDataUrl) { ctx.fillStyle = '#0D1117'; ctx.fillRect(0, 0, frameDims.w, frameDims.h); }
+    const x = (v: number) => (v / 100) * frameDims.w;
+    const y = (v: number) => (v / 100) * frameDims.h;
+    // Zonen
+    (board.zones || []).forEach(z => {
+      ctx.fillStyle = z.color || '#F59E0B';
+      ctx.globalAlpha = 0.22;
+      ctx.fillRect(x(z.x), y(z.y), x(z.w), y(z.h));
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = z.color || '#F59E0B';
+      ctx.setLineDash([8, 6]);
+      ctx.lineWidth = 3;
+      ctx.strokeRect(x(z.x), y(z.y), x(z.w), y(z.h));
+      ctx.setLineDash([]);
+      if (z.label) {
+        ctx.fillStyle = z.color || '#F59E0B';
+        ctx.font = 'bold 16px Arial';
+        ctx.fillText(z.label, x(z.x) + 5, y(z.y) + 18);
+      }
+    });
+    // Ketten
+    (board.chains || []).forEach(ch => {
+      ctx.strokeStyle = ch.color || '#22D3EE';
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.moveTo(x(ch.fromX), y(ch.fromY));
+      ctx.lineTo(x(ch.toX), y(ch.toY));
+      ctx.stroke();
+    });
+    // Ballweg
+    (board.ballPath || []).forEach(bp => {
+      if (bp.points.length < 2) return;
+      ctx.strokeStyle = bp.color || '#F59E0B';
+      ctx.lineWidth = 4;
+      ctx.setLineDash([9, 7]);
+      ctx.beginPath();
+      bp.points.forEach((p, i) => i === 0 ? ctx.moveTo(x(p.x), y(p.y)) : ctx.lineTo(x(p.x), y(p.y)));
+      ctx.stroke();
+      ctx.setLineDash([]);
+      bp.points.forEach((p, i) => {
+        if (i === 0) return;
+        ctx.beginPath();
+        ctx.arc(x(p.x), y(p.y), 7, 0, Math.PI * 2);
+        ctx.fillStyle = '#F59E0B';
+        ctx.fill();
+      });
+    });
+    // Passwege
+    (board.passes || []).forEach(p2 => {
+      drawArrow(ctx, x(p2.fromX), y(p2.fromY), x(p2.toX), y(p2.toY), p2.color || '#3B82F6');
+    });
+    // Laufwege
+    (board.runs || []).forEach(r => {
+      if (r.points.length < 2) return;
+      ctx.strokeStyle = r.color || '#3B82F6';
+      ctx.lineWidth = 4;
+      ctx.setLineDash([9, 7]);
+      ctx.beginPath();
+      r.points.forEach((p, i) => i === 0 ? ctx.moveTo(x(p.x), y(p.y)) : ctx.lineTo(x(p.x), y(p.y)));
+      ctx.stroke();
+      ctx.setLineDash([]);
+    });
+    // Optimale Positionen
+    (board.optimalPositions || []).forEach(o => {
+      const cx = x(o.toX), cy = y(o.toY);
+      ctx.strokeStyle = '#F59E0B';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 16, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(245,158,11,0.25)';
+      ctx.fill();
+      if (o.note) {
+        ctx.fillStyle = '#FBBF24';
+        ctx.font = 'bold 16px Arial';
+        ctx.fillText(o.note, cx + 20, cy + 4);
+      }
+    });
+    // Spieler
+    (board.players || []).forEach(pl => {
+      const cx = x(pl.x), cy = y(pl.y);
+      const isHome = pl.team === 'FC Auggen';
+      ctx.beginPath();
+      ctx.arc(cx, cy, 13, 0, Math.PI * 2);
+      ctx.fillStyle = isHome ? '#3B82F6' : '#EF4444';
+      ctx.fill();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.stroke();
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 14px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(pl.label, cx, cy);
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
+    });
+    return c.toDataURL('image/png');
+  };
+
+  const drawArrow = (ctx: CanvasRenderingContext2D, ax: number, ay: number, bx: number, by: number, color: string) => {
+    const ang = Math.atan2(by - ay, bx - ax);
+    const len = 16;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(ax, ay);
+    ctx.lineTo(bx, by);
+    ctx.stroke();
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(bx, by);
+    ctx.lineTo(bx - len * Math.cos(ang - 0.45), by - len * Math.sin(ang - 0.45));
+    ctx.lineTo(bx - len * Math.cos(ang + 0.45), by - len * Math.sin(ang + 0.45));
+    ctx.closePath();
+    ctx.fill();
+  };
+
+  const T: Array<{ id: typeof tool; icon: React.ReactNode; label: string }> = [
+    { id: 'pointer', icon: <MousePointer2 size={13} />, label: 'Auswählen/Löschen' },
+    { id: 'player', icon: <Users size={13} />, label: 'Spieler setzen' },
+    { id: 'chain', icon: <Waypoints size={13} />, label: 'Linien/Kette' },
+    { id: 'pass', icon: <MoveUpRight size={13} />, label: 'Passweg' },
+    { id: 'run', icon: <Footprints size={13} />, label: 'Laufweg' },
+    { id: 'zone', icon: <Square size={13} />, label: 'Raum/Zone' },
+    { id: 'ball', icon: <Crosshair size={13} />, label: 'Ballweg' },
+    { id: 'optimal', icon: <Target size={13} />, label: 'Optimale Position' },
+  ];
+
+  const colors = ['#3B82F6', '#EF4444', '#F59E0B', '#10B981', '#22D3EE'];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.98 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.98 }}
+      className="fixed inset-0 z-[90] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div className="bg-[#0D1117] border border-[#2A3447] rounded-2xl shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="px-4 py-3 border-b border-[#1E293B] flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <Target size={16} className="text-[#10B981] shrink-0" />
+            <span className="text-sm font-black uppercase text-white tracking-wide truncate">🎯 Once-Tagger – Szenen & Taktik direkt ins Video</span>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg bg-[#1E293B] hover:bg-rose-950/60 text-[#94A3B8] hover:text-rose-300 border border-[#334155] cursor-pointer"><X size={14} /></button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {/* Schritt 1: Frame einfrieren */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={captureFrame}
+              className="px-3 py-2 bg-[#10B981] hover:bg-[#059669] text-black font-black text-xs uppercase rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <Camera size={14} /> Frame einfrieren ({formatTime(snapshotTime)})
+            </button>
+            {!frameDataUrl && <span className="text-[11px] text-[#94A3B8]">Video an die richtige Stelle pausieren, dann Frame übernehmen.</span>}
+            {frameDataUrl && (
+              <span className="text-[10px] text-[#64748B]">🖼 {frameDims.w}×{frameDims.h} px · Zeit <span className="text-white font-mono">{formatTime(snapshotTime)}</span></span>
+            )}
+          </div>
+
+          {frameDataUrl ? (
+            <>
+              {/* Toolbar */}
+              <div className="flex items-center gap-1.5 flex-wrap bg-[#131A26] border border-[#2A3447] rounded-xl p-2">
+                {T.map(t => (
+                  <button
+                    key={t.id}
+                    onClick={() => { setTool(t.id); if (t.id !== 'run' && t.id !== 'ball') setRunPoints([]); }}
+                    title={t.label}
+                    className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1.5 border cursor-pointer transition-all ${
+                      tool === t.id ? 'bg-[#10B981]/20 text-[#10B981] border-[#10B981]/50' : 'bg-[#0F172A] text-[#94A3B8] border-[#242F42] hover:text-white'
+                    }`}
+                  >
+                    {t.icon}{t.label}
+                  </button>
+                ))}
+                <div className="mx-1 h-6 w-px bg-[#2A3447]" />
+                <button onClick={undo} disabled={!history.length} title="Rückgängig" className="px-2.5 py-1.5 rounded-lg bg-[#0F172A] text-[#94A3B8] border border-[#242F42] hover:text-white cursor-pointer disabled:opacity-40"><Undo2 size={13} /></button>
+                <button onClick={() => { pushHist(); setBoard({ attackDirection: 'DOWN', players: [], chains: [], passes: [], runs: [], ballPath: [], zones: [], optimalPositions: [] }); setRunPoints([]); }} className="px-2.5 py-1.5 rounded-lg bg-[#0F172A] text-rose-400 border border-[#242F42] hover:bg-rose-950/60 cursor-pointer" title="Alles löschen"><Eraser size={13} /></button>
+              </div>
+
+              {/* Werkzeug-Optionen */}
+              <div className="flex items-center gap-2.5 flex-wrap">
+                {(tool === 'player' || tool === 'optimal') && (
+                  <>
+                    <label className="text-[9px] font-black uppercase tracking-widest text-[#64748B]">Nummer/Kürzel</label>
+                    <input value={playerLabel} onChange={(e) => setPlayerLabel(e.target.value)} className="w-16 px-2 py-1 bg-[#0F172A] border border-[#242F42] rounded-lg text-xs text-white focus:outline-none focus:border-[#10B981]" />
+                  </>
+                )}
+                {tool === 'player' && (
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => setTeam('FC Auggen')} className={`px-2 py-1 rounded-lg text-[10px] font-black cursor-pointer border ${team === 'FC Auggen' ? 'bg-[#3B82F6] text-white border-[#3B82F6]' : 'bg-[#0F172A] text-[#94A3B8] border-[#242F42]'}`}>FCA</button>
+                    <button onClick={() => setTeam('Gegner')} className={`px-2 py-1 rounded-lg text-[10px] font-black cursor-pointer border ${team === 'Gegner' ? 'bg-rose-600 text-white border-rose-600' : 'bg-[#0F172A] text-[#94A3B8] border-[#242F42]'}`}>Gegner</button>
+                  </div>
+                )}
+                {tool === 'zone' && <input value={zoneLabel} onChange={(e) => setZoneLabel(e.target.value)} placeholder="Zonen-Label" className="w-36 px-2 py-1 bg-[#0F172A] border border-[#242F42] rounded-lg text-xs text-white focus:outline-none focus:border-[#10B981]" />}
+                {tool === 'optimal' && <input value={optimalNote} onChange={(e) => setOptimalNote(e.target.value)} placeholder="Begründung" className="w-56 px-2 py-1 bg-[#0F172A] border border-[#242F42] rounded-lg text-xs text-white focus:outline-none focus:border-[#10B981]" />}
+                {(tool === 'chain' || tool === 'pass' || tool === 'run' || tool === 'zone') && (
+                  <div className="flex items-center gap-1">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-[#64748B]">Farbe</span>
+                    {colors.map(c => (
+                      <button key={c} onClick={() => setStrokeColor(c)} className={`w-5 h-5 rounded-full border-2 cursor-pointer ${strokeColor === c ? 'border-white scale-110' : 'border-transparent opacity-70'}`} style={{ background: c }} />
+                    ))}
+                  </div>
+                )}
+                {(tool === 'run' || tool === 'ball') && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[9px] text-[#64748B]">{runPoints.length} Punkt(e)</span>
+                    <button onClick={finishPolyline} className="px-2.5 py-1 rounded-lg bg-[#10B981] text-black text-[10px] font-black uppercase cursor-pointer">Fertig</button>
+                    <button onClick={() => setRunPoints([])} className="px-2.5 py-1 rounded-lg bg-[#0F172A] text-[#94A3B8] text-[10px] font-bold border border-[#242F42] cursor-pointer">Abbrechen</button>
+                  </div>
+                )}
+              </div>
+
+              {/* Zeichenfläche */}
+              <div className="relative bg-black rounded-xl overflow-hidden flex items-center justify-center max-h-[52vh]">
+                <div className="relative inline-block max-h-[52vh]">
+                  <img
+                    ref={imgRef}
+                    src={frameDataUrl}
+                    draggable={false}
+                    onPointerDown={handlePointerDown}
+                    onPointerMove={handlePointerMove}
+                    onPointerUp={handlePointerUp}
+                    onPointerLeave={() => { setDraftStart(null); setDraftEnd(null); }}
+                    className="max-h-[52vh] max-w-full select-none"
+                    style={{ cursor: tool === 'pointer' ? 'default' : 'crosshair', touchAction: 'none' }}
+                  />
+                  <svg
+                    className="absolute inset-0 w-full h-full pointer-events-none"
+                    viewBox={`0 0 ${frameDims.w} ${frameDims.h}`}
+                    preserveAspectRatio="none"
+                  >
+                    <defs>
+                      <marker id="tagArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                        <path d="M0,0 L10,5 L0,10 z" fill="#3B82F6" />
+                      </marker>
+                    </defs>
+                    {/* Ketten */}
+                    {(board.chains || []).map((c, i) => (
+                      <line key={`c${i}`} x1={c.fromX / 100 * frameDims.w} y1={c.fromY / 100 * frameDims.h} x2={c.toX / 100 * frameDims.w} y2={c.toY / 100 * frameDims.h} stroke={c.color || '#22D3EE'} strokeWidth="5" opacity="0.85" strokeLinecap="round" />
+                    ))}
+                    {/* Ballweg */}
+                    {(board.ballPath || []).map((b, i) => b.points.length >= 2 ? (
+                      <polyline key={`bp${i}`} points={b.points.map(p => `${p.x / 100 * frameDims.w},${p.y / 100 * frameDims.h}`).join(' ')} fill="none" stroke={b.color || '#F59E0B'} strokeWidth="4" strokeDasharray="9 7" opacity="0.95" strokeLinecap="round" />
+                    ) : null)}
+                    {/* Laufwege */}
+                    {(board.runs || []).map((r, i) => r.points.length >= 2 ? (
+                      <polyline key={`r${i}`} points={r.points.map(p => `${p.x / 100 * frameDims.w},${p.y / 100 * frameDims.h}`).join(' ')} fill="none" stroke={r.color || '#3B82F6'} strokeWidth="4" strokeDasharray="9 7" opacity="0.95" strokeLinecap="round" />
+                    ) : null)}
+                    {/* Pässe */}
+                    {(board.passes || []).map((p, i) => (
+                      <line key={`p${i}`} x1={p.fromX / 100 * frameDims.w} y1={p.fromY / 100 * frameDims.h} x2={p.toX / 100 * frameDims.w} y2={p.toY / 100 * frameDims.h} stroke={p.color || '#3B82F6'} strokeWidth="3.5" opacity="0.95" markerEnd="url(#tagArrow)" />
+                    ))}
+                    {/* Zonen */}
+                    {(board.zones || []).map((z, i) => (
+                      <g key={`z${i}`}>
+                        <rect x={z.x / 100 * frameDims.w} y={z.y / 100 * frameDims.h} width={z.w / 100 * frameDims.w} height={z.h / 100 * frameDims.h} fill={z.color || '#F59E0B'} opacity="0.22" stroke={z.color || '#F59E0B'} strokeWidth="2" strokeDasharray="8 6" rx="4" />
+                        {z.label ? <text x={z.x / 100 * frameDims.w + 6} y={z.y / 100 * frameDims.h + 14} fontSize="16" fontWeight="900" fill={z.color || '#F59E0B'}>{z.label}</text> : null}
+                      </g>
+                    ))}
+                    {/* Optimale Positionen */}
+                    {(board.optimalPositions || []).map((o, i) => (
+                      <g key={`o${i}`}>
+                        <circle cx={o.toX / 100 * frameDims.w} cy={o.toY / 100 * frameDims.h} r="17" fill="rgba(245,158,11,0.25)" stroke="#F59E0B" strokeWidth="2.5" />
+                        <text x={o.toX / 100 * frameDims.w + 20} y={o.toY / 100 * frameDims.h + 5} fontSize="15" fontWeight="900" fill="#FBBF24">{o.note || 'Optimale Position'}</text>
+                      </g>
+                    ))}
+                    {/* Spieler */}
+                    {(board.players || []).map((pl, i) => (
+                      <g key={`pl${i}`}>
+                        <circle cx={pl.x / 100 * frameDims.w} cy={pl.y / 100 * frameDims.h} r="14" fill={pl.team === 'FC Auggen' ? '#3B82F6' : '#EF4444'} stroke="#FFFFFF" strokeWidth="2.5" />
+                        <text x={pl.x / 100 * frameDims.w} y={pl.y / 100 * frameDims.h + 5} fontSize="14" fontWeight="900" fill="#FFFFFF" textAnchor="middle">{pl.label}</text>
+                      </g>
+                    ))}
+                    {/* Live-Vorschau: laufende Linie */}
+                    {draftStart && draftEnd && (tool === 'chain' || tool === 'pass' || tool === 'zone') && (
+                      tool === 'zone'
+                        ? <rect x={Math.min(draftStart.x, draftEnd.x)} y={Math.min(draftStart.y, draftEnd.y)} width={Math.abs(draftEnd.x - draftStart.x)} height={Math.abs(draftEnd.y - draftStart.y)} fill={strokeColor} opacity="0.2" stroke={strokeColor} strokeWidth="2" />
+                        : <line x1={draftStart.x} y1={draftStart.y} x2={draftEnd.x} y2={draftEnd.y} stroke={strokeColor} strokeWidth="3" strokeDasharray="6 4" opacity="0.9" />
+                    )}
+                    {runPoints.length > 0 && (tool === 'run' || tool === 'ball') && (
+                      <polyline points={runPoints.map(p => `${p.x / 100 * frameDims.w},${p.y / 100 * frameDims.h}`).join(' ')} fill="none" stroke={tool === 'ball' ? '#F59E0B' : strokeColor} strokeWidth="4" strokeDasharray="9 7" opacity="0.9" />
+                    )}
+                  </svg>
+                </div>
+              </div>
+
+              <p className="text-[10px] text-[#64748B]">Tipp: Farbe = Bedeutung. Blau offensiv · Rot defensiv · Gelb Umschalten/optimal · Grün Struktur/gehalten · Cyan Kettenverbund. Mit ▶ Zeichnen starten, mit „Auswählen" Element anklicken zum Löschen.</p>
+
+              {/* Speichern */}
+              <div className="flex items-center gap-2 justify-between">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-[#64748B]">Stats</span>
+                  <span className="text-[10px] text-[#94A3B8]">Spieler {board.players?.length || 0}</span>
+                  <span className="text-[10px] text-[#94A3B8]">Kette {board.chains?.length || 0}</span>
+                  <span className="text-[10px] text-[#94A3B8]">Pässe {board.passes?.length || 0}</span>
+                  <span className="text-[10px] text-[#94A3B8]">Läufe {board.runs?.length || 0}</span>
+                  <span className="text-[10px] text-[#94A3B8]">Zonen {board.zones?.length || 0}</span>
+                  <span className="text-[10px] text-[#94A3B8]">Ballweg {board.ballPath?.length || 0}</span>
+                  <span className="text-[10px] text-[#94A3B8]">Optimal {board.optimalPositions?.length || 0}</span>
+                </div>
+                <button
+                  onClick={() => {
+                    if (!frameDataUrl) return;
+                    const thumb = composeAnnotatedImage();
+                    onSave(thumb, board, snapshotTime);
+                  }}
+                  className="px-4 py-2 bg-[#10B981] hover:bg-[#059669] text-black font-black text-xs uppercase rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-lg"
+                >
+                  <Save size={14} /> Als Taktik-Szene speichern
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="flex items-center justify-center h-40 text-[#64748B] text-xs border border-dashed border-[#2A3447] rounded-xl">
+              Zuerst ▶ „Frame einfrieren" drücken – du zeichnest dann direkt auf dem Spielbild ({videoName || 'Spielvideo'}).
+            </div>
+          )}
+        </div>
+      </div>
+    </motion.div>
   );
 };
 
@@ -725,6 +1258,7 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
   const [highlightedClipId, setHighlightedClipId] = useState<string | null>(null);
   const [expandedTacticClipId, setExpandedTacticClipId] = useState<string | null>(null);
+  const [taggerOpen, setTaggerOpen] = useState<boolean>(false);
 
   // Category accordion open/closed states (default all open)
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({
@@ -879,7 +1413,8 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
       let frames: string[] = [];
 
       if (!isVeoLink && videoEl && videoSource) {
-        frames = await extractFrames(videoEl, 5);
+        // 12 Frames gleichmäßig über das Video verteilt -> präzisere Zonenn- & Szenen-Erkennung
+        frames = await extractFrames(videoEl, 12);
       }
 
       const res = await apiFetch('/api/video-analysis/process', {
@@ -1547,6 +2082,35 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
   // Update clip color marking
   const handleUpdateClipColor = async (clip: TacticalVideoClip, color: 'green' | 'red' | 'none') => {
     await saveClip({ ...clip, colorMarking: color });
+  };
+
+  // Tagger: annotiertes Bild + Taktik-Daten als neue Szene speichern
+  const handleTaggerSave = (thumbnailDataUrl: string, board: SceneTacticBoard, timeSeconds: number) => {
+    const dur = videoDuration > 0 ? videoDuration : timeSeconds + 6;
+    const start = Math.max(0, timeSeconds - 3);
+    const end = Math.min(dur, timeSeconds + 3);
+    const newId = `tagger_clip_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const newClip: TacticalVideoClip = {
+      id: newId,
+      category: 'Spielaufbau',
+      categories: ['Spielaufbau'],
+      videoUrl: videoSource ?? '',
+      videoName: videoFileName || 'Spielvideo',
+      startTime: start,
+      endTime: end,
+      duration: Math.max(1, end - start),
+      thumbnailUrl: thumbnailDataUrl,
+      tacticalNote: `🎯 Taktik-Anmerkung vom Coach (${formatTime(start)} – ${formatTime(end)}) – Elemente: ${board.players?.length || 0} Spieler, ${board.passes?.length || 0} Passwege, ${board.runs?.length || 0} Laufwege, ${board.zones?.length || 0} Räume, ${board.optimalPositions?.length || 0} optimale Positionen.`,
+      colorMarking: 'none',
+      createdAt: new Date().toISOString(),
+      title: `🎯 Taktik-Anmerkung (${formatTime(start)})`,
+      tacticBoard: board,
+    };
+    void saveClip(newClip);
+    setOpenCategories(prev => ({ ...prev, 'Spielaufbau': true }));
+    setHighlightedClipId(newId);
+    setSaveSuccessMsg('Taktik-Szene gespeichert – mit annotiertem Bild unter „Spielaufbau".');
+    setTaggerOpen(false);
   };
 
   // Group clips by category
@@ -2587,6 +3151,17 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
                   <span>Ausschnitt-Vorschau aktiv</span>
                 </div>
               )}
+
+              {/* Once-Tagger Start Button */}
+              {!isVeoLink && (
+                <button
+                  onClick={() => setTaggerOpen(true)}
+                  className="absolute bottom-3 right-3 px-2.5 py-1.5 bg-black/80 hover:bg-[#10B981] text-[#10B981] hover:text-black rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 border border-[#10B981]/50 backdrop-blur-md transition-all cursor-pointer z-20"
+                  title="Once-Style: Frame einfrieren und Spieler, Ketten, Pass-/Lauf-/Ballwege, Räume & optimale Positionen zeichnen"
+                >
+                  <Target size={13} /> 🎯 Once-Tagger
+                </button>
+              )}
             </div>
 
             {/* Interactive Timeline Scrubbing & Marker Controls (nur bei nativem Video) */}
@@ -3546,6 +4121,20 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
 
             </div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* Once-Tagger Modal */}
+      <AnimatePresence>
+        {taggerOpen && (
+          <OnceTaggerModal
+            videoRef={mainVideoRef}
+            videoName={videoFileName || 'Spielvideo'}
+            videoSource={videoSource || ''}
+            initialTime={currentTime}
+            onSave={handleTaggerSave}
+            onClose={() => setTaggerOpen(false)}
+          />
         )}
       </AnimatePresence>
 

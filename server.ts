@@ -1063,6 +1063,14 @@ Rekonstruiere pro Szene die VOLLSTÄNDIGE KETTE: VORHER → AUSLÖSER → SPIELE
    - optimalPositions: für 1-3 FCA-Spieler die IDEALE Position (Once-Style) als Pfeil von aktuell nach ideal mit kurzer deutscher Begründung.
    - Leere Arrays sind erlaubt, wenn eine Kategorie in der Szene nicht vorkommt. Verlasse dich NIEMALS auf erfundene Koordinaten – wenn die Bildrichtung unklar ist, wähle attackDirection 'DOWN' und zeichne konsistent.
 
+**SZENEN-PRÄZISION (STRENG – bessere Trefferwahrscheinlichkeit für den Trainer)**:
+- Erstelle NUR Szenen mit echtem taktischem/statistischem Wert. KEINE Füll-Szenen, keine generische "Spielszene", keine Wiederholungen.
+- Pro Szene EIN klares Hauptereignis (Torschuss, Ballgewinn, Ballverlust, Pressingauslösung, Standard, Durchbruch). Zwei ähnliche Szene zur selben Aktion: nur EINE - die aussagekräftigste.
+- startTimeSeconds/endTimeSeconds MÜSSEN präzise zum Hauptereignis passen (z.B. Torschuss bei Minute 43:12 → Start 43:06, Ende 43:18). Runde NICHT auf volle Minuten auf. Wenn du die genaue Zeit nicht erkennst, nimm den nächsten Frames-Timestamp und markiere lowConfidence.
+- Szenen nicht überlappen lassen, außer sie behandeln klar verschiedene Ereignisse in derselben Passage.
+- Vermeide Provisorien wie "ca." oder "circa" in title/fachweisen Feldern; Unsicherheit gehört in confidence/lowConfidence, nicht in die Analyse selbst.
+- Eine Szene, bei der weder Team noch Ereignis sicher erkennbar ist: lieber WEGLASSEN als hinzufügen (Qualität > Quantität, Ziel 6-10 Szenen).
+
 Kaderliste des Vereins:
 ${squadStr}
 
@@ -1407,7 +1415,35 @@ resultText = response.text ?? null;
 
       if (resultText) {
         try {
-          return res.json(JSON.parse(resultText));
+          const parsed = JSON.parse(resultText);
+          // SZENEN-PRÄZISION: unsichere Füll-Szenen entfernen + überlappende Duplikate kürzen
+          if (Array.isArray(parsed.sceneClips)) {
+            const filtered = parsed.sceneClips
+              .filter((c: any) => {
+                if (!c || typeof c !== 'object') return false;
+                if (!c.id && !c.title) return false;
+                const low = c.lowConfidence === true
+                  || (c.confidence && c.confidence.overall === 'niedrig')
+                  || (c.confidence && c.confidence.overall === 'low');
+                if (low) return false;
+                return typeof c.startTimeSeconds === 'number' && typeof c.endTimeSeconds === 'number';
+              })
+              .sort((a: any, b: any) => (a.startTimeSeconds || 0) - (b.startTimeSeconds || 0));
+            const deduped: any[] = [];
+            for (const c of filtered) {
+              const prev = deduped[deduped.length - 1];
+              const overlap = prev && prev.endTimeSeconds - (c.startTimeSeconds || 0) > 2
+                && (prev.category === c.category || (c.category === 'AUFBAU' && prev.category === 'AUFBAU'));
+              if (overlap) {
+                prev.endTimeSeconds = Math.max(prev.endTimeSeconds, c.endTimeSeconds || prev.endTimeSeconds);
+                prev.title = (prev.title || '') + ' / ' + (c.title || '');
+              } else {
+                deduped.push(c);
+              }
+            }
+            parsed.sceneClips = deduped;
+          }
+          return res.json(parsed);
         } catch (e) {
           console.warn("Failed to parse Gemini JSON output, continuing to fallback payload.");
         }
