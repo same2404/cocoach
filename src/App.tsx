@@ -649,6 +649,15 @@ const App: React.FC = () => {
                     loadingSommer || loadingWinter || loadingOpponents || loadingTestMatches || loadingTestMinutes || loadingAnalyses ||
                     loadingSessionLogs;
 
+  // App sofort anzeigen: Warte höchstens 6 Sekunden auf große Collections, danach rendern wir trotzdem.
+  // Die Daten kommen via onSnapshot weiterhin live nach – kein endloser Spinner, kein scheinbares Hängen.
+  const [maxWaitElapsed, setMaxWaitElapsed] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setMaxWaitElapsed(true), 6000);
+    return () => clearTimeout(timer);
+  }, []);
+  const startReady = !isLoading || maxWaitElapsed;
+
   const CLIENT_VERSION = "2026-08-24_12-00";
   useEffect(() => {
     if (!navigator.onLine || window.location.hostname !== 'localhost') return;
@@ -2853,7 +2862,7 @@ onNavigateToTacticBoard={(_matchId: any, draft?: any) => {
     };
   }, []);
 
-  if (authLoading || isLoading) {
+  if (authLoading || !startReady) {
     return (
       <div className="h-screen w-screen flex-col flex items-center justify-center bg-black text-white p-8">
         <div className="w-16 h-16 border-4 border-white border-t-[#C00000] rounded-full animate-spin mb-8" />

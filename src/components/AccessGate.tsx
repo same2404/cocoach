@@ -7,7 +7,7 @@ export const APP_PASSWORD = 'Naomi29082017!!';
 
 export const isAccessGranted = () => {
   try {
-    return sessionStorage.getItem(GATE_STORAGE_KEY) === '1';
+    return localStorage.getItem(GATE_STORAGE_KEY) === '1';
   } catch {
     return false;
   }
@@ -15,7 +15,7 @@ export const isAccessGranted = () => {
 
 export const grantAccess = () => {
   try {
-    sessionStorage.setItem(GATE_STORAGE_KEY, '1');
+    localStorage.setItem(GATE_STORAGE_KEY, '1');
   } catch {
     /* noop */
   }
@@ -23,7 +23,7 @@ export const grantAccess = () => {
 
 export const revokeAccess = () => {
   try {
-    sessionStorage.removeItem(GATE_STORAGE_KEY);
+    localStorage.removeItem(GATE_STORAGE_KEY);
   } catch {
     /* noop */
   }
@@ -53,31 +53,6 @@ const AccessGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       setError(true);
     }
   };
-
-  // Automatische Abmeldung: Die Freischaltung läuft nach kurzer Untätigkeit ab,
-  // damit niemand dauerhaft eingeloggt bleibt (auch bei offenem Tab).
-  const ACCESS_TIMEOUT_MS = 2 * 60 * 1000; // 2 Minuten
-  const grantRef = React.useRef(granted);
-  grantRef.current = granted;
-
-  React.useEffect(() => {
-    if (!grantRef.current) return;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    const schedule = () => {
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => {
-        revokeAccess();
-        setGranted(false);
-      }, ACCESS_TIMEOUT_MS);
-    };
-    schedule();
-    const events: (keyof WindowEventMap)[] = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'];
-    events.forEach((ev) => window.addEventListener(ev, schedule));
-    return () => {
-      if (timer) clearTimeout(timer);
-      events.forEach((ev) => window.removeEventListener(ev, schedule));
-    };
-  }, [granted]);
 
   if (granted || isPublicLandingRoute()) {
     return <>{children}</>;
