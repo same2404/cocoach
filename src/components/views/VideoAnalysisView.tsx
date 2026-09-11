@@ -41,7 +41,6 @@ Users,
    Undo2,
    MousePointer2,
    Eraser,
-   MousePointerClick,
    MoveUpRight,
    Waypoints,
    Footprints,
@@ -3185,6 +3184,28 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
                       expanded={expandedTacticClipId === clipKey}
                       onToggle={() => setExpandedTacticClipId(expandedTacticClipId === clipKey ? null : clipKey)}
                     />
+                    <button
+                      onClick={() => {
+                        const saved = (savedClips || []).find(c => c.aiSceneId === clip.id);
+                        if (saved) { openTaggerForClip(saved); return; }
+                        setTagTargetClipId(null);
+                        setTaggerOpen(true);
+                        setTagBoard({ attackDirection: 'DOWN', players: [], chains: [], passes: [], runs: [], ballPath: [], zones: [], optimalPositions: [] });
+                        setTagHistory([]);
+                        setTagRunPts([]);
+                        setTagDragStart(null);
+                        const v = mainVideoRef.current;
+                        if (v) {
+                          v.pause();
+                          const t = Number(clip.startTimeSeconds) || 0;
+                          if (isFinite(t)) v.currentTime = t;
+                        }
+                      }}
+                      className="mt-2 w-full px-2 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 bg-[#10B981]/10 text-[#10B981] border border-[#10B981]/40 hover:bg-[#10B981] hover:text-black transition-all cursor-pointer"
+                      title="Once-Style: direkt auf dem Video zeichnen, springt zum Szenen-Start"
+                    >
+                      <Target size={12} /> 🎯 Diese Szene direkt markieren
+                    </button>
                   </div>
                   );
                 })}
@@ -4331,6 +4352,13 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
                   </h4>
                 </div>
 
+                <button
+                  onClick={() => { const t = activePlaybackClip; setActivePlaybackClip(null); if (t) openTaggerForClip(t); }}
+                  className="px-3 py-1.5 bg-[#10B981] hover:bg-[#059669] text-black rounded-lg text-xs font-black uppercase tracking-wider flex items-center gap-1.5 cursor-pointer mr-2 shadow-lg"
+                  title="Once-Style: direkt auf dem Video zeichnen und in diese Szene speichern"
+                >
+                  <Target size={14} /> 🎯 Zeichnen
+                </button>
                 <button
                   onClick={() => setActivePlaybackClip(null)}
                   className="p-1.5 bg-[#0F172A] hover:bg-[#20293A] text-white rounded-lg cursor-pointer"
