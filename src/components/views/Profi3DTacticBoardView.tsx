@@ -144,6 +144,11 @@ export const PASS_ACTION_COLORS: Record<string, string> = {
   Torschuss: '#EF4444',
 };
 
+// ═══ KI-Szenen-Designer (Once-Style): strukturierte taktische Szene ═══
+export interface SceneChain { name: string; positions: string[]; color: string; }
+export interface SceneZone { x: number; y: number; w: number; h: number; color: string; label?: string; }
+export interface SceneOptimalPosition { position: string; toX: number; toY: number; label?: string; }
+
 // Foto statt Nummer: zeigt das Kaderfoto, fällt automatisch auf die Rückennummer zurück (Bild defekt/leer)
 const PhotoOrNumber: React.FC<{ image?: string; number?: any; className?: string; circleClass?: string }> = ({ image, number, className = 'w-5 h-5', circleClass = 'bg-emerald-400 text-slate-950' }) => (
   <span className={`relative shrink-0 ${className}`}>
@@ -657,6 +662,15 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
   const [lastFupaStartelf, setLastFupaStartelf] = useState<StartelfStarter[] | null>(null);
   const [fupaLoading, setFupaLoading] = useState(false);
   const [fupaLineupActive, setFupaLineupActive] = useState(false);
+
+  // ═══ KI-Szenen-Designer (Once-Style) State ═══
+  const [sceneChains, setSceneChains] = useState<SceneChain[]>([]);
+  const [sceneZones, setSceneZones] = useState<SceneZone[]>([]);
+  const [sceneOptimalPositions, setSceneOptimalPositions] = useState<SceneOptimalPosition[]>([]);
+  const [sceneRuns, setSceneRuns] = useState<PlayerRunPath[]>([]);
+  const [showKIScenePanel, setShowKIScenePanel] = useState(false);
+  const [kiScenePrompt, setKiScenePrompt] = useState('');
+  const [kiSceneLoading, setKiSceneLoading] = useState(false);
 
   // Dynamische Formation-Overlays: Spieler des aktiven Vereins werden den Formation-Positionen zugeordnet
   const liveFormations = useMemo(() => {
@@ -2838,6 +2852,201 @@ Gib mir in 3 kurzen, klaren Bullet Points:
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ═══ KI-Szenen-Designer (Once-Style): strukturierte taktische Szene via Gemini ═══
+  const KI_SCENE_PRESETS: Array<{ label: string; text: string }> = [
+    { label: 'Pressingfalle Halbraum', text: 'Wir pressen im rechten Halbraum: ST läuft den Innenverteidiger an, OM schiebt nach rechts, DM sichert ab. Nach Ballgewinn sofort Steilpass in die Tiefe auf die rechte Seite.' },
+    { label: 'Spielaufbau über den 6er', text: 'Spielaufbau von hinten über den 6er: RV und LV positionieren sich hoch und breit, DM bietet sich zwischen den Linien an, Absicherung durch die Innenverteidiger. Ziel: den Halbraum bespielen.' },
+    { label: 'Konter', text: 'Umschaltmoment nach Ballgewinn: schneller vertikaler Steilpass hinter die Kette, ST startet in die Tiefe, LA überlappt außen, DM sichert ab.' },
+    { label: 'Flügelüberladung', text: 'Überladung auf dem linken Flügel: LA, LV und OM ballen sich auf der linken Seite, dadurch entsteht Raum im rechten Halbraum, dorthin die Verlagerung mit anschließendem Abschluss.' },
+    { label: 'Defensive Kompaktheit', text: 'Defensivblock verschiebt zur Ballseite, die Abwehrkette steht auf einer Linie, das Mittelfeld zieht sich zurück und stellt den Zwischenlinienraum zu.' },
+  ];
+
+  const generateTacticScene = useCallback(async () => {
+    if (kiSceneLoading) return;
+    const prompt = (kiScenePrompt || '').trim();
+    if (!prompt) { notify('Bitte zuerst eine Szene beschreiben (oder eine Vorlage anklicken).'); return; }
+    const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || (typeof process !== 'undefined' ? (process as any).env?.GEMINI_API_KEY : '') || '';
+    if (!apiKey) { notify('Kein Gemini-API-Key konfiguriert – KI-Szene nicht verfügbar.'); return; }
+    setKiSceneLoading(true);
+    try {
+      const lineup = currentNodePositions.map(n => `${n.position} (${n.name}) bei x=${Math.round(n.currentX)} y=${Math.round(n.currentY)}`).join('\n');
+      const ai = new GoogleGenAI({ apiKey });
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.6-flash',
+        contents: `Du bist Taktik-Analyst auf Once-Football-Niveau des ${activeClub.name}.
+Verwandle die Trainer-Beschreibung in eine VOLLSTÄNDIGE taktische Szene mit allen grafischen Elementen.
+Antworte NUR mit reinem JSON (kein Markdown, kein Codeblock, keine Erklärungen).
+
+Aktuelle Aufstellung (x/y in Prozent auf dem Spielfeld, 0-100, oben = gegnerisches Tor):
+${lineup}
+
+Trainer-Beschreibung:
+"${prompt}"
+
+JSON-Schema (benutze GENAU dieses Format):
+{
+ "chains": [ { "name": "Abwehrkette", "positions": ["RV","IV","IV","LV"], "color": "#10B981" } ],
+ "zones": [ { "x": 35, "y": 15, "w": 25, "h": 35, "color": "#F59E0B", "label": "Halbraum überladen" } ],
+ "runs": [ { "position": "OM", "path": [ { "x": 50, "y": 35 }, { "x": 62, "y": 22 } ], "color": "#3B82F6" } ],
+ "ballPath": [ { "x": 45, "y": 58, "action": "Direktpass" }, { "x": 62, "y": 22, "action": "Steilpass" } ],
+ "optimalPositions": [ { "position": "OM", "toX": 60, "toY": 24, "label": "Mehr Tiefe" } ]
+}
+
+Regeln:
+- "positions" = Positionskürzel aus der Aufstellung (TW, RV, IV, LV, DM, ZM, OM, RA, LA, ST, RM, LM).
+- chains: verbinde echte Ketten (Abwehrkette, Mittelfeldkette, Angriffskette) über passende positions-Listen.
+- zones: gefährliche / freie / überladene Räume, Koordinaten in Prozent (x,y = obere linke Ecke, w,h = Größe).
+- runs: Laufwege der beteiligten Spieler, max. 3 Punkte pro Weg; Farben: Blau #3B82F6 offensiv, Rot #EF4444 defensiv, Gelb #F59E0B Umschalten.
+- ballPath: 3-5 Stationen, action aus: Direktpass, Steilpass, Flanke, Klatschball, Doppelpass, Torschuss.
+- optimalPositions: bessere Position eines Spielers (Positionskürzel + Ziel x/y + kurze Begründung auf Deutsch).
+- Nutze NUR Positionskürzel, die in der Aufstellung vorkommen.
+- Leere Arrays sind erlaubt, wenn eine Kategorie nicht passt.`,
+      });
+      const text = (response as any).text || '';
+      if (!text) { notify('KI hat keine Antwort geliefert – bitte erneut versuchen.'); return; }
+      const cleaned = text.replace(/```(?:json)?/g, '').trim();
+      const start = cleaned.indexOf('{');
+      const end = cleaned.lastIndexOf('}');
+      if (start === -1 || end === -1) { notify('KI-Antwort enthielt kein JSON – bitte erneut versuchen.'); return; }
+      const data = JSON.parse(cleaned.slice(start, end + 1)) as {
+        chains?: SceneChain[];
+        zones?: SceneZone[];
+        runs?: Array<{ position?: string; path?: Array<{ x: number; y: number }>; color?: string }>;
+        ballPath?: Array<{ x: number; y: number; action?: string }>;
+        optimalPositions?: SceneOptimalPosition[];
+      };
+      const ts = Date.now();
+      const newRuns: PlayerRunPath[] = (data.runs || []).filter(r => r.position && r.path && r.path.length >= 2).map((r, i) => ({
+        id: `sceneRun_${ts}_${i}`,
+        playerId: r.position!,
+        path: r.path!.map(p => ({ x: Math.max(0, Math.min(100, p.x)), y: Math.max(0, Math.min(100, p.y)) })),
+        color: r.color || '#3B82F6',
+        type: 'lauf',
+      }));
+      const newChains = (data.chains || []).filter(c => c.positions && c.positions.length >= 2);
+      const newZones = (data.zones || []).filter(z => typeof z.x === 'number' && typeof z.w === 'number');
+      const newOptimals = (data.optimalPositions || []).filter(o => o.position);
+      const newStations: PassStation[] = (data.ballPath || []).filter(p => typeof p.x === 'number').map((p, i) => ({
+        id: `sceneBall_${ts}_${i}`,
+        x: Math.max(0, Math.min(100, p.x)),
+        y: Math.max(0, Math.min(100, p.y)),
+        action: PASS_ACTIONS.includes(p.action || '') ? p.action! : 'Direktpass',
+      }));
+      setSceneRuns(newRuns);
+      setSceneChains(newChains);
+      setSceneZones(newZones);
+      setSceneOptimalPositions(newOptimals);
+      if (newStations.length >= 2) setPassStations(newStations);
+      setPassBallPos(null);
+      notify(`✅ KI-Szene erstellt: ${newChains.length} Kette(n), ${newZones.length} Raum/Räume, ${newRuns.length} Laufwege, ${newStations.length} Ballstationen – ▶️ Abspielen für den Ballweg`);
+    } catch (err: any) {
+      notify('KI-Szene konnte nicht erstellt werden: ' + (err?.message || 'Antwort nicht als JSON lesbar.'));
+    } finally {
+      setKiSceneLoading(false);
+    }
+  }, [kiSceneLoading, kiScenePrompt, activeClub, setPassStations, setPassBallPos, notify]);
+
+  const clearTacticScene = useCallback(() => {
+    setSceneChains([]);
+    setSceneZones([]);
+    setSceneOptimalPositions([]);
+    setSceneRuns([]);
+    setPassStations(prev => prev.filter(s => !s.id.startsWith('sceneBall_')));
+    setPassBallPos(null);
+    notify('🧹 KI-Szene entfernt');
+  }, [notify]);
+
+  const nodeCoords = (pos: string): { x: number; y: number } | null => {
+    const n = currentNodePositions.find(p => p.position === pos);
+    if (!n) return null;
+    return { x: animatedPlayerPositions[n.id]?.x ?? n.currentX, y: animatedPlayerPositions[n.id]?.y ?? n.currentY };
+  };
+
+  const renderSceneOverlays = () => {
+    const anyScene = sceneChains.length > 0 || sceneZones.length > 0 || sceneOptimalPositions.length > 0 || sceneRuns.length > 0;
+    if (!anyScene) return null;
+    return (
+      <svg className="absolute inset-0 w-full h-full pointer-events-none z-15" viewBox="0 0 100 100" preserveAspectRatio="none">
+        {sceneZones.map((z, i) => (
+          <g key={`sz-zone-${i}`}>
+            <rect x={z.x} y={z.y} width={z.w} height={z.h} fill={z.color} opacity="0.28" stroke={z.color} strokeWidth="0.4" strokeDasharray="2 1.5" rx="1" />
+            {z.label ? <text x={z.x + 1.5} y={z.y + 3} fontSize="2.8" fontWeight="900" fill={z.color}>{z.label}</text> : null}
+          </g>
+        ))}
+        {sceneChains.map((c, i) => {
+          const pts = c.positions.map(nodeCoords).filter(Boolean) as Array<{ x: number; y: number }>;
+          if (pts.length < 2) return null;
+          return (
+            <g key={`sz-chain-${i}`}>
+              <polyline points={pts.map(p => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' ')} fill="none" stroke={c.color} strokeWidth="1" strokeDasharray="3 2" opacity="0.85" />
+              {c.name ? <text x={pts[0].x + 1} y={pts[0].y - 1.5} fontSize="2.6" fontWeight="900" fill={c.color}>{c.name}</text> : null}
+            </g>
+          );
+        })}
+        {sceneRuns.map((run, i) => {
+          if (run.path.length < 2) return null;
+          const p2 = run.path[run.path.length - 1];
+          return (
+            <g key={`sz-run-${i}`}>
+              <polyline points={run.path.map(p => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' ')} fill="none" stroke={run.color || '#3B82F6'} strokeWidth="0.8" strokeDasharray="2.5 1.5" opacity="0.95" />
+              <circle cx={p2.x} cy={p2.y} r="1.4" fill={run.color || '#3B82F6'} stroke="white" strokeWidth="0.3" />
+            </g>
+          );
+        })}
+        {sceneOptimalPositions.map((o, i) => {
+          const from = nodeCoords(o.position);
+          if (!from) return null;
+          return (
+            <g key={`sz-opt-${i}`}>
+              <line x1={from.x} y1={from.y} x2={o.toX} y2={o.toY} stroke="#F59E0B" strokeWidth="0.6" strokeDasharray="1.5 1.2" opacity="0.9" />
+              <circle cx={o.toX} cy={o.toY} r="2.2" fill="none" stroke="#F59E0B" strokeWidth="0.5" />
+              {o.label ? <text x={Math.min(o.toX + 2, 92)} y={Math.max(o.toY - 1.5, 3)} fontSize="2.6" fontWeight="900" fill="#FBBF24">{o.label}</text> : null}
+            </g>
+          );
+        })}
+      </svg>
+    );
+  };
+
+  const renderScenePanel = () => (
+    <div className="w-full max-w-4xl bg-slate-950/95 border border-emerald-500/40 rounded-xl p-3 flex flex-col gap-2">
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] font-black uppercase tracking-wider text-emerald-300">🧠 KI-Szenen-Designer (Once-Style)</span>
+        <button onClick={() => setShowKIScenePanel(false)} className="px-1.5 py-0.5 text-[9px] font-black rounded hover:bg-rose-500/30 transition-all text-rose-300 cursor-pointer" title="Panel schließen">✖ Schließen</button>
+      </div>
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <span className="text-[8.5px] font-black uppercase text-slate-400">Vorlagen:</span>
+        {KI_SCENE_PRESETS.map(p => (
+          <button key={p.label} onClick={() => setKiScenePrompt(p.text)} className="px-1.5 py-0.5 text-[8.5px] font-black rounded cursor-pointer hover:bg-emerald-500/30 transition-all text-emerald-300 border border-slate-800 hover:border-emerald-500/60">{p.label}</button>
+        ))}
+      </div>
+      <textarea
+        value={kiScenePrompt}
+        onChange={(e) => setKiScenePrompt(e.target.value)}
+        placeholder={'Beschreibe die taktische Szene, z. B.: „Spielaufbau über den 6er, Halbraum überladen, am Ende Steilpass auf den ST"'}
+        className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-[10px] font-black text-slate-200 focus:outline-none focus:border-emerald-500/60 h-14 resize-none"
+      />
+      <div className="flex items-center gap-2">
+        <button
+          onClick={generateTacticScene}
+          disabled={kiSceneLoading}
+          className="px-2 py-1 text-[9.5px] font-black uppercase tracking-wider rounded-md border cursor-pointer disabled:opacity-40 bg-emerald-600 text-white border-emerald-400 hover:bg-emerald-500 flex items-center gap-1"
+          title="Gemini erstellt die komplette taktische Szene (Linien, Räume, Pass-/Lauf-/Ballwege, optimale Positionen)"
+        >
+          {kiSceneLoading ? '⏳' : '🎬'} {kiSceneLoading ? 'Szene wird erstellt…' : 'Szene erstellen'}
+        </button>
+        <button
+          onClick={clearTacticScene}
+          disabled={kiSceneLoading}
+          className="px-2 py-1 text-[9.5px] font-black uppercase tracking-wider rounded-md border cursor-pointer disabled:opacity-40 text-rose-300 border-slate-800 hover:border-rose-500/60"
+          title="Alle KI-Szenen-Elemente vom Feld entfernen"
+        >
+          🧹 Szene leeren
+        </button>
+      </div>
+    </div>
+  );
+
   // Sync saved custom formations from Firestore
   useEffect(() => {
     const q = query(collection(db, 'custom_formations'));
@@ -4375,7 +4584,15 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                   >
                     {fupaLoading ? '⏳' : '🔄'} Startelf
                   </button>
+                  <button
+                    onClick={() => setShowKIScenePanel(p => !p)}
+                    className={`px-1.5 py-0.5 text-[9px] font-black rounded transition-all cursor-pointer ${showKIScenePanel ? 'bg-emerald-500 text-slate-950' : 'hover:bg-emerald-500/30 text-emerald-300'}`}
+                    title="KI-Szenen-Designer (Once-Style): Gemini erstellt komplette taktische Grafik (Ketten, Räume, Pass-/Lauf-/Ballwege, optimale Positionen)"
+                  >
+                    🧠 KI-Szene
+                  </button>
                 </div>
+                {showKIScenePanel && renderScenePanel()}
                 {dragRunMode && (
                   <div className="bg-cyan-500/20 border border-cyan-500/40 rounded-xl px-3 py-1.5 flex items-center gap-2 text-[10px] font-black uppercase text-cyan-300">
                     🖐️ Ziehe einen Spieler – der Cursor zeichnet seinen Laufweg. Jeder Spieler einzeln. Dann ▶️ Abspielen.
@@ -4761,6 +4978,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                     </div>
                   );
                 })}
+                {renderSceneOverlays()}
                 {currentNodePositions.map((node) => {
                   const isSelected = selectedNodeId === node.id;
                   const isContextMenuActive = contextMenuPlayerId === node.id;
@@ -5915,6 +6133,15 @@ Gib mir in 3 kurzen, klaren Bullet Points:
               >
                 {fupaLoading ? '⏳' : '🔄'} Startelf (fupa)
               </button>
+              <button
+                onClick={() => setShowKIScenePanel(p => !p)}
+                className={`px-2 py-0.5 text-[9.5px] font-black uppercase tracking-wider rounded-md border transition-all cursor-pointer ${
+                  showKIScenePanel ? 'bg-emerald-500 text-slate-950 border-emerald-400' : 'bg-slate-900 text-emerald-300 border-slate-800 hover:border-emerald-500/60'
+                }`}
+                title="KI-Szenen-Designer (Once-Style): Gemini erstellt komplette taktische Grafik (Ketten, Räume, Pass-/Lauf-/Ballwege, optimale Positionen)"
+              >
+                🧠 KI-Szene
+              </button>
               {dragRunMode && (
                 <button onClick={() => { setDragRunPlayerId(null); setDragRunStart(null); setDragRunPreview([]); }} className="px-1.5 py-0.5 text-[8.5px] font-black rounded cursor-pointer hover:bg-rose-500/30 transition-all text-rose-300" title="Aktuellen Laufweg-Zug abbrechen">✖ Abbrechen</button>
               )}
@@ -5922,6 +6149,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                 <button onClick={() => { setPassStations([]); setPassBallPos(null); }} className="px-1.5 py-0.5 text-[8.5px] font-black rounded cursor-pointer hover:bg-rose-500/30 transition-all text-rose-300" title="Ball-Kette leeren">🧹 Leeren</button>
               )}
             </div>
+            {showKIScenePanel && renderScenePanel()}
             {dragRunMode && (
               <div className="bg-cyan-500/20 border border-cyan-500/40 rounded-xl px-3 py-1.5 flex items-center gap-2 text-[10px] font-black uppercase text-cyan-300">
                 🖐️ Ziehe einen Spieler – der Cursor zeichnet seinen Laufweg. Jeder Spieler einzeln. Dann ▶️ Abspielen.
@@ -6324,6 +6552,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
                     </div>
                   );
                 })}
+                {renderSceneOverlays()}
                 {currentNodePositions.map((node) => {
                   const isSelected = selectedNodeId === node.id;
                   const isContextMenuActive = contextMenuPlayerId === node.id;
