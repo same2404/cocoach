@@ -2332,8 +2332,11 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
                 Automatisch erkannte Spielszenen ({aiAnalysisResult.sceneClips.length})
               </h3>
               <div className="space-y-2">
-                {aiAnalysisResult.sceneClips.map((clip: any, idx: number) => (
-                  <div key={clip.id || idx} className="bg-[#0D1117] border border-[#1E293B] rounded-xl p-3 flex items-start gap-3">
+                {aiAnalysisResult.sceneClips.map((clip: any, idx: number) => {
+                  const clipKey = String(clip.id || `airaw_${idx}`);
+                  return (
+                  <div key={clipKey} className="bg-[#0D1117] border border-[#1E293B] rounded-xl p-3">
+                    <div className="flex items-start gap-3">
                     <div className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase shrink-0 ${
                       clip.teamInvolved?.includes(clubShortName) || clip.teamInvolved === clubName
                         ? 'bg-[#10B981]/20 text-[#10B981] border border-[#10B981]/40'
@@ -2357,8 +2360,16 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
                         )}
                       </div>
                     </div>
+                    </div>
+                    {/* Once-Style Taktik-Grafik */}
+                    <SceneTacticDiagram
+                      board={clip.tacticBoard}
+                      expanded={expandedTacticClipId === clipKey}
+                      onToggle={() => setExpandedTacticClipId(expandedTacticClipId === clipKey ? null : clipKey)}
+                    />
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
