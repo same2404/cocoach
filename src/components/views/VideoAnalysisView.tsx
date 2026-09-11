@@ -1436,6 +1436,18 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
     return c.toDataURL('image/png');
   };
 
+  // Annotiertes Taktik-Bild (Once-Zeichnungen) als PNG herunterladen
+  const tagDownloadImage = () => {
+    const dataUrl = tagCompose();
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = `cocoach_taktik_${formatTime(currentTime, true).replace(/[^0-9]/g, '_')}_${new Date().toISOString().slice(11, 19).replace(/:/g, '')}.png`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => a.remove(), 100);
+    setSaveSuccessMsg('Annotiertes Taktik-Bild als PNG gespeichert.');
+  };
+
   // Category accordion open/closed states (default all open)
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({
     'Tore': true,
@@ -3540,6 +3552,7 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
                     <div className="mx-1 h-5 w-px bg-white/15" />
                     <button onClick={tagUndo} disabled={!tagHistory.length} title="Rückgängig" className="px-2 py-1 rounded-lg bg-black/40 text-[#94A3B8] border border-white/10 hover:text-white cursor-pointer disabled:opacity-40"><Undo2 size={13} /></button>
                     <button onClick={tagClear} title="Alles löschen" className="px-2 py-1 rounded-lg bg-black/40 text-rose-400 border border-white/10 hover:bg-rose-950/60 cursor-pointer"><Eraser size={13} /></button>
+                    <button onClick={tagDownloadImage} title="Annotiertes Bild mit deinen Zeichnungen als PNG speichern" className="px-2 py-1 rounded-lg bg-black/40 text-[#FBBF24] border border-[#F59E0B]/30 hover:bg-[#F59E0B]/20 cursor-pointer flex items-center gap-1"><Download size={13} /><span className="hidden sm:inline text-[10px] font-bold">Bild speichern</span></button>
 
                     {/* Kontext-Optionen */}
                     {(tagTool === 'player' || tagTool === 'optimal') && (
