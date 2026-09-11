@@ -1010,15 +1010,67 @@ Deine Erkennungs- & Klassifikationsaufgaben:
    - Bestimme Ballbesitz-Team ("${teamName}", "Gegner", "Neutral / Zweikampf") und Pressing-Dichte-Index (0 bis 100).
 4. **Timeline-Erstellung**:
    - 6 bis 12 Zeitstempel-Events entlang der Videolaufzeit.
-5. **AUTOMATISCHE SPIELSZENEN-ERKENNUNG & CLIP-ERSTELLUNG**:
-   - Erstelle 6 bis 10 klassifizierte Spielszenen (Clips) aus folgenden 6 Kategorien:
-     a) "TORE" (z.B. Subcategory: "Tor ${teamName}", "Tor Gegner")
-     b) "CHANCEN" (z.B. Subcategory: "Torchance ${teamName}", "Torchance Gegner")
-     c) "STANDARDS" (z.B. Subcategory: "Standard - Ecke", "Standard - Freistoß", "Standard - Elfmeter")
-     d) "PRESSING" (z.B. Subcategory: "Hohes Pressing", "Mittelfeldpressing", "Tiefes Pressing")
-     e) "AUFBAU" (z.B. Subcategory: "IV-Aufbau", "AV-Aufbau", "Sechser-Aufbau", "Halbraum-Aufbau")
-     f) "UMSCHALTMOMENTE" (z.B. Subcategory: "Ballgewinn → Angriff", "Ballverlust → Gegenangriff")
-   - **MEHRFACH-TAGGING**: Eine Szene kann mehreren Kategorien angehören (z.B. eine Chance, die durch Umschalten nach hohem Pressing entsteht). Fülle daher zusätzlich das Feld "categories" mit ALLEN zutreffenden Kategorien - die Kategorien schließen sich NICHT gegenseitig aus.
+5. **AUTOMATISCHE SPIELSZENEN-ERKENNUNG & CLIP-ERSTELLUNG (200%-TAXONOMIE)**:
+   - Erstelle 6 bis 12 klassifizierte Spielszenen (Clips). Jede Szene hat GENAU EIN klares Hauptereignis und eine vollständige Kette VORHER → AUSLÖSER → AKTION → FOLGE.
+   - **KATEGORIE-CODES** (Feld "category" = primärer Code; "categories" und "secondaryCategories" = alle zutreffenden Mehrfach-Tags):
+     a) "TORE"            – Torerfolg (Entstehungsweg IMMER in goalDetails erklären).
+     b) "GEGENTOR"        – Gegentor; IMMER concededGoalDetails (Was hätte ${teamName} verhindern können?).
+     c) "CHANCEN"         – verwertbare Abschlusschance; Großchance-Kriterien (xG-Logik) siehe Katalog.
+     d) "STANDARDS"       – Ecke, Freistoß, Elfmeter, Einwurf-Ecke sowie erarbeitete Standards.
+     e) "PRESSING"        – eigenes Pressing (mit/ohne Ball), Gegenpressing, Pressing-Verlagerung/Fallen.
+     f) "AUFBAU"          – strukturierter Aufbau, Ballbesitz, Positionsspiel, Überladungen, Durchbrüche.
+     g) "UMSCHALTMOMENTE" – offensives/defensives Umschalten und Gegenpressing nach Ballverlust.
+     h) "BALLBESITZ"      – längere kontrollierte Ballbesitz-/Zirkulationsphase.
+     i) "KONTER"          – schneller Vorstoß innerhalb der ersten ~3 Sekunden nach Ballgewinn.
+     j) "ABSCHLUSS"       – jeder Torschuss/Kopfball (auch ohne Großchance).
+     k) "BALLVERLUST"     – eigener Ballverlust (Fehlpass, Dribblingverlust, Pressingverlust, technischer Fehler).
+     l) "BALLGEWINN"      – gewonnener Zweikampf, abgefangener Pass, Pressinggewinn, Gegnerfehler.
+     m) "ÜBERLADUNG"      – bewusste Mehrfachbesetzung eines Raums (Flügel/Halbraum/Zentrum/Tiefe).
+     n) "DURCHBRUCH"      – erfolgreiche Überwindung einer gegnerischen Linie/Staffelung.
+     o) "DRUCKPHASE"      – 3+ gefährliche Aktionen in ~30 Sekunden (Aufliegerphase, hoher Rhythmus).
+     p) "FEHLERANALYSE"   – zählbare Fehlerkette (Stellungsfehler, Staffelung, Absicherung, Zweikampf, Timing).
+   - **MEHRFACH-TAGGING**: Eine Szene gehört SELTEN nur einer Kategorie. Beispiele: Konter aus Pressinggewinn = ["KONTER","UMSCHALTMOMENTE","BALLGEWINN"]; Großchance nach Konter = ["CHANCEN","KONTER","UMSCHALTMOMENTE"]; Gegentor nach Fehlpass unter Druck = ["GEGENTOR","BALLVERLUST","FEHLERANALYSE"]; Hohes Pressing mit anschließender Chance = ["PRESSING","CHANCEN"]. Setze categories + secondaryCategories mit ALLEN zutreffenden Codes.
+
+**SZENEN-KATALOG (200%-Taxonomie: Erkennungsmerkmale · taktische Muster · Varianten · Auslöser · Fehlerketten · Raum- & Tempoverhalten · Start · Ende)**:
+
+1. BALLBESITZ (MIT BALL):
+   - 1.1 KONTROLLIERTER BALLBESITZ: Ball wird sicher, strukturiert und mit klarer Spielabsicht gehalten. Erkennungsmerkmale: Ballführer hat Zeit und Raum, keine Hektik, mehrere kontrollierte Pässe, klare Passdreiecke, Spieler bieten sich aktiv an, Ball bleibt im Team, Gegner presst nicht aggressiv, Ballführer hat mind. 2 sichere Optionen. Muster: Dreiecksbildung, Rautenbildung, Halbraumkontrolle, Breiten- und Tiefenstaffelung, Ball in Bewegung halten, Gegner verschieben, Rhythmuswechsel. Varianten: ruhiger Aufbau, geduldige Zirkulation, Locken des Gegners, kontrolliertes Tempo. Start: kontrollierter Ballbesitz. Ende: Ballverlust oder Durchbruch. (Kategorie: BALLBESITZ, z.T. AUFBAU)
+   - 1.2 AUFBAU VON HINTEN: strukturierter Aufbau aus eigener Abwehr/Torwart. Merkmale: Torwart/IV starten kontrolliert, Sechser kippt ab (zwischen/neben IV), AV geben Breite, klare Passlinien, ruhige Zirkulation, Team bleibt kompakt, Gegner presst nicht voll, Ball wird bewusst vorgetragen. Muster: Dreieraufbau, Viereraufbau, abkippender Sechser, AV hoch/tief, IV breit, Torwart als 3. IV (2. Hintermann), Halbraumöffnung, Locken des Gegners, Pressingfalle vermeiden. Varianten: flacher Aufbau, diagonaler Aufbau, direkter Aufbau (lange Bälle), Aufbau über Torwart, Aufbau über den Sechser. Start: kontrollierter Ballbesitz hinten. Ende: Ball im letzten Drittel oder Ballverlust. (Kategorie: AUFBAU)
+   - 1.3 BALLZIRKULATION: bewusstes Hin- und Herspielen zur Verschiebung des Gegners. Merkmale: mehrere Pässe ohne Abschlussversuch, Seitenwechsel, Rückpässe zu Torwart/IV, Gegner wird verschoben, Ball bleibt im Team, Tempo variiert. Muster: Seitenwechsel, Rhythmuswechsel, Gegner ermüden, Raum öffnen, Halbraum freispielen. Varianten: schnell, langsam, diagonal, über den Torwart. Start: kontrollierte Passfolge. Ende: Durchbruch, Ballverlust oder Abschluss. (Kategorie: BALLBESITZ)
+   - 1.4 POSITIONSSPIEL: Besetzung von Räumen und Linien zur Schaffung von Kontrolle und Optionen. Merkmale: klare Staffelung (Tiefe, Breite, Zwischenlinienraum), Dreiecke und Rauten, Spieler halten ihre Zonen, Ballführer hat mehrere Optionen, kompakte Mannschaft, Halbraum besetzt, Breite gehalten, Tiefe angeboten. Muster: Halbraumüberladung, Breitenstaffelung, Tiefenstaffelung, Dreiecksbildung, Rautenbildung, Linienüberwindung, Gegner locken. Varianten: Positionsspiel im Aufbau, im Mittelfeld, im letzten Drittel. Start: strukturierte Raumverteilung. Ende: Durchbruch, Ballverlust oder Abschluss. (Kategorie: BALLBESITZ/AUFBAU)
+   - 1.5 ÜBERLADUNGEN: mind. 3 Spieler besetzen bewusst einen kleinen Raum zur Überzahl. Merkmale: Kombinationen (Doppelpass, Hinterlaufen), Gegner hat Mühe alle Optionen zu verteidigen, Ball wird wiederholt in diesen Raum gespielt. Varianten: Flügelüberladung, Halbraumüberladung, Zentrumüberladung, Tiefenüberladung. Start: Ball im überladenen Raum + Überzahl. Ende: Flanke, Dribbling oder Ballverlust. (Kategorie: ÜBERLADUNG)
+   - 1.6 DURCHBRÜCHE: erfolgreiche Überwindung einer gegnerischen Linie. Merkmale: Dribbling oder Pass hinter die Linie, plötzlicher Raumgewinn, Verteidiger werden überspielt, neue Optionen (Flanke, Abschluss), Tempo steigt. Varianten: über Flügel, über Halbraum, durchs Zentrum, Doppelpass-Durchbruch, Dribbling-Durchbruch, Steckpass-Durchbruch. Start: Überwindung der Linie. Ende: Abschluss, Flanke oder Ballverlust. (Kategorie: DURCHBRUCH)
+   - 1.7 ABSCHLÜSSE: jeder Versuch ein Tor zu erzielen. Merkmale: Schuss/Kopfball Richtung Tor, Torwart reagiert, Verteidiger blocken, klarer Endpunkt. Varianten: Fernschuss, Kopfball, Volley, Lupfer, aus Halbraum, aus Zentrum, nach Dribbling, nach Steckpass. Start: Schussbewegung. Ende: Ballkontakt + 2 Sekunden. (Kategorie: ABSCHLUSS)
+
+2. BALLVERLUST / BALLGEWINN (MIT FEHLERKETTEN):
+   - 2.1 BALLVERLUST: Fehlpass, Dribblingverlust, Pressingdruck, technischer Fehler, schlechte Ballannahme, falsche Entscheidung. Fehlerketten: falscher Körperwinkel → schlechte Ballannahme → Sicherungsverlust; fehlende Staffelung/Absicherung → riskanter Pass → Abfangen; Hinlaufen statt Querstellen → Dribblingverlust. (Kategorie: BALLVERLUST)
+   - 2.2 BALLGEWINN: gewonnener Zweikampf, abgefangener Pass, erfolgreiches Pressing, technischer Gegnerfehler. Varianten: Ballgewinn im Aufbau, im Mittelfeld, im letzten Drittel. (Kategorie: BALLGEWINN)
+
+3. UMSCHALTMOMENTE:
+   - 3.1 DEFENSIV-UMSCHALTEN: sofortiges Rückwärtspressing, Kompaktheit herstellen, Zugriff suchen, Räume schließen. Start: eigener Ballverlust. Ende: Kontrolle wiederhergestellt oder erneuter Ballgewinn.
+   - 3.2 OFFENSIV-UMSCHALTEN: vertikale Bewegung, hohes Tempo, offene Räume, unsortierter Gegner, Überzahl. Start: Ballgewinn. Ende: Abschluss, Flanke oder Ballregulierung. (Kategorie: UMSCHALTMOMENTE)
+
+4. KONTER (10 Muster): (1) Ballgewinn + sofort vertikal, (2) 3-Sekunden-Regel (wenige Kontakte), (3) Überzahl nach vorne, (4) Gleichzahl mit Tempo, (5) offenes Zentrum / Raum hinter der Kette, (6) Tempo/Dribbling durch die Mitte, (7) Steckpass in die Tiefe, (8) langer Ball auf den freien Stürmer, (9) Flügellauf mit Flanke, (10) Konter mit Rückpass ins Team (sicherer Abschluss). Konterchance = Konter + freie Abschlussmöglichkeit (zusätzlich CHANCEN). Start: Ballgewinn. Ende: Abschluss, Ballverlust oder Umsetzung in Positionsangriff. (Kategorie: KONTER)
+
+5. GROSSCHANCE (xG-LOGIK): 1-gegen-1 mit Torwart, freier Schuss, zentrale Zone (Strafraummitte), freie Sicht, enge Ballführung, xG-Einschätzung > 0.15. Merke: auch FEHLVERSUCHE zählen (Prozess > Ergebnis). (Kategorie: CHANCEN, zusätzlich ABSCHLUSS)
+
+6. TOR: Varianten: Schuss, Kopfball, Volley, Abpraller, Eigentor, Nachschuss. IMMER Entstehungsweg (GOLDENE REGEL: "Wie ist es entstanden?" - Ergebnis ist NICHT die Analyse). (Kategorie: TORE)
+
+7. GEGEN TOR (FEHLERKETTEN): Positionsfehler, schlechte Staffelung, verlorene Zweikämpfe, fehlende Kompaktheit, verspätetes Herausrücken/Übergeben, falsche Absicherung, Ballverlust unter Druck. Hauptfrage IMMER: "Was hätte ${teamName} verhindern können?" (Kategorie: GEGENTOR)
+
+8. STANDARDSITUATIONEN (20 Muster):
+   - Eckball: kurze Ecke, lange Ecke, zweite Welle, Rückraum, Blocken, Einlaufen, Raumdeckung, Manndeckung, kurzer Nachzieher.
+   - Freistoß: direkter Freistoß (Torversuch), indirekter Freistoß, Chipball, Flanke, Ablage/Rücklage.
+   - Elfmeter: Verzögerung des Schützen, langer/kurzer Anlauf, Torwartbewegung früh/spät, Nachschuss-Situation.
+   - STANDARDS ERARBEITET: Schuss geblockt → Ecke; Flanke abgewehrt → Ecke; Foul → Freistoß; Handspiel → Freistoß. (Kategorie: STANDARDS, optional zusätzlich ABSCHLUSS)
+
+9. PRESSING (TRIGGER + MUSTER):
+   - Pressing-Trigger: Rückpass zum Torwart, schlechter erster Kontakt, Pass auf den Seitenverteidiger (Rücken zum Spiel), Pass in den Halbraum, Gegner mit Rücken zum Spiel, flache Ballannahme ohne Absicherung.
+   - Pressing-Muster: ballorientiert, mannorientiert, raumorientiert, Pressingfalle/Passfalle (Gegner zur Bande am Torwart treiben), Zugriffsmoment (sofortiger Zweikampf beim Ballankommen), Gegenpressing (5-Sekunden-Fenster nach Ballverlust). Kette: Auslöser → erste Anlaufbewegung → Zugriff → Ballgewinn oder Ballverlust-Gegner. (Kategorie: PRESSING)
+
+10. DRUCKPHASE: 3+ gefährliche Aktionen in ~30 Sekunden, hoher Rhythmus, viele Abschlüsse/Flanken/Ecken, viele Ballgewinne in gegnerischer Hälfte, hohes Pressing, Auflieger-Situation. (Kategorie: DRUCKPHASE)
+
+Zusätzlich: TV-Grafiken/Scoreboards ignorieren - du analysierst AUSSCHLIESSLICH das Spielgeschehen auf dem Platz.
    - Für jede Szene:
      - Berechne die Clip-Länge: startTimeSeconds = max(0, eventTimestamp - 6), endTimeSeconds = eventTimestamp + 6.
      - timestampFormatted (z.B. "04:12").
@@ -1186,8 +1238,26 @@ Antworte STRENG im geforderten JSON-Format.
                     type: Type.OBJECT,
                     properties: {
                       id: { type: Type.STRING },
-                      category: { type: Type.STRING, description: "'TORE', 'CHANCEN', 'STANDARDS', 'PRESSING', 'AUFBAU', 'UMSCHALTMOMENTE'" },
-                      subcategory: { type: Type.STRING, description: "z.B. 'Tor FC Auggen', 'Hohes Pressing', 'IV-Aufbau'" },
+                      category: { type: Type.STRING, description: "PRIMÄRKATEGORIE: 'TORE', 'GEGENTOR', 'CHANCEN', 'STANDARDS', 'PRESSING', 'AUFBAU', 'UMSCHALTMOMENTE', 'BALLBESITZ', 'KONTER', 'ABSCHLUSS', 'BALLVERLUST', 'BALLGEWINN', 'ÜBERLADUNG', 'DURCHBRUCH', 'DRUCKPHASE' oder 'FEHLERANALYSE'" },
+                      subcategory: { type: Type.STRING, description: "z.B. 'Tor FC Auggen', 'Hohes Pressing', 'IV-Aufbau', 'Flügelüberladung', 'Direkter Freistoß'" },
+                      patternVariant: { type: Type.STRING, description: "VARIANTE: exakter Subtyp aus dem Szenen-Katalog (z.B. 'Steckpass-Durchbruch', 'kurze Ecke', '2. Welle', 'ungleichmäßige 3er-Abwehrkette', 'Pressingfalle rechts')" },
+                      startEvent: { type: Type.STRING, description: "START-EVENT: was GENAU die Szene beginnen lässt (z.B. 'Rückpass auf TW', 'Ballgewinn 6er', 'lauter Anlauf Freistoß')" },
+                      endEvent: { type: Type.STRING, description: "END-EVENT: womit die Szene endet (z.B. 'Torschuss abgeblockt', 'Ball ins Aus', 'Foulpfiff')" },
+                      tacticalFeatures: {
+                        type: Type.ARRAY,
+                        items: { type: Type.STRING },
+                        description: "TAKTISCHE MERKMALE der Szene, z.B. ['Überzahl', 'vertikale Passrichtung', 'Halbraumkontrolle'], relvatantan für Trainer"
+                      },
+                      errorAnalysis: {
+                        type: Type.ARRAY,
+                        items: { type: Type.STRING },
+                        description: "FEHLERANALYSE: konkrete Fehlerkette, z.B. ['IV rückt zu spät raus', 'Sechser lässt Steilpasslauf gehen', 'Stellung zu zentral'] - nur bei erkennbaren Fehlern, sonst []"
+                      },
+                      secondaryCategories: {
+                        type: Type.ARRAY,
+                        items: { type: Type.STRING },
+                        description: "SEKUNDÄRKATEGORIEN: weitere zutreffende KATEGORIE-CODES dieser Szene (Meanfach-Tagging), z.B. ['UMSCHALTMOMENTE','BALLGEWINN']"
+                      },
                       title: { type: Type.STRING, description: "Titel der Szene" },
                       startTimeSeconds: { type: Type.NUMBER, description: "Startsekunde des Clips (Zeitstempel - 6s)" },
                       endTimeSeconds: { type: Type.NUMBER, description: "Endsekunde des Clips (Zeitstempel + 6s)" },

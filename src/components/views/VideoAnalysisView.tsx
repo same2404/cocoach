@@ -1299,6 +1299,7 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
     const p = tagPos(e);
     if (!p) return;
     if (tagTool === 'pointer') { tagRemoveNearest(p); return; }
+    if (mainVideoRef.current && !mainVideoRef.current.paused) { mainVideoRef.current.pause(); setIsPlaying(false); }
     if (tagTool === 'player' || tagTool === 'optimal') {
       tagPush();
       setTagBoard(prev => {
@@ -1623,11 +1624,21 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
       const aiClips = result.sceneClips.map((clip: any, idx: number) => {
         const categoryMap: Record<string, VideoCategory> = {
           'TORE': 'Tore',
+          'GEGENTOR': 'Gegentore',
           'CHANCEN': 'Tore',
           'STANDARDS': 'Standards',
           'PRESSING': 'Pressing MIT Ball',
           'AUFBAU': 'Spielaufbau',
           'UMSCHALTMOMENTE': 'Ballverlust',
+          'BALLBESITZ': 'Spielaufbau',
+          'BALLGEWINN': 'Pressing GEGEN den Ball',
+          'KONTER': 'Ballverlust',
+          'ABSCHLUSS': 'Tore',
+          'ÜBERLADUNG': 'Spielaufbau',
+          'DRUCKPHASE': 'Pressing MIT Ball',
+          'BALLVERLUST': 'Ballverlust',
+          'DURCHBRUCH': 'Spielaufbau',
+          'FEHLERANALYSE': 'Gegentore',
         };
         const primaryCat: VideoCategory = clip.categories && clip.categories.length > 0
           ? (categoryMap[clip.categories[0]] || 'Spielaufbau')
@@ -1645,7 +1656,7 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
           startTime: clip.startTimeSeconds || 0,
           endTime: clip.endTimeSeconds || 10,
           duration: (clip.endTimeSeconds || 10) - (clip.startTimeSeconds || 0),
-          tacticalNote: `${clip.aiCommentary || ''}\n\nBewertung: ${clip.tacticalRating || ''}\n\nVerbesserung: ${clip.improvementSuggestions || ''}`,
+          tacticalNote: `${clip.aiCommentary || ''}${clip.patternVariant ? `\n\nMuster/Variante: ${clip.patternVariant}` : ''}${clip.startEvent ? `\nStart: ${clip.startEvent}` : ''}${clip.endEvent ? `\nEnde: ${clip.endEvent}` : ''}${Array.isArray(clip.tacticalFeatures) && clip.tacticalFeatures.length ? `\nTaktische Merkmale: ${clip.tacticalFeatures.join(', ')}` : ''}${Array.isArray(clip.errorAnalysis) && clip.errorAnalysis.length ? `\nFehleranalyse: ${clip.errorAnalysis.join(', ')}` : ''}\n\nBewertung: ${clip.tacticalRating || ''}\n\nVerbesserung: ${clip.improvementSuggestions || ''}`,
           colorMarking: (clip.tacticalRating || '').includes('9') ? 'green' : (clip.improvementSuggestions ? 'red' : 'none'),
           createdAt: new Date().toISOString(),
           title: clip.title || `${clip.category} - ${clip.subcategory}`,
@@ -3125,6 +3136,26 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
                         <span className="text-[10px] font-mono text-[#64748B]">⏱ {clip.timestampFormatted}</span>
                       </div>
                       <p className="text-[11px] text-[#94A3B8] mb-1">{clip.aiCommentary}</p>
+                      {clip.patternVariant && (
+                        <p className="text-[10px] text-[#22D3EE] font-bold mb-1">🧩 Muster/Variante: {clip.patternVariant}</p>
+                      )}
+                      {(Array.isArray(clip.tacticalFeatures) && clip.tacticalFeatures.length > 0) && (
+                        <div className="flex flex-wrap gap-1 mb-1">
+                          {clip.tacticalFeatures.map((f: string, fi: number) => (
+                            <span key={fi} className="px-1.5 py-0.5 bg-[#10B981]/10 text-[#10B981] border border-[#10B981]/30 rounded text-[9px] font-bold">{f}</span>
+                          ))}
+                        </div>
+                      )}
+                      {(Array.isArray(clip.errorAnalysis) && clip.errorAnalysis.length > 0) && (
+                        <div className="flex flex-wrap gap-1 mb-1">
+                          {clip.errorAnalysis.map((f: string, fi: number) => (
+                            <span key={fi} className="px-1.5 py-0.5 bg-rose-500/10 text-rose-400 border border-rose-500/30 rounded text-[9px] font-bold">⚠ {f}</span>
+                          ))}
+                        </div>
+                      )}
+                      {clip.startEvent && clip.endEvent && (
+                        <p className="text-[10px] text-[#94A3B8] italic mb-1">▶ {clip.startEvent} → ■ {clip.endEvent}</p>
+                      )}
                       {clip.improvementSuggestions && (
                         <p className="text-[10px] text-[#F59E0B] italic">Verbesserung: {clip.improvementSuggestions}</p>
                       )}
@@ -3448,19 +3479,26 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
                     </svg>
                   </div>
 
-                  {/* Oben: Status + Speichern/Schließen */}
+{/* Oben: Status + Speichern/Schließen */}
                   <div className="absolute top-3 left-3 z-30 flex items-center gap-1.5 flex-wrap max-w-[70%]">
                     {tagTargetClipId && (savedClips || []).find(c => c.id === tagTargetClipId) ? (
-                        <span className="px-2 py-1 bg-[#10B981] text-black border border-[#10B981]/50 rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5">
-                          <Target size={11} /> Zeichnen für: {(savedClips || []).find(c => c.id === tagTargetClipId)!.category} – {(savedClips || []).find(c => c.id === tagTargetClipId)!.title || formatTime((savedClips || []).find(c => c.id === tagTargetClipId)!.startTime)}
-                        </span>
-                      ) : (
-                        <span className="px-2 py-1 bg-black/80 text-[#10B981] border border-[#10B981]/50 rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5">
-                          <Target size={11} /> Once-Tagger aktiv – direkt aufs Video zeichnen
-                        </span>
-                      )}
+                      <span className="px-2 py-1 bg-[#10B981] text-black border border-[#10B981]/50 rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5">
+                        <Target size={11} /> Zeichnen für: {(savedClips || []).find(c => c.id === tagTargetClipId)!.category} – {(savedClips || []).find(c => c.id === tagTargetClipId)!.title || formatTime((savedClips || []).find(c => c.id === tagTargetClipId)!.startTime)}
+                      </span>
+                    ) : (
+                      <span className="px-2 py-1 bg-black/80 text-[#10B981] border border-[#10B981]/50 rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5">
+                        <Target size={11} /> Once-Tagger aktiv – direkt aufs Video zeichnen
+                      </span>
+                    )}
                     <span className="px-2 py-1 bg-black/70 text-white/70 rounded-lg text-[10px] font-mono">{formatTime(currentTime, true)}</span>
                   </div>
+                  <button
+                    onClick={() => { const v = mainVideoRef.current; if (!v) return; if (v.paused) { setIsPlaying(true); void v.play(); } else { setIsPlaying(false); v.pause(); } }}
+                    className="absolute top-3 right-[7.5rem] z-30 px-2.5 py-1.5 bg-black/80 hover:bg-white/20 text-white rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 border border-white/20 cursor-pointer"
+                    title="Video abspielen/pausieren – Zeichnungen bleiben während der Bewegung sichtbar"
+                  >
+                    {isPlaying ? <Pause size={12} /> : <Play size={12} />} {isPlaying ? 'Pause' : 'Spielen'}
+                  </button>
                   <button
                     onClick={() => { const thumb = tagCompose(); if (thumb) handleTaggerSave(thumb, tagBoard, currentTime); }}
                     className="absolute top-3 right-12 z-30 px-2.5 py-1.5 bg-[#10B981] hover:bg-[#059669] text-black rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-lg cursor-pointer"
