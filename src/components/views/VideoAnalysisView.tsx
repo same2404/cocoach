@@ -1259,6 +1259,181 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
   const [highlightedClipId, setHighlightedClipId] = useState<string | null>(null);
   const [expandedTacticClipId, setExpandedTacticClipId] = useState<string | null>(null);
   const [taggerOpen, setTaggerOpen] = useState<boolean>(false);
+  const [tagTargetClipId, setTagTargetClipId] = useState<string | null>(null);
+  // Live-Once-Tagger (direkt auf dem Video zeichnen)
+  const tagContainerRef = useRef<HTMLDivElement | null>(null);
+  const [tagTool, setTagTool] = useState<'pointer' | 'player' | 'chain' | 'pass' | 'run' | 'zone' | 'ball' | 'optimal'>('pointer');
+  const [tagTeam, setTagTeam] = useState<'FC Auggen' | 'Gegner'>('FC Auggen');
+  const [tagLabel, setTagLabel] = useState<string>('#9');
+  const [tagColor, setTagColor] = useState<string>('#3B82F6');
+  const [tagZoneLabel, setTagZoneLabel] = useState<string>('Freier Raum');
+  const [tagOptNote, setTagOptNote] = useState<string>('Besser stehen – Raum sichern');
+  const [tagBoard, setTagBoard] = useState<SceneTacticBoard>({ attackDirection: 'DOWN', players: [], chains: [], passes: [], runs: [], ballPath: [], zones: [], optimalPositions: [] });
+  const [tagHistory, setTagHistory] = useState<SceneTacticBoard[]>([]);
+  const [tagDragStart, setTagDragStart] = useState<{ x: number; y: number } | null>(null);
+  const [tagDragEnd, setTagDragEnd] = useState<{ x: number; y: number } | null>(null);
+  const [tagRunPts, setTagRunPts] = useState<Array<{ x: number; y: number }>>([]);
+
+  const tagPos = (e: React.PointerEvent): { x: number; y: number } | null => {
+    const el = tagContainerRef.current;
+    if (!el) return null;
+    const rect = el.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return null;
+    return {
+      x: Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100)),
+      y: Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100)),
+    };
+  };
+  const tagPush = () => setTagHistory(prev => [...prev.slice(-30), tagBoard]);
+  const tagGuard = (b: SceneTacticBoard): SceneTacticBoard => ({
+    ...b,
+    players: b.players ? [...b.players] : [],
+    chains: b.chains ? [...b.chains] : [],
+    passes: b.passes ? [...b.passes] : [],
+    runs: b.runs ? [...b.runs] : [],
+    ballPath: b.ballPath ? [...b.ballPath] : [],
+    zones: b.zones ? [...b.zones] : [],
+    optimalPositions: b.optimalPositions ? [...b.optimalPositions] : [],
+  });
+  const tagDown = (e: React.PointerEvent) => {
+    const p = tagPos(e);
+    if (!p) return;
+    if (tagTool === 'pointer') { tagRemoveNearest(p); return; }
+    if (tagTool === 'player' || tagTool === 'optimal') {
+      tagPush();
+      setTagBoard(prev => {
+        const next = tagGuard(prev);
+        if (tagTool === 'player') next.players!.push({ label: tagLabel, team: tagTeam, x: p.x, y: p.y });
+        if (tagTool === 'optimal') next.optimalPositions!.push({ label: tagLabel, toX: p.x, toY: p.y, note: tagOptNote });
+        return next;
+      });
+      return;
+    }
+    if (tagTool === 'run' || tagTool === 'ball') { setTagRunPts(prev => [...prev, p]); return; }
+    setTagDragStart(p);
+    setTagDragEnd(p);
+  };
+  const tagMove = (e: React.PointerEvent) => {
+    if (!tagDragStart) return;
+    const p = tagPos(e);
+    if (p) setTagDragEnd(p);
+  };
+  const tagUp = () => {
+    if (tagDragStart && tagDragEnd) {
+      tagPush();
+      setTagBoard(prev => {
+        const next = tagGuard(prev);
+        if (tagTool === 'chain') next.chains!.push({ fromX: tagDragStart.x, fromY: tagDragStart.y, toX: tagDragEnd.x, toY: tagDragEnd.y, color: tagColor });
+        if (tagTool === 'pass') next.passes!.push({ fromX: tagDragStart.x, fromY: tagDragStart.y, toX: tagDragEnd.x, toY: tagDragEnd.y, action: 'Pass', color: tagColor });
+        if (tagTool === 'zone') next.zones!.push({ x: Math.min(tagDragStart.x, tagDragEnd.x), y: Math.min(tagDragStart.y, tagDragEnd.y), w: Math.abs(tagDragEnd.x - tagDragStart.x), h: Math.abs(tagDragEnd.y - tagDragStart.y), label: tagZoneLabel, color: tagColor });
+        return next;
+      });
+    }
+    setTagDragStart(null);
+    setTagDragEnd(null);
+  };
+  const tagFinishLine = () => {
+    if (tagRunPts.length >= 2) {
+      tagPush();
+      setTagBoard(prev => {
+        const next = tagGuard(prev);
+        if (tagTool === 'ball') next.ballPath!.push({ points: [...tagRunPts], color: '#F59E0B' });
+        else next.runs!.push({ label: 'Laufweg', points: [...tagRunPts], color: tagColor });
+        return next;
+      });
+    }
+    setTagRunPts([]);
+  };
+  const tagUndo = () => setTagHistory(prev => {
+    if (!prev.length) return prev;
+    setTagBoard(prev[prev.length - 1]);
+    return prev.slice(0, -1);
+  });
+  const tagClear = () => { tagPush(); setTagBoard({ attackDirection: 'DOWN', players: [], chains: [], passes: [], runs: [], ballPath: [], zones: [], optimalPositions: [] }); setTagRunPts([]); };
+  const tagRemoveNearest = (p: { x: number; y: number }) => {
+    const dist = (a: { x: number; y: number }) => Math.hypot(a.x - p.x, a.y - p.y);
+    const elemDist = (pts: Array<{ x: number; y: number }>) => Math.min(...pts.map(dist));
+    const tol = 8;
+    tagPush();
+    setTagBoard(prev => {
+      const next = tagGuard(prev);
+      const candidate: Array<{ d: number; remove: () => void }> = [];
+      next.players!.forEach((pl, i) => candidate.push({ d: dist({ x: pl.x, y: pl.y }), remove: () => next.players!.splice(i, 1) }));
+      next.optimalPositions!.forEach((o, i) => candidate.push({ d: dist({ x: o.toX, y: o.toY }), remove: () => next.optimalPositions!.splice(i, 1) }));
+      next.zones!.forEach((z, i) => candidate.push({ d: Math.min(Math.abs(p.x - z.x), Math.abs(p.x - (z.x + z.w))) + Math.min(Math.abs(p.y - z.y), Math.abs(p.y - (z.y + z.h))), remove: () => next.zones!.splice(i, 1) }));
+      next.runs!.forEach((r, i) => candidate.push({ d: r.points.length ? elemDist(r.points) : 999, remove: () => next.runs!.splice(i, 1) }));
+      next.ballPath!.forEach((b, i) => candidate.push({ d: b.points.length ? elemDist(b.points) : 999, remove: () => next.ballPath!.splice(i, 1) }));
+      next.chains!.forEach((c, i) => candidate.push({ d: elemDist([{ x: c.fromX, y: c.fromY }, { x: c.toX, y: c.toY }]), remove: () => next.chains!.splice(i, 1) }));
+      next.passes!.forEach((p2, i) => candidate.push({ d: elemDist([{ x: p2.fromX, y: p2.fromY }, { x: p2.toX, y: p2.toY }]), remove: () => next.passes!.splice(i, 1) }));
+      candidate.sort((a, b) => a.d - b.d);
+      const best = candidate[0];
+      if (best && best.d < tol) best.remove();
+      return next;
+    });
+  };
+  const tagArrow = (ctx: CanvasRenderingContext2D, ax: number, ay: number, bx: number, by: number, color: string) => {
+    const ang = Math.atan2(by - ay, bx - ax);
+    const len = 16;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(bx, by);
+    ctx.lineTo(bx - len * Math.cos(ang - 0.45), by - len * Math.sin(ang - 0.45));
+    ctx.lineTo(bx - len * Math.cos(ang + 0.45), by - len * Math.sin(ang + 0.45));
+    ctx.closePath(); ctx.fill();
+  };
+  const tagCompose = (): string => {
+    const W = 1280, H = 720;
+    const c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    const ctx = c.getContext('2d')!;
+    const v = mainVideoRef.current;
+    try { if (v && v.readyState >= 2) ctx.drawImage(v, 0, 0, W, H); else { ctx.fillStyle = '#0D1117'; ctx.fillRect(0, 0, W, H); } } catch { ctx.fillStyle = '#0D1117'; ctx.fillRect(0, 0, W, H); }
+    const X = (pct: number) => (Math.max(0, Math.min(100, pct)) / 100) * W;
+    const Y = (pct: number) => (Math.max(0, Math.min(100, pct)) / 100) * H;
+    (tagBoard.zones || []).forEach(z => {
+      ctx.fillStyle = z.color || '#F59E0B'; ctx.globalAlpha = 0.22;
+      ctx.fillRect(X(z.x), Y(z.y), X(z.w), Y(z.h)); ctx.globalAlpha = 1;
+      ctx.strokeStyle = z.color || '#F59E0B'; ctx.setLineDash([8, 6]); ctx.lineWidth = 3;
+      ctx.strokeRect(X(z.x), Y(z.y), X(z.w), Y(z.h)); ctx.setLineDash([]);
+      if (z.label) { ctx.fillStyle = z.color || '#F59E0B'; ctx.font = 'bold 16px Arial'; ctx.fillText(z.label, X(z.x) + 5, Y(z.y) + 18); }
+    });
+    (tagBoard.chains || []).forEach(ch => {
+      ctx.strokeStyle = ch.color || '#22D3EE'; ctx.lineWidth = 5;
+      ctx.beginPath(); ctx.moveTo(X(ch.fromX), Y(ch.fromY)); ctx.lineTo(X(ch.toX), Y(ch.toY)); ctx.stroke();
+    });
+    (tagBoard.ballPath || []).forEach(bp => {
+      if (bp.points.length < 2) return;
+      ctx.strokeStyle = bp.color || '#F59E0B'; ctx.lineWidth = 4; ctx.setLineDash([9, 7]);
+      ctx.beginPath(); bp.points.forEach((p, i) => i === 0 ? ctx.moveTo(X(p.x), Y(p.y)) : ctx.lineTo(X(p.x), Y(p.y))); ctx.stroke(); ctx.setLineDash([]);
+      bp.points.forEach((p, i) => { if (i === 0) return; ctx.beginPath(); ctx.arc(X(p.x), Y(p.y), 7, 0, Math.PI * 2); ctx.fillStyle = '#F59E0B'; ctx.fill(); });
+    });
+    (tagBoard.passes || []).forEach(p2 => tagArrow(ctx, X(p2.fromX), Y(p2.fromY), X(p2.toX), Y(p2.toY), p2.color || '#3B82F6'));
+    (tagBoard.runs || []).forEach(r => {
+      if (r.points.length < 2) return;
+      ctx.strokeStyle = r.color || '#3B82F6'; ctx.lineWidth = 4; ctx.setLineDash([9, 7]);
+      ctx.beginPath(); r.points.forEach((p, i) => i === 0 ? ctx.moveTo(X(p.x), Y(p.y)) : ctx.lineTo(X(p.x), Y(p.y))); ctx.stroke(); ctx.setLineDash([]);
+    });
+    (tagBoard.optimalPositions || []).forEach(o => {
+      const cx = X(o.toX), cy = Y(o.toY);
+      ctx.strokeStyle = '#F59E0B'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(cx, cy, 16, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = 'rgba(245,158,11,0.25)'; ctx.fill();
+      if (o.note) { ctx.fillStyle = '#FBBF24'; ctx.font = 'bold 16px Arial'; ctx.fillText(o.note, cx + 20, cy + 4); }
+    });
+    (tagBoard.players || []).forEach(pl => {
+      const cx = X(pl.x), cy = Y(pl.y);
+      const isHome = pl.team === 'FC Auggen';
+      ctx.beginPath(); ctx.arc(cx, cy, 13, 0, Math.PI * 2);
+      ctx.fillStyle = isHome ? '#3B82F6' : '#EF4444'; ctx.fill();
+      ctx.lineWidth = 3; ctx.strokeStyle = '#FFFFFF'; ctx.stroke();
+      ctx.fillStyle = '#FFFFFF'; ctx.font = 'bold 14px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(pl.label, cx, cy);
+      ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    });
+    return c.toDataURL('image/png');
+  };
 
   // Category accordion open/closed states (default all open)
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({
@@ -2084,8 +2259,21 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
     await saveClip({ ...clip, colorMarking: color });
   };
 
-  // Tagger: annotiertes Bild + Taktik-Daten als neue Szene speichern
+  // Tagger: annotiertes Bild + Taktik-Daten in Ziel-Szene (oder neue Szene) speichern
   const handleTaggerSave = (thumbnailDataUrl: string, board: SceneTacticBoard, timeSeconds: number) => {
+    const target = tagTargetClipId ? (savedClips || []).find(c => c.id === tagTargetClipId) : undefined;
+    if (target) {
+      const el = target.tacticalNote || '';
+      const note = `${el}${el ? '\n' : ''}🎯 Coach-Taktik (${formatTime(timeSeconds)}): ${board.players?.length || 0} Spieler, ${board.passes?.length || 0} Passwege, ${board.runs?.length || 0} Laufwege, ${board.zones?.length || 0} Räume, ${board.optimalPositions?.length || 0} optimale Positionen.`;
+      void saveClip({ ...target, tacticBoard: board, thumbnailUrl: thumbnailDataUrl, tacticalNote: note });
+      setHighlightedClipId(target.id);
+      setSaveSuccessMsg('Taktik-Grafik zur Szene gespeichert (Bild aktualisiert).');
+      setTagTargetClipId(null);
+      setTagBoard({ attackDirection: 'DOWN', players: [], chains: [], passes: [], runs: [], ballPath: [], zones: [], optimalPositions: [] });
+      setTagHistory([]);
+      setTaggerOpen(false);
+      return;
+    }
     const dur = videoDuration > 0 ? videoDuration : timeSeconds + 6;
     const start = Math.max(0, timeSeconds - 3);
     const end = Math.min(dur, timeSeconds + 3);
@@ -2110,7 +2298,30 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
     setOpenCategories(prev => ({ ...prev, 'Spielaufbau': true }));
     setHighlightedClipId(newId);
     setSaveSuccessMsg('Taktik-Szene gespeichert – mit annotiertem Bild unter „Spielaufbau".');
+    setTagBoard({ attackDirection: 'DOWN', players: [], chains: [], passes: [], runs: [], ballPath: [], zones: [], optimalPositions: [] });
+    setTagHistory([]);
     setTaggerOpen(false);
+  };
+
+  // Tagger für eine bestimmte Scene öffnen: Player springt zum Szenen-Start
+  const openTaggerForClip = (clip: TacticalVideoClip) => {
+    const v = mainVideoRef.current;
+    if (clip.videoUrl && clip.videoUrl !== videoSource && !isVeoLink) {
+      setSaveSuccessMsg('⚠ Bitte das Video dieser Szene erst laden, dann "🎯 Zeichnen" erneut drücken.');
+      return;
+    }
+    setTagTargetClipId(clip.id);
+    setTaggerOpen(true);
+    setTagBoard({ attackDirection: 'DOWN', players: [], chains: [], passes: [], runs: [], ballPath: [], zones: [], optimalPositions: [] });
+    setTagHistory([]);
+    setTagRunPts([]);
+    if (v) {
+      v.pause();
+      try {
+        const t = Math.max(0, clip.startTime || 0);
+        if (isFinite(t)) v.currentTime = t;
+      } catch { /* seek vor Metadata ignorieren */ }
+    }
   };
 
   // Group clips by category
@@ -3153,14 +3364,178 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
               )}
 
               {/* Once-Tagger Start Button */}
-              {!isVeoLink && (
+              {!isVeoLink && !taggerOpen && (
                 <button
-                  onClick={() => setTaggerOpen(true)}
+                  onClick={() => { setTaggerOpen(true); setTagTargetClipId(null); setTagBoard({ attackDirection: 'DOWN', players: [], chains: [], passes: [], runs: [], ballPath: [], zones: [], optimalPositions: [] }); setTagHistory([]); setTagRunPts([]); setTagDragStart(null); mainVideoRef.current?.pause(); }}
                   className="absolute bottom-3 right-3 px-2.5 py-1.5 bg-black/80 hover:bg-[#10B981] text-[#10B981] hover:text-black rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 border border-[#10B981]/50 backdrop-blur-md transition-all cursor-pointer z-20"
-                  title="Once-Style: Frame einfrieren und Spieler, Ketten, Pass-/Lauf-/Ballwege, Räume & optimale Positionen zeichnen"
+                  title="Once-Style: direkt auf dem Video Spieler, Ketten, Räume, Pass-/Lauf-/Ballwege & optimale Positionen zeichnen"
                 >
                   <Target size={13} /> 🎯 Once-Tagger
                 </button>
+              )}
+
+              {/* Live Once-Tagger Overlay: direkt auf dem (pausierten) Video zeichnen */}
+              {!isVeoLink && taggerOpen && (
+                <>
+                  {/* Zeichen-Overlay */}
+                  <div
+                    ref={tagContainerRef}
+                    className="absolute inset-0 z-15"
+                    style={{ cursor: tagTool === 'pointer' ? 'default' : 'crosshair', touchAction: 'none' }}
+                    onPointerDown={tagDown}
+                    onPointerMove={tagMove}
+                    onPointerUp={tagUp}
+                    onPointerLeave={() => { setTagDragStart(null); setTagDragEnd(null); }}
+                  >
+                    <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
+                      <defs>
+                        <marker id="tagArrowLive" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+                          <path d="M0,0 L10,5 L0,10 z" fill="#3B82F6" />
+                        </marker>
+                      </defs>
+                      {(tagBoard.chains || []).map((c, i) => (
+                        <g key={`tc${i}`}>
+                          <line x1={c.fromX} y1={c.fromY} x2={c.toX} y2={c.toY} stroke={c.color || '#22D3EE'} strokeWidth="5.5" opacity="0.28" strokeLinecap="round" />
+                          <line x1={c.fromX} y1={c.fromY} x2={c.toX} y2={c.toY} stroke={c.color || '#22D3EE'} strokeWidth="2.4" opacity="0.95" strokeLinecap="round" />
+                        </g>
+                      ))}
+                      {(tagBoard.ballPath || []).map((b, i) => b.points.length >= 2 ? (
+                        <g key={`tb${i}`}>
+                          <polyline points={b.points.map(p => `${p.x},${p.y}`).join(' ')} fill="none" stroke={b.color || '#F59E0B'} strokeWidth="3.2" opacity="0.25" strokeLinecap="round" />
+                          <polyline points={b.points.map(p => `${p.x},${p.y}`).join(' ')} fill="none" stroke={b.color || '#F59E0B'} strokeWidth="1.9" strokeDasharray="2.4 1.8" opacity="0.98" strokeLinecap="round" />
+                          {b.points.slice(1).map((pp, j) => <circle key={j} cx={pp.x} cy={pp.y} r="1.6" fill={b.color || '#F59E0B'} />)}
+                        </g>
+                      ) : null)}
+                      {(tagBoard.runs || []).map((r, i) => r.points.length >= 2 ? (
+                        <g key={`tr${i}`}>
+                          <polyline points={r.points.map(p => `${p.x},${p.y}`).join(' ')} fill="none" stroke={r.color || '#3B82F6'} strokeWidth="3.2" opacity="0.25" strokeLinecap="round" />
+                          <polyline points={r.points.map(p => `${p.x},${p.y}`).join(' ')} fill="none" stroke={r.color || '#3B82F6'} strokeWidth="1.9" strokeDasharray="2.4 1.8" opacity="0.98" strokeLinecap="round" />
+                        </g>
+                      ) : null)}
+                      {(tagBoard.passes || []).map((p, i) => (
+                        <g key={`tp${i}`}>
+                          <line x1={p.fromX} y1={p.fromY} x2={p.toX} y2={p.toY} stroke={p.color || '#3B82F6'} strokeWidth="3.0" opacity="0.3" strokeLinecap="round" />
+                          <line x1={p.fromX} y1={p.fromY} x2={p.toX} y2={p.toY} stroke={p.color || '#3B82F6'} strokeWidth="1.6" opacity="0.98" markerEnd="url(#tagArrowLive)" />
+                          <circle cx={p.toX} cy={p.toY} r="1.5" fill={p.color || '#3B82F6'} />
+                        </g>
+                      ))}
+                      {(tagBoard.zones || []).map((z, i) => (
+                        <g key={`tz${i}`}>
+                          <rect x={z.x} y={z.y} width={z.w} height={z.h} fill={z.color || '#F59E0B'} opacity="0.3" stroke={z.color || '#F59E0B'} strokeWidth="1.1" strokeDasharray="2 1.5" rx="1" />
+                          {z.label ? <text x={z.x + 1.5} y={z.y + 4.5} fontSize="5" fontWeight="900" fill={z.color || '#F59E0B'} stroke="#000000" strokeWidth="0.5" paintOrder="stroke">{z.label}</text> : null}
+                        </g>
+                      ))}
+                      {(tagBoard.optimalPositions || []).map((o, i) => (
+                        <g key={`to${i}`}>
+                          <circle cx={o.toX} cy={o.toY} r="6" fill="rgba(245,158,11,0.3)" stroke="#F59E0B" strokeWidth="1.2" />
+                          {o.note ? <text x={Math.min(o.toX + 6.5, 92)} y={Math.max(o.toY - 6, 5)} fontSize="4.4" fontWeight="900" fill="#FBBF24" stroke="#000000" strokeWidth="0.5" paintOrder="stroke">{o.note || 'Optimale Position'}</text> : null}
+                        </g>
+                      ))}
+                      {(tagBoard.players || []).map((pl, i) => (
+                        <g key={`tpl${i}`}>
+                          <circle cx={pl.x} cy={pl.y} r="4.8" fill={pl.team === 'FC Auggen' ? '#3B82F6' : '#EF4444'} stroke="#FFFFFF" strokeWidth="1.1" />
+                          <text x={pl.x} y={pl.y + 1.7} fontSize="4.2" fontWeight="900" fill="#FFFFFF" stroke="#000000" strokeWidth="0.45" paintOrder="stroke" textAnchor="middle">{pl.label}</text>
+                        </g>
+                      ))}
+                      {tagDragStart && tagDragEnd && (tagTool === 'chain' || tagTool === 'pass' || tagTool === 'zone') && (
+                        tagTool === 'zone'
+                          ? <rect x={Math.min(tagDragStart.x, tagDragEnd.x)} y={Math.min(tagDragStart.y, tagDragEnd.y)} width={Math.abs(tagDragEnd.x - tagDragStart.x)} height={Math.abs(tagDragEnd.y - tagDragStart.y)} fill={tagColor} opacity="0.25" stroke={tagColor} strokeWidth="1.1" strokeDasharray="1.6 1" />
+                          : <line x1={tagDragStart.x} y1={tagDragStart.y} x2={tagDragEnd.x} y2={tagDragEnd.y} stroke={tagColor} strokeWidth="1.6" strokeDasharray="1.6 1" opacity="0.95" />
+                      )}
+                      {tagRunPts.length > 0 && (tagTool === 'run' || tagTool === 'ball') && (
+                        <polyline points={tagRunPts.map(p => `${p.x},${p.y}`).join(' ')} fill="none" stroke={tagTool === 'ball' ? '#F59E0B' : tagColor} strokeWidth="1.9" strokeDasharray="2.4 1.8" opacity="0.9" />
+                      )}
+                    </svg>
+                  </div>
+
+                  {/* Oben: Status + Speichern/Schließen */}
+                  <div className="absolute top-3 left-3 z-30 flex items-center gap-1.5 flex-wrap max-w-[70%]">
+                    {tagTargetClipId && (savedClips || []).find(c => c.id === tagTargetClipId) ? (
+                        <span className="px-2 py-1 bg-[#10B981] text-black border border-[#10B981]/50 rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5">
+                          <Target size={11} /> Zeichnen für: {(savedClips || []).find(c => c.id === tagTargetClipId)!.category} – {(savedClips || []).find(c => c.id === tagTargetClipId)!.title || formatTime((savedClips || []).find(c => c.id === tagTargetClipId)!.startTime)}
+                        </span>
+                      ) : (
+                        <span className="px-2 py-1 bg-black/80 text-[#10B981] border border-[#10B981]/50 rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5">
+                          <Target size={11} /> Once-Tagger aktiv – direkt aufs Video zeichnen
+                        </span>
+                      )}
+                    <span className="px-2 py-1 bg-black/70 text-white/70 rounded-lg text-[10px] font-mono">{formatTime(currentTime, true)}</span>
+                  </div>
+                  <button
+                    onClick={() => { const thumb = tagCompose(); if (thumb) handleTaggerSave(thumb, tagBoard, currentTime); }}
+                    className="absolute top-3 right-12 z-30 px-2.5 py-1.5 bg-[#10B981] hover:bg-[#059669] text-black rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-lg cursor-pointer"
+                    title="Aktuelles Bild + Taktik-Elemente als Szene speichern"
+                  >
+                    <Save size={12} /> {tagTargetClipId ? 'In Szene speichern' : 'Als Szene speichern'}
+                  </button>
+                  <button
+                    onClick={() => { setTaggerOpen(false); setTagTargetClipId(null); }}
+                    className="absolute top-3 right-3 z-30 p-1.5 bg-black/80 hover:bg-rose-950/60 text-white rounded-lg border border-white/20 hover:border-rose-500/60 cursor-pointer"
+                    title="Tagger beenden"
+                  >
+                    <X size={13} />
+                  </button>
+
+                  {/* Unten: Werkzeugleiste */}
+                  <div className="absolute bottom-3 left-3 right-3 z-30 flex items-center gap-1.5 flex-wrap bg-black/85 backdrop-blur-md rounded-xl p-2 border border-white/10">
+                    {([
+                      { id: 'pointer', icon: <MousePointer2 size={13} />, label: 'Löschen' },
+                      { id: 'player', icon: <Users size={13} />, label: 'Spieler' },
+                      { id: 'chain', icon: <Waypoints size={13} />, label: 'Kette' },
+                      { id: 'pass', icon: <MoveUpRight size={13} />, label: 'Passweg' },
+                      { id: 'run', icon: <Footprints size={13} />, label: 'Laufweg' },
+                      { id: 'zone', icon: <Square size={13} />, label: 'Raum' },
+                      { id: 'ball', icon: <Crosshair size={13} />, label: 'Ballweg' },
+                      { id: 'optimal', icon: <Target size={13} />, label: 'Optimal' },
+                    ] as Array<{ id: typeof tagTool; icon: React.ReactNode; label: string }>).map(t => (
+                      <button
+                        key={t.id}
+                        onClick={() => { setTagTool(t.id); if (t.id !== 'run' && t.id !== 'ball') setTagRunPts([]); }}
+                        title={`${t.label}${t.id === 'pointer' ? ' – Element anklicken' : ''}`}
+                        className={`px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 border cursor-pointer transition-all ${
+                          tagTool === t.id ? 'bg-[#10B981]/20 text-[#10B981] border-[#10B981]/50' : 'bg-black/40 text-[#94A3B8] border-white/10 hover:text-white'
+                        }`}
+                      >
+                        {t.icon}{t.label}
+                      </button>
+                    ))}
+                    <div className="mx-1 h-5 w-px bg-white/15" />
+                    <button onClick={tagUndo} disabled={!tagHistory.length} title="Rückgängig" className="px-2 py-1 rounded-lg bg-black/40 text-[#94A3B8] border border-white/10 hover:text-white cursor-pointer disabled:opacity-40"><Undo2 size={13} /></button>
+                    <button onClick={tagClear} title="Alles löschen" className="px-2 py-1 rounded-lg bg-black/40 text-rose-400 border border-white/10 hover:bg-rose-950/60 cursor-pointer"><Eraser size={13} /></button>
+
+                    {/* Kontext-Optionen */}
+                    {(tagTool === 'player' || tagTool === 'optimal') && (
+                      <div className="flex items-center gap-1.5 ml-1">
+                        <input value={tagLabel} onChange={(e) => setTagLabel(e.target.value)} className="w-14 px-1.5 py-1 bg-black/60 border border-white/15 rounded-md text-[10px] text-white focus:outline-none focus:border-[#10B981]" placeholder="Nr." />
+                      </div>
+                    )}
+                    {tagTool === 'player' && (
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => setTagTeam('FC Auggen')} className={`px-2 py-1 rounded-md text-[10px] font-black cursor-pointer border ${tagTeam === 'FC Auggen' ? 'bg-[#3B82F6] text-white border-[#3B82F6]' : 'bg-black/40 text-[#94A3B8] border-white/10'}`}>FCA</button>
+                        <button onClick={() => setTagTeam('Gegner')} className={`px-2 py-1 rounded-md text-[10px] font-black cursor-pointer border ${tagTeam === 'Gegner' ? 'bg-rose-600 text-white border-rose-600' : 'bg-black/40 text-[#94A3B8] border-white/10'}`}>Gegner</button>
+                      </div>
+                    )}
+                    {tagTool === 'zone' && <input value={tagZoneLabel} onChange={(e) => setTagZoneLabel(e.target.value)} className="w-36 px-1.5 py-1 bg-black/60 border border-white/15 rounded-md text-[10px] text-white focus:outline-none focus:border-[#10B981]" placeholder="Zonen-Label" />}
+                    {tagTool === 'optimal' && <input value={tagOptNote} onChange={(e) => setTagOptNote(e.target.value)} className="w-52 px-1.5 py-1 bg-black/60 border border-white/15 rounded-md text-[10px] text-white focus:outline-none focus:border-[#10B981]" placeholder="Begründung" />}
+                    {(tagTool === 'chain' || tagTool === 'pass' || tagTool === 'run' || tagTool === 'zone') && (
+                      <div className="flex items-center gap-1 ml-1">
+                        {['#3B82F6', '#EF4444', '#F59E0B', '#10B981', '#22D3EE'].map(cr => (
+                          <button key={cr} onClick={() => setTagColor(cr)} className={`w-4 h-4 rounded-full border-2 cursor-pointer ${tagColor === cr ? 'border-white scale-110' : 'border-transparent opacity-70'}`} style={{ background: cr }} />
+                        ))}
+                      </div>
+                    )}
+                    {(tagTool === 'run' || tagTool === 'ball') && (
+                      <div className="flex items-center gap-1.5 ml-1">
+                        <span className="text-[10px] text-[#94A3B8]">{tagRunPts.length} Pkt</span>
+                        <button onClick={tagFinishLine} className="px-2 py-1 rounded-md bg-[#10B981] text-black text-[10px] font-black uppercase cursor-pointer">Fertig</button>
+                        <button onClick={() => setTagRunPts([])} className="px-2 py-1 rounded-md bg-black/40 text-[#94A3B8] text-[10px] font-bold border border-white/10 cursor-pointer">X</button>
+                      </div>
+                    )}
+                    <span className="ml-auto hidden sm:flex text-[9px] text-[#64748B]">
+                      {tagBoard.players?.length || 0} Spieler · {tagBoard.chains?.length || 0} Kette · {tagBoard.passes?.length || 0} Pässe · {tagBoard.zones?.length || 0} Räume
+                    </span>
+                  </div>
+                </>
               )}
             </div>
 
@@ -3659,6 +4034,16 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
                               onToggle={() => setExpandedTacticClipId(expandedTacticClipId === clip.id ? null : clip.id)}
                             />
 
+                            {/* Per-Szene-Once-Tagger */}
+                            <button
+                              type="button"
+                              onClick={() => openTaggerForClip(clip)}
+                              className="w-full px-2 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 bg-[#10B981]/10 text-[#10B981] border border-[#10B981]/40 hover:bg-[#10B981] hover:text-black transition-all cursor-pointer"
+                              title="Once-Style: direkt auf dem Video zeichnen (springt zum Szenen-Start, speichert in diese Szene)"
+                            >
+                              <Target size={12} /> 🎯 Taktik direkt auf dieser Szene zeichnen
+                            </button>
+
                             {/* Color Marking Selector & Delete Button */}
                             <div className="pt-2 border-t border-[#242F42] flex items-center justify-between gap-2">
                               <div className="flex items-center gap-1.5">
@@ -4121,20 +4506,6 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
 
             </div>
           </div>
-        )}
-      </AnimatePresence>
-
-      {/* Once-Tagger Modal */}
-      <AnimatePresence>
-        {taggerOpen && (
-          <OnceTaggerModal
-            videoRef={mainVideoRef}
-            videoName={videoFileName || 'Spielvideo'}
-            videoSource={videoSource || ''}
-            initialTime={currentTime}
-            onSave={handleTaggerSave}
-            onClose={() => setTaggerOpen(false)}
-          />
         )}
       </AnimatePresence>
 
