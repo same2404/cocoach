@@ -1053,6 +1053,15 @@ Rekonstruiere pro Szene die VOLLSTÄNDIGE KETTE: VORHER → AUSLÖSER → SPIELE
 - **confidence**: Pro Szene: overall ("hoch"/"mittel"/"niedrig"), markers: Liste ALLER Erkennungs-Unsicherheiten, estimated: true/false, lowConfidence: true/false.
 - **blankFields**: Wenn eine Information aus den Frames NICHT ableitbar ist, fülle das Feld NICHT mit Phantasie, sondern mit "unknown" bzw. bei Distanzen "estimated: X-Y m".
 - **qualityCheck (AUTOMATISCHE QUALITÄTSKONTROLLE)**: Beantworte vor dem Absenden intern alle Prüffragen und schreibe das Ergebnis als Liste: (1) Ist die Kette VORHER→FOLGE lückenlos? (2) Sind Daten erdichtet? (3) Sind Distanzen nur Schätzwerte? (4) Sind unknown-Marker gesetzt? (5) Ist der Hauptlernpunkt priorisiert? (6) Sind verwandte Szenen verknüpft? (7) Ist der Entstehungsweg erklärt (nicht nur das Ergebnis)? (8) Sind Mehrfach-Kategorien gesetzt? (9) Fehlt eine Option bei der Entscheidung? (10) Sind die Clip-Empfehlungen kategoriespezifisch?
+- **tacticBoard (ONCE-STYLE TAKTIK-GRAFIK je Szene)**: Zeichne für JEDE Szene eine vollständige Taktik-Grafik auf das komplette Spielfeld (Koordinate x: 0=links, 100=rechts; y: 0=oben, 100=unten):
+   - attackDirection: FCA greift üblicherweise Richtung oberes Tor an (y→0); spiegele/mirrore die Koordinaten konsequent passend zur tatsächlichen Bildrichtung, damit die Grafik nie verzerrt wirkt.
+   - players: alle für die Szene relevanten Spieler beider Teams mit Trikotnummer/Kürzel (label, team, x, y). Konstante Offsets: Innenverteidiger ~ y 55-70, Außenverteidiger außen, 6er y 45-55, OM/Halbraum y 35-45, Stürmer y 10-30.
+   - ball: aktuelle Ballposition.
+   - passes: die Passfolge in Reihenfolge mit fromX/fromY→toX/toY und action (Direktpass, Steilpass, Flanke, Klatschball, Doppelpass, Verlagerung, Torschuss). Farben: Blau #3B82F6 offensiv, Rot #EF4444 defensiv, Gelb #F59E0B Umschalten.
+   - runs: Laufwege beteiligter Spieler als 2-3-Punkt-Polyline (z.B. Tiefenlauf des ST).
+   - zones: bewertete Räume (Rechteck x/y/w/h in %) mit Label (z.B. 'Halbraum frei', 'Strafraum überladen').
+   - optimalPositions: für 1-3 FCA-Spieler die IDEALE Position (Once-Style) als Pfeil von aktuell nach ideal mit kurzer deutscher Begründung.
+   - Leere Arrays sind erlaubt, wenn eine Kategorie in der Szene nicht vorkommt. Verlasse dich NIEMALS auf erfundene Koordinaten – wenn die Bildrichtung unklar ist, wähle attackDirection 'DOWN' und zeichne konsistent.
 
 Kaderliste des Vereins:
 ${squadStr}
@@ -1278,7 +1287,110 @@ Antworte STRENG im geforderten JSON-Format.
                           lowConfidence: { type: Type.BOOLEAN }
                         }
                       },
-                      qualityCheck: { type: Type.ARRAY, items: { type: Type.STRING }, description: "AUTOMATISCHE QUALITÄTSKONTROLLE: Ergebnisse der Prüffragen als Liste" }
+                      qualityCheck: { type: Type.ARRAY, items: { type: Type.STRING }, description: "AUTOMATISCHE QUALITÄTSKONTROLLE: Ergebnisse der Prüffragen als Liste" },
+                      tacticBoard: {
+                        type: Type.OBJECT,
+                        description: "ONCE-STYLE TAKTIK-GRAFIK der Szene: alle Elemente als %-Koordinaten auf dem kompletten Spielfeld (x: 0=linkes Spielfeldende bis 100=rechtes Spielfeldende; y: 0=obere Seite bis 100=untere Seite). FC-Auggen greift üblicherweise Richtung oberes Tor (y→0 bei Angriff) an – spiegle die Koordinaten passend zur Bildrichtung.",
+                        properties: {
+                          attackDirection: { type: Type.STRING, description: "'UP' wenn FC Auggen in Richtung oberes Tor (y sinkend) angreift, sonst 'DOWN'" },
+                          players: {
+                            type: Type.ARRAY,
+                            description: "Alle sichtbar relevanten Spieler der Szene (beide Teams), nur FCA-Umrisspositionen sicher benennen",
+                            items: {
+                              type: Type.OBJECT,
+                              properties: {
+                                label: { type: Type.STRING, description: "Trikotnummer oder Kürzel, z.B. '#9' oder '9'" },
+                                team: { type: Type.STRING, description: "'FC Auggen' oder 'Gegner'" },
+                                x: { type: Type.NUMBER, description: "X-Position 0-100%" },
+                                y: { type: Type.NUMBER, description: "Y-Position 0-100%" }
+                              },
+                              required: ["label", "team", "x", "y"]
+                            }
+                          },
+                          ball: {
+                            type: Type.OBJECT,
+                            properties: {
+                              x: { type: Type.NUMBER, description: "X 0-100%" },
+                              y: { type: Type.NUMBER, description: "Y 0-100%" }
+                            },
+                            required: ["x", "y"]
+                          },
+                          passes: {
+                            type: Type.ARRAY,
+                            description: "Passwege der Szene in chronologischer Reihenfolge (Pass LINIE von from nach to)",
+                            items: {
+                              type: Type.OBJECT,
+                              properties: {
+                                fromLabel: { type: Type.STRING, description: "Passgeber-Kürzel z.B. '8'" },
+                                toLabel: { type: Type.STRING, description: "Empfänger-Kürzel z.B. '9'" },
+                                fromX: { type: Type.NUMBER },
+                                fromY: { type: Type.NUMBER },
+                                toX: { type: Type.NUMBER },
+                                toY: { type: Type.NUMBER },
+                                action: { type: Type.STRING, description: "Direktpass, Steilpass, Flanke, Klatschball, Doppelpass, Verlagerung, Torschuss" },
+                                color: { type: Type.STRING, description: "#3B82F6 offensiv, #EF4444 defensiv, #F59E0B Umschalten-KI, #10B981 Struktur" }
+                              },
+                              required: ["fromX", "fromY", "toX", "toY", "action"]
+                            }
+                          },
+                          runs: {
+                            type: Type.ARRAY,
+                            description: "Laufwege beteiligter Spieler (Polyline mit 2-3 Punkten)",
+                            items: {
+                              type: Type.OBJECT,
+                              properties: {
+                                label: { type: Type.STRING, description: "Spieler-Kürzel z.B. '11'" },
+                                points: {
+                                  type: Type.ARRAY,
+                                  items: {
+                                    type: Type.OBJECT,
+                                    properties: {
+                                      x: { type: Type.NUMBER },
+                                      y: { type: Type.NUMBER }
+                                    },
+                                    required: ["x", "y"]
+                                  }
+                                },
+                                color: { type: Type.STRING, description: "#3B82F6 offensiv, #EF4444 defensiv, #F59E0B Umschalten" }
+                              },
+                              required: ["label", "points", "color"]
+                            }
+                          },
+                          zones: {
+                            type: Type.ARRAY,
+                            description: "Bewertete Räume/Zonen der Szene (Rechtecke in %)",
+                            items: {
+                              type: Type.OBJECT,
+                              properties: {
+                                x: { type: Type.NUMBER, description: "obere linke Ecke X" },
+                                y: { type: Type.NUMBER, description: "obere linke Ecke Y" },
+                                w: { type: Type.NUMBER, description: "Breite" },
+                                h: { type: Type.NUMBER, description: "Höhe" },
+                                label: { type: Type.STRING, description: "z.B. 'Halbraum frei', 'Zone überladen'" },
+                                color: { type: Type.STRING, description: "#F59E0B freier Raum, #10B981 genutzter Raum, #EF4444 Warnung" }
+                              },
+                              required: ["x", "y", "w", "h"]
+                            }
+                          },
+                          optimalPositions: {
+                            type: Type.ARRAY,
+                            description: "OPTIMALE Positionen (Once-Style): wo ein FCA-Spieler besser stehen/laufen müsste (gestrichelter Pfeil von aktuell zu ideal)",
+                            items: {
+                              type: Type.OBJECT,
+                              properties: {
+                                label: { type: Type.STRING, description: "Spieler-Kürzel z.B. '6'" },
+                                fromX: { type: Type.NUMBER },
+                                fromY: { type: Type.NUMBER },
+                                toX: { type: Type.NUMBER },
+                                toY: { type: Type.NUMBER },
+                                note: { type: Type.STRING, description: "kurze deutsche Begründung, z.B. 'Raum hinter der Kette sichern'" }
+                              },
+                              required: ["label", "toX", "toY"]
+                            }
+                          }
+                        },
+                        required: ["attackDirection", "players", "ball"]
+                      }
                     },
                     required: ["id", "category", "subcategory", "title", "startTimeSeconds", "endTimeSeconds", "timestampFormatted", "aiCommentary", "participatingPlayerNames", "pitchZone", "teamInvolved"]
                   }

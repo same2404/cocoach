@@ -275,7 +275,169 @@ export interface TacticalVideoClip {
   };
   qualityCheck?: string[];
   subTags?: string[];
+  tacticBoard?: SceneTacticBoard;
 }
+
+// Once-Style Taktik-Grafik je Szene (Koordinaten in % auf dem kompletten Spielfeld)
+export interface SceneTacticBoard {
+  attackDirection?: string;
+  players?: Array<{ label: string; team: string; x: number; y: number }>;
+  ball?: { x: number; y: number };
+  passes?: Array<{ fromLabel?: string; toLabel?: string; fromX: number; fromY: number; toX: number; toY: number; action?: string; color?: string }>;
+  runs?: Array<{ label?: string; points: Array<{ x: number; y: number }>; color?: string }>;
+  zones?: Array<{ x: number; y: number; w: number; h: number; label?: string; color?: string }>;
+  optimalPositions?: Array<{ label?: string; fromX?: number; fromY?: number; toX: number; toY: number; note?: string }>;
+}
+
+const clampPct = (v: any, fallback: number = 50): number => {
+  const n = typeof v === 'number' && isFinite(v) ? v : fallback;
+  return Math.max(0, Math.min(100, n));
+};
+
+// Mini-Taktiktafel (Once-Style) für eine erkannte Szene
+const SceneTacticDiagram: React.FC<{ board?: SceneTacticBoard; expanded: boolean; onToggle: () => void }> = ({ board, expanded, onToggle }) => {
+  if (!board) return null;
+  const upAttacking = board.attackDirection !== 'DOWN';
+  const flipY = (y: number) => (upAttacking ? y : 100 - y);
+  const ball = board.ball;
+  const players = board.players || [];
+  const passes = board.passes || [];
+  const runs = board.runs || [];
+  const zones = board.zones || [];
+  const optimals = board.optimalPositions || [];
+
+  return (
+    <div className="mt-1">
+      <button
+        onClick={onToggle}
+        className="flex items-center gap-1.5 px-2 py-1 text-[9px] font-black uppercase tracking-wider rounded-lg border cursor-pointer transition-all bg-[#10B981]/10 text-[#10B981] border-[#10B981]/30 hover:bg-[#10B981]/20"
+        title={expanded ? 'Taktik-Grafik ausblenden' : 'Taktische Szene als Grafik ansehen (Once-Style)'}
+      >
+        {expanded ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+        Taktik-Grafik
+      </button>
+      {expanded && (
+        <div className="flex gap-3 mt-1.5 flex-col lg:flex-row">
+          {/* Spielfeld mit allen Elementen */}
+          <div className="relative w-full lg:w-72 h-56 lg:h-64 rounded-xl overflow-hidden bg-[#041f15] border border-[#10B981]/20 shrink-0">
+            <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full">
+              {/* Spielfeldlinien */}
+              <rect x="4" y="4" width="92" height="92" fill="none" stroke="#10B981" strokeOpacity="0.5" strokeWidth="0.6" />
+              <line x1="4" y1="50" x2="96" y2="50" stroke="#10B981" strokeOpacity="0.5" strokeWidth="0.6" />
+              <circle cx="50" cy="50" r="11" fill="none" stroke="#10B981" strokeOpacity="0.5" strokeWidth="0.5" />
+              <circle cx="50" cy="50" r="3.5" fill="none" stroke="#10B981" strokeOpacity="0.5" strokeWidth="0.5" />
+              {/* Strafräume */}
+              <rect x="4" y={upAttacking ? 66 : 4} width="92" height="30" fill="none" stroke="#10B981" strokeOpacity="0.35" strokeWidth="0.5" />
+              <rect x="4" y={upAttacking ? 78 : -8} width="92" height="18" fill="none" stroke="#10B981" strokeOpacity="0.35" strokeWidth="0.5" />
+              {/* Tore */}
+              <rect x="34" y={upAttacking ? 98 : -2} width="32" height="3" fill="none" stroke="#10B981" strokeOpacity="0.6" strokeWidth="0.7" />
+              <rect x="34" y={upAttacking ? -2 : 98} width="32" height="3" fill="none" stroke="#10B981" strokeOpacity="0.6" strokeWidth="0.7" />
+
+              {/* Zonen */}
+              {zones.map((z, i) => (
+                <g key={`zone-${i}`}>
+                  <rect
+                    x={clampPct(z.x)} y={flipY(clampPct(z.y))} width={clampPct(z.w, 10)} height={clampPct(z.h, 10)}
+                    fill={z.color || '#F59E0B'} opacity="0.25" stroke={z.color || '#F59E0B'} strokeWidth="0.5" strokeDasharray="2 1.5" rx="1"
+                  />
+                  {z.label ? <text x={clampPct(z.x) + 1.5} y={flipY(clampPct(z.y)) + 3} fontSize="3" fontWeight="900" fill={z.color || '#F59E0B'}>{z.label}</text> : null}
+                </g>
+              ))}
+
+              {/* Laufwege */}
+              {runs.map((r, i) => r.points && r.points.length >= 2 ? (
+                <polyline
+                  key={`run-${i}`}
+                  points={r.points.map(p => `${clampPct(p.x)},${flipY(clampPct(p.y))}`).join(' ')}
+                  fill="none" stroke={r.color || '#3B82F6'} strokeWidth="1" strokeDasharray="2.5 1.5" opacity="0.95" strokeLinecap="round"
+                />
+              ) : null)}
+
+              {/* Passwege */}
+              {passes.map((p, i) => (
+                <g key={`pass-${i}`}>
+                  <line x1={clampPct(p.fromX)} y1={flipY(clampPct(p.fromY))} x2={clampPct(p.toX)} y2={flipY(clampPct(p.toY))} stroke={p.color || '#3B82F6'} strokeWidth="0.8" opacity="0.9" />
+                  <circle cx={clampPct(p.toX)} cy={flipY(clampPct(p.toY))} r="1.1" fill={p.color || '#3B82F6'} opacity="0.9" />
+                </g>
+              ))}
+
+              {/* Optimale Positionen */}
+              {optimals.map((o, i) => (
+                <g key={`opt-${i}`}>
+                  {typeof o.fromX === 'number' && typeof o.fromY === 'number' && (
+                    <line x1={clampPct(o.fromX)} y1={flipY(clampPct(o.fromY))} x2={clampPct(o.toX)} y2={flipY(clampPct(o.toY))} stroke="#F59E0B" strokeWidth="0.6" strokeDasharray="1.5 1.2" opacity="0.9" />
+                  )}
+                  <circle cx={clampPct(o.toX)} cy={flipY(clampPct(o.toY))} r="2.4" fill="none" stroke="#F59E0B" strokeWidth="0.6" />
+                  {o.note ? <text x={Math.min(clampPct(o.toX) + 2, 92)} y={Math.max(flipY(clampPct(o.toY)) - 1.5, 3)} fontSize="2.8" fontWeight="900" fill="#FBBF24">{o.note}</text> : null}
+                </g>
+              ))}
+
+              {/* Ball */}
+              {ball && (
+                <circle cx={clampPct(ball.x)} cy={flipY(clampPct(ball.y))} r="1.8" fill="#FFFFFF" stroke="#0A0E17" strokeWidth="0.4" />
+              )}
+
+              {/* Spieler */}
+              {players.map((pl, i) => {
+                const isHome = /auggen|fca/i.test(pl.team || '') || !/gegner|opponent/i.test(pl.team || '');
+                return (
+                  <g key={`pl-${i}`}>
+                    <circle cx={clampPct(pl.x)} cy={flipY(clampPct(pl.y))} r="3.2" fill={isHome ? '#3B82F6' : '#EF4444'} stroke="#FFFFFF" strokeWidth="0.5" />
+                    <text x={clampPct(pl.x)} y={flipY(clampPct(pl.y)) + 1.1} fontSize="3" fontWeight="900" fill="#FFFFFF" textAnchor="middle">{pl.label}</text>
+                  </g>
+                );
+              })}
+            </svg>
+            <span className="absolute top-1 left-1.5 text-[7px] font-black uppercase tracking-wider text-[#10B981]/70">🎯 Once-Style Taktik</span>
+            <span className="absolute bottom-1 right-1.5 text-[7px] uppercase tracking-wider text-white/40">{board.attackDirection === 'DOWN' ? 'Gegner greift oben an' : 'FCA greift oben an'}</span>
+          </div>
+
+          {/* Legende */}
+          <div className="flex-1 grid grid-cols-2 gap-1.5 text-[10px]">
+            <div className="space-y-0.5">
+              <div className="text-[8px] font-black uppercase tracking-widest text-[#94A3B8]">Legende</div>
+              <div className="flex items-center gap-1.5 text-[#94A3B8]"><span className="w-2 h-2 rounded-full bg-[#3B82F6]" /> FC Auggen</div>
+              <div className="flex items-center gap-1.5 text-[#94A3B8]"><span className="w-2 h-2 rounded-full bg-[#EF4444]" /> Gegner</div>
+              <div className="flex items-center gap-1.5 text-[#94A3B8]"><span className="w-2.5 h-2.5 rounded-full bg-white border border-[#0A0E17]" /> Ball</div>
+            </div>
+            {passes.length > 0 && (
+              <div className="space-y-0.5">
+                <div className="text-[8px] font-black uppercase tracking-widest text-[#94A3B8]">Passfolge ({passes.length})</div>
+                {passes.slice(0, 4).map((p, i) => (
+                  <div key={i} className="flex items-center gap-1 text-[#94A3B8] truncate">
+                    <span className="text-[#3B82F6]">→</span>
+                    <span>{(p.fromLabel || '?')} → {(p.toLabel || '?')}</span>
+                    <span className="text-white/50">· {p.action || 'Pass'}</span>
+                  </div>
+                ))}
+                {passes.length > 4 && <div className="text-[#64748B] text-[9px]">+{passes.length - 4} weitere</div>}
+              </div>
+            )}
+            {runs.length > 0 && (
+              <div className="space-y-0.5">
+                <div className="text-[8px] font-black uppercase tracking-widest text-[#94A3B8]">Laufwege ({runs.length})</div>
+                {runs.slice(0, 3).map((r, i) => (
+                  <div key={i} className="flex items-center gap-1 text-[#94A3B8] truncate">
+                    <span className="text-[#3B82F6]">➜</span>
+                    <span>{r.label || `Lauf ${i + 1}`}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {optimals.length > 0 && (
+              <div className="space-y-0.5">
+                <div className="text-[8px] font-black uppercase tracking-widest text-[#F59E0B]">Optimale Positionen ({optimals.length})</div>
+                {optimals.slice(0, 2).map((o, i) => (
+                  <div key={i} className="text-[#FBBF24] truncate">◉ {o.label || '?'}: {o.note || 'Besser positionieren'}</div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 // CoCoach-Tiefenanalyse-Anzeige (Maximum Information Extraction Engine)
 const TacticalAnalysisPanel: React.FC<{ clip: TacticalVideoClip }> = ({ clip }) => {
@@ -562,6 +724,7 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
   const [isPreviewingCut, setIsPreviewingCut] = useState<boolean>(false);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
   const [highlightedClipId, setHighlightedClipId] = useState<string | null>(null);
+  const [expandedTacticClipId, setExpandedTacticClipId] = useState<string | null>(null);
 
   // Category accordion open/closed states (default all open)
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({
@@ -791,6 +954,7 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
           relatedSceneIds: Array.isArray(clip.relatedSceneIds) ? clip.relatedSceneIds : undefined,
           confidence: clip.confidence,
           qualityCheck: Array.isArray(clip.qualityCheck) ? clip.qualityCheck : undefined,
+          tacticBoard: clip.tacticBoard,
         };
         return newClip;
       });
@@ -875,6 +1039,7 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
   const mainVideoRef = useRef<HTMLVideoElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const clipVideoRef = useRef<HTMLVideoElement | null>(null);
+  const autoAnalyseQueuedRef = useRef(false);
 
   // Handle video loaded metadata
   const handleLoadedMetadata = () => {
@@ -884,6 +1049,11 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
       setCutStart(0);
       setCutEnd(Math.min(dur, 15));
       setCurrentTime(0);
+      // Auto-Start AI analysis once per uploaded file (not Veo)
+      if (autoAnalyseQueuedRef.current && videoSource && !isVeoLink) {
+        autoAnalyseQueuedRef.current = false;
+        void handleStartAIAnalysis();
+      }
     }
   };
 
@@ -918,6 +1088,7 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
       setSaveSuccessMsg(null);
       setIsVeoLink(false);
       setVeoEmbedUrl(null);
+      autoAnalyseQueuedRef.current = true;
     }
   };
 
@@ -2895,6 +3066,13 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
                             {/* CoCoach-Tiefenanalyse (Maximum Information Extraction) */}
                             <TacticalAnalysisPanel clip={clip} />
 
+                            {/* Once-Style Taktik-Grafik */}
+                            <SceneTacticDiagram
+                              board={clip.tacticBoard}
+                              expanded={expandedTacticClipId === clip.id}
+                              onToggle={() => setExpandedTacticClipId(expandedTacticClipId === clip.id ? null : clip.id)}
+                            />
+
                             {/* Color Marking Selector & Delete Button */}
                             <div className="pt-2 border-t border-[#242F42] flex items-center justify-between gap-2">
                               <div className="flex items-center gap-1.5">
@@ -3169,6 +3347,12 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
                 </div>
                 {/* CoCoach-Tiefenanalyse */}
                 <TacticalAnalysisPanel clip={activePlaybackClip} />
+                {/* Once-Style Taktik-Grafik */}
+                <SceneTacticDiagram
+                  board={activePlaybackClip.tacticBoard}
+                  expanded={expandedTacticClipId === activePlaybackClip.id}
+                  onToggle={() => setExpandedTacticClipId(expandedTacticClipId === activePlaybackClip.id ? null : activePlaybackClip.id)}
+                />
               </div>
             </motion.div>
           </div>
