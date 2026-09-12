@@ -3515,12 +3515,12 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
 {/* Oben: Status + Speichern/Schließen */}
                   <div className="absolute top-3 left-3 z-30 flex items-center gap-1.5 flex-wrap max-w-[70%]">
                     {tagTargetClipId && (savedClips || []).find(c => c.id === tagTargetClipId) ? (
-                      <span className="px-2 py-1 bg-[#10B981] text-black border border-[#10B981]/50 rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5">
-                        <Target size={11} /> Zeichnen für: {(savedClips || []).find(c => c.id === tagTargetClipId)!.category} – {(savedClips || []).find(c => c.id === tagTargetClipId)!.title || formatTime((savedClips || []).find(c => c.id === tagTargetClipId)!.startTime)}
+                      <span className="px-2 py-0.5 bg-[#10B981] text-black border border-[#10B981]/50 rounded-lg text-[8px] font-bold uppercase tracking-wide flex items-center gap-1">
+                        <Target size={9} /> Zeichnen für: {(savedClips || []).find(c => c.id === tagTargetClipId)!.category} – {(savedClips || []).find(c => c.id === tagTargetClipId)!.title || formatTime((savedClips || []).find(c => c.id === tagTargetClipId)!.startTime)}
                       </span>
                     ) : (
-                      <span className="px-2 py-1 bg-black/80 text-[#10B981] border border-[#10B981]/50 rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5">
-                        <Target size={11} /> Once-Tagger aktiv – direkt aufs Video zeichnen
+                      <span className="px-2 py-0.5 bg-black/80 text-[#10B981] border border-[#10B981]/50 rounded-lg text-[8px] font-bold uppercase tracking-wide flex items-center gap-1">
+                        <Target size={9} /> Once-Tagger aktiv – direkt aufs Video zeichnen
                       </span>
                     )}
                     <span className="px-2 py-1 bg-black/70 text-white/70 rounded-lg text-[10px] font-mono">{formatTime(currentTime, true)}</span>
