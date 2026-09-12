@@ -324,13 +324,35 @@ export interface UltraKeyframe {
   timeSeconds: number;
   players?: Array<{ id?: string; team?: string; label?: string; x: number; y: number; motion?: string }>;
   passes?: Array<{ fromX: number; fromY: number; toX: number; toY: number; color?: string; action?: string }>;
-  runs?: Array<{ label?: string; color?: string; points: number[][] }>;
-  ballPath?: Array<{ color?: string; points: number[][] }>;
+  runs?: Array<{ label?: string; color?: string; points: number[][] | Array<{ x: number; y: number }> }>;
+  ballPath?: Array<{ color?: string; points: number[][] | Array<{ x: number; y: number }> }>;
   zones?: Array<{ x: number; y: number; w: number; h: number; color?: string; label?: string }>;
   chains?: Array<{ fromX: number; fromY: number; toX: number; toY: number; color?: string; label?: string }>;
   optimalPositions?: Array<{ toX: number; toY: number; note?: string; label?: string }>;
   lowConfidence?: boolean;
 }
+
+// Firestore verbietet verschachtelte Arrays → runs/ballPath-Punkte als {x,y}-Objekte speichern
+const sanitizeUltraOverlayForFirestore = (overlay: UltraOverlayData | undefined | null): UltraOverlayData => {
+  if (!overlay || typeof overlay !== 'object') return { keyframes: [] };
+  const normPoints = (arr: any[] | undefined): Array<{ x: number; y: number }> =>
+    Array.isArray(arr)
+      ? arr
+          .map((p: any) => (Array.isArray(p) ? { x: p[0], y: p[1] } : { x: p?.x, y: p?.y }))
+          .filter((q: any) => typeof q?.x === 'number' && isFinite(q.x) && typeof q?.y === 'number' && isFinite(q.y))
+      : [];
+  const clone: UltraOverlayData = {
+    ...overlay,
+    keyframes: Array.isArray(overlay.keyframes)
+      ? overlay.keyframes.map((k) => ({
+          ...k,
+          runs: Array.isArray(k.runs) ? k.runs.map((r) => ({ ...r, points: normPoints(r.points) })) : k.runs,
+          ballPath: Array.isArray(k.ballPath) ? k.ballPath.map((b) => ({ ...b, points: normPoints(b.points) })) : k.ballPath,
+        }))
+      : [],
+  };
+  return clone;
+};
 
 const clampPct = (v: any, fallback: number = 50): number => {
   const n = typeof v === 'number' && isFinite(v) ? v : fallback;
@@ -505,11 +527,17 @@ const SceneTacticDiagram: React.FC<{ board?: SceneTacticBoard; expanded: boolean
 // ⚡ Ultra-Overlay: lineare Interpolation zwischen Keyframes (Browser-Rechner)
 const lerpN = (a: number, b: number, t: number) => a + (b - a) * t;
 const lerpPct = (a: number, b: number, t: number) => Math.max(0, Math.min(100, lerpN(a, b, t)));
-const lerpPt = (a: number[], b: number[], t: number): number[] => [lerpPct(a[0], b[0], t), lerpPct(a[1], b[1], t)];
-const lerpPoly = (pa: number[][], pb: number[][], t: number): number[][] => {
+// Punkt flexibel lesen: [x, y] (Server) ODER { x, y } (Firestore-saniert)
+const ptX = (p: any): number => (Array.isArray(p) ? p[0] : p?.x);
+const ptY = (p: any): number => (Array.isArray(p) ? p[1] : p?.y);
+const lerpPoly = (pa: any[], pb: any[], t: number): any[] => {
   if (!pa) return pb || [];
   if (!pb) return pa;
-  if (pa.length === pb.length) return pa.map((p, k) => lerpPt(p, pb[k], t));
+  if (pa.length === pb.length) return pa.map((p, k) => {
+    const q = pb[k];
+    if (Array.isArray(p) && Array.isArray(q)) return [lerpPct(p[0], q[0], t), lerpPct(p[1], q[1], t)];
+    return { x: lerpPct(ptX(p), ptX(q), t), y: lerpPct(ptY(p), ptY(q), t) };
+  });
   const shorter = pa.length < pb.length ? pa : pb;
   const longer = pa.length < pb.length ? pb : pa;
   return t < 0.5 ? shorter : longer;
@@ -599,16 +627,16 @@ const UltraOverlaySVG: React.FC<{ overlay: UltraOverlayData; timeInClip: number 
 
       {(snap.ballPath || []).map((b: any, i: number) => b.points && b.points.length >= 2 ? (
         <g key={`ub${i}`}>
-          <polyline points={b.points.map((p: number[]) => `${vs(p[0])},${vs(p[1])}`).join(' ')} fill="none" stroke={b.color || '#F59E0B'} strokeWidth="3" opacity="0.22" strokeLinecap="round" />
-          <polyline points={b.points.map((p: number[]) => `${vs(p[0])},${vs(p[1])}`).join(' ')} fill="none" stroke={b.color || '#F59E0B'} strokeWidth="1.7" strokeDasharray="2.4 1.8" opacity="0.98" strokeLinecap="round" />
-          {b.points.slice(1).map((pp: number[], j: number) => <circle key={j} cx={vs(pp[0])} cy={vs(pp[1])} r="1.5" fill={b.color || '#F59E0B'} />)}
+          <polyline points={b.points.map((p: any) => `${vs(ptX(p))},${vs(ptY(p))}`).join(' ')} fill="none" stroke={b.color || '#F59E0B'} strokeWidth="3" opacity="0.22" strokeLinecap="round" />
+          <polyline points={b.points.map((p: any) => `${vs(ptX(p))},${vs(ptY(p))}`).join(' ')} fill="none" stroke={b.color || '#F59E0B'} strokeWidth="1.7" strokeDasharray="2.4 1.8" opacity="0.98" strokeLinecap="round" />
+          {b.points.slice(1).map((pp: any, j: number) => <circle key={j} cx={vs(ptX(pp))} cy={vs(ptY(pp))} r="1.5" fill={b.color || '#F59E0B'} />)}
         </g>
       ) : null)}
 
       {(snap.runs || []).map((r: any, i: number) => r.points && r.points.length >= 2 ? (
         <g key={`ur${i}`}>
-          <polyline points={r.points.map((p: number[]) => `${vs(p[0])},${vs(p[1])}`).join(' ')} fill="none" stroke={r.color || '#3B82F6'} strokeWidth="3" opacity="0.22" strokeLinecap="round" />
-          <polyline points={r.points.map((p: number[]) => `${vs(p[0])},${vs(p[1])}`).join(' ')} fill="none" stroke={r.color || '#3B82F6'} strokeWidth="1.7" strokeDasharray="2.4 1.8" opacity="0.98" strokeLinecap="round" />
+          <polyline points={r.points.map((p: any) => `${vs(ptX(p))},${vs(ptY(p))}`).join(' ')} fill="none" stroke={r.color || '#3B82F6'} strokeWidth="3" opacity="0.22" strokeLinecap="round" />
+          <polyline points={r.points.map((p: any) => `${vs(ptX(p))},${vs(ptY(p))}`).join(' ')} fill="none" stroke={r.color || '#3B82F6'} strokeWidth="1.7" strokeDasharray="2.4 1.8" opacity="0.98" strokeLinecap="round" />
         </g>
       ) : null)}
 
@@ -2538,7 +2566,7 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
         const errData = await res.json().catch(() => null);
         throw new Error(errData?.error || `HTTP ${res.status}`);
       }
-      const result = await res.json();
+      const result = sanitizeUltraOverlayForFirestore(await res.json() as UltraOverlayData);
       await saveClip({ ...clip, ultraOverlay: result });
       setUltraMsg({ id: clip.id, text: `⚡ Ultra-Overlay erzeugt (${(result.keyframes || []).length} Keyframes) – jetzt im Video abspielen.` });
       setUltraShowForClip(clip.id);
