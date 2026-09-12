@@ -1670,6 +1670,247 @@ resultText = response.text ?? null;
   });
 
   // ============================================
+  // VIDEO-ANALYSE: ULTRA-OVERLAY (Kameratracking / Spieler-Tracking / Keyframes)
+  // Ultra-Super-Premium-Prompt: Spieler kleben am Marker, Linien/Zonen laufen mit,
+  // Kamera-Bewegung wird kompensiert, Coaching-Ausgabe pro Szene.
+  // ============================================
+
+  app.post("/api/video-analysis/ultra-overlay", async (req, res) => {
+    try {
+      const { videoTitle, sceneDescription, sceneId, sampleFrames, squadPlayers, clubName } = req.body;
+      const teamName = clubName || 'FC Auggen';
+
+      const squadStr = Array.isArray(squadPlayers) && squadPlayers.length
+        ? squadPlayers.map((p: any) => `- ${p.lastName || ''} ${p.firstName || ''} (Nr. ${p.number || '?'}, ${p.position || 'Feldspieler'})`).join('\n')
+        : "Keine Kaderliste vorhanden.";
+
+      const systemInstruction = `
+Du bist ein professionelles Fußball-Analyse-System wie Once Football, Hudl Sportscode oder Wyscout Telestration (Funktion: ULTRA-OVERLAY-GENERATOR).
+Deine Aufgabe: Erzeuge aus den übergebenen Einzelbildern (Frames) automatisch stabil verankerte ANALYSIERBARE KEYFRAME-OVERLAYS – Spieler-Marker, Linien, Räume, Zonen, Pfeile, Laufwege, optimale Positionen – die sich am Spieler und mit der Bildbewegung MITBEWEGEN. Die Ausgabe wird live über ein laufendes Video gelegt und der Browser interpoliert zwischen den Keyframes.
+
+WICHTIG – EINORDNUNG DER LIMITATIONEN (Ehrlichkeitsregeln, NIEMALS auslassen):
+- Du siehst nur Einzelbilder, KEIN 25-fps-Video und KEIN echtes Frame-für-Frame-Motion-Mapping. Deshalb:
+  - "stabil"/"am Spieler kleben" erreichst du über KONSISTENTE Spieler-IDs über alle Keyframes (gleicher Spieler = gleiche id) + plausible Positionsinterpolation; erzwinge KEINE Scheinpräzision.
+  - Ungenaue Positionen/Zeiten kennzeichnen mit "lowConfidence": true.
+  - NIEMALS erfundene Spielernamen: benenne FCA-Spieler NUR per Kaderliste (id/number), sonst "unknown"/Trikotnummer "#9".
+  - Verlasse dich auf keinerlei erdichtete Koordinaten. Wenn ein Bereich aus den Frames nicht ableitbar ist: leer lassen oder lowConfidence markieren.
+
+DEINE ULTRA-AUFGABEN:
+
+1. SPIELERTRACKING (Player Tracking):
+   - Erkenne die Spieler anhand von Körperform, Position, Bewegung, Trikotfarbe/-nummer.
+   - Weise jedem Spieler eine STABILE ID + Team ("own" = ${teamName}, "opponent") + Label (Nr/Name) zu.
+   - Koordinaten x/y in PROZENT (0=links oben, 100=rechts unten) relativ zum Bild.
+   - Der Marker gehört auf Brust/Hüfte des Spielers – nicht daneben.
+
+2. KAMERATRACKING (Camera Motion):
+   - Schätze je Clip die Kamerabewegung (statisch, Schwenk links/rechts, Zoom rein/raus, Winkelwechsel).
+   - Setze cameraMotion.type + movement; falls sich zeichnerisch etwas bei Zoom/Schwenk verschieben muss, lege passende Keyframes mit leicht verschobenen Koordinaten an (Bewegung wird linear interpoliert).
+
+3. PERSPEKTIVEN-KORREKTUR (Field Geometry):
+   - Räume/Linien perspektivisch passend zeichnen (Strafraum liegt "zusammengeschoben", wenn die Kamera eng steht; Laufwege eher horizontal bei TV-Kameraperspektive). Ausrichtung über attackDirection ("UP" = ${teamName} greift nach oben zum Tor an, "DOWN" = nach unten) – konsistent pro Szene, spiegel die Koordinaten passend.
+
+4. GRAFIKEN & OVERLAYS (Once-Style), erzeuge automatisch passende:
+   - passes: Passweg-Pfeile von → nach mit action (Direktpass, Steilpass, Flanke, Doppelpass, Verlagerung, Torschuss) und Farbe (Blau #3B82F6 offensiv, Rot #EF4444 defensiv, Gelb #F59E0B Umschalten).
+   - runs: Laufweg-Polylines beteiligter Spieler (Tiefenlauf, Diagonallauf, Hinterlaufen, Einrücken…).
+   - ballPath: Ballweg mit Punkten.
+   - zones: Pressingzonen/Freiräume als Rechteck (x/y/w/h %) mit Label.
+   - formations/chains: Abwehrketten-Linien (Formationsflächen).
+   - optimalPositions: für 1-3 ${teamName}-Spieler die IDEALE Position mit kurzer deutscher Begründung (note) + Pfeil von aktuell nach ideal.
+   - Alle Overlays als Keyframes, damit sie am Spieler und an der Bildbewegung mitlaufen.
+
+5. KEYFRAMING:
+   - Automatisches Keyframing: Setze einen Keyframe bei jeder relevanten Bewegung (Spielerbewegung, Ballbewegung, Kamerabewegung, Perspektivwechsel).
+   - Verwende 2-5 Keyframes je Szene (min 2, max 5), sortiert nach timeSeconds. Zwischenframes interpoliert der Browser linear.
+   - Keyframes über die Szene verteilen: Start, Mitte, Ende (an den clip-Rändern 0s bzw. clipDauer).
+
+6. STABILISIERUNG:
+   - Keine Marker dürfen zittern: gleiche Spieler-ID halten und Positionen zwischen Keyframes nur leicht ändern (Schätzungen ±3% wenn unsicher, dann lowConfidence).
+   - Linien/Räume dürfen nicht fiktiv verrutschen.
+
+7. SZENE & BILD SPEICHERN:
+   - Beim Speichern werden die Overlays frame-genau auf das Video gelegt. Leere Erfolgs-Confirmation ist Teil der Antwort.
+
+Kaderliste:
+${squadStr}
+
+SZENEN-BESCHREIBUNG (vom Trainer markiert): ${sceneDescription || "Allgemeine Spielszene"}
+
+Antworte STRENG im geforderten JSON-Format: summary, attackDirection, cameraMotion, keyframes[], coaching.
+`;
+
+      let contents: any[] = [];
+      const frames = Array.isArray(sampleFrames) ? sampleFrames.slice(0, 16) : [];
+      if (frames.length > 0) {
+        frames.forEach((frameData: string) => {
+          const cleanBase64 = String(frameData).includes(',') ? String(frameData).split(',')[1] : String(frameData);
+          contents.push({ inlineData: { mimeType: "image/jpeg", data: cleanBase64 } });
+        });
+      }
+      contents.push({
+        text: `Szene: "${sceneDescription || videoTitle || 'Fußballspiel-Szene'}".
+Extrahiere aus diesen Frames die ULTRA-OVERLAY-KEYFRAMES: stabil verankerte Spieler (stabile IDs, x/y in %), Pass-/Lauf-/Ballwege, Ketten-Linien, Pressingzonen/Freiräume, optimale Positionen, geschätzte Kamerabewegung. Verteile 2-5 Keyframes über die Szene (Start/Mitte/Ende). Alle Overlays müssen sich mit Spieler und Kamera mitbewegen. Unbekanntes ehrlich als lowConfidence/unknown markieren – keine Phantasie. Coaching-Ausgabe auf Deutsch.`
+      });
+
+      let resultText: string | null = null;
+      try {
+        const response = await safeGenerateContent({
+          model: "gemini-3.6-flash",
+          contents,
+          config: {
+            systemInstruction,
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                summary: { type: Type.STRING, description: "Kurzzusammenfassung der Ultra-Overlay-Erkennung" },
+                attackDirection: { type: Type.STRING, description: "UP = Team greift zum oberen Tor an, DOWN = unteres Tor" },
+                cameraMotion: {
+                  type: Type.OBJECT,
+                  description: "Geschätzte Kamerabewegung der Szene",
+                  properties: {
+                    type: { type: Type.STRING, description: "statisch | schwenk | zoom | winkelwechsel" },
+                    movement: { type: Type.STRING, description: "Beschreibung der Bewegung (z.B. 'Schwenk nach rechts')" }
+                  },
+                  required: ["type", "movement"]
+                },
+                keyframes: {
+                  type: Type.ARRAY,
+                  description: "2-5 Keyframes der Szene, sortiert nach timeSeconds",
+                  items: {
+                    type: Type.OBJECT,
+                    properties: {
+                      timeSeconds: { type: Type.NUMBER, description: "Position im Clip (0 = Clip-Start)" },
+                      players: {
+                        type: Type.ARRAY,
+                        items: {
+                          type: Type.OBJECT,
+                          properties: {
+                            id: { type: Type.STRING, description: "Stabile Spieler-ID über alle Keyframes" },
+                            team: { type: Type.STRING, description: "own | opponent" },
+                            label: { type: Type.STRING, description: "Trikotnummer oder Kader-Name" },
+                            x: { type: Type.NUMBER, description: "X-Position 0-100%" },
+                            y: { type: Type.NUMBER, description: "Y-Position 0-100%" },
+                            motion: { type: Type.STRING, description: "Gehen|Trab|Sprint|Einschlag|Ausläufer" }
+                          },
+                          required: ["id", "team", "label", "x", "y"]
+                        }
+                      },
+                      passes: {
+                        type: Type.ARRAY,
+                        items: {
+                          type: Type.OBJECT,
+                          properties: {
+                            fromX: { type: Type.NUMBER }, fromY: { type: Type.NUMBER },
+                            toX: { type: Type.NUMBER }, toY: { type: Type.NUMBER },
+                            color: { type: Type.STRING },
+                            action: { type: Type.STRING }
+                          },
+                          required: ["fromX", "fromY", "toX", "toY"]
+                        }
+                      },
+                      runs: {
+                        type: Type.ARRAY,
+                        items: {
+                          type: Type.OBJECT,
+                          properties: {
+                            label: { type: Type.STRING },
+                            color: { type: Type.STRING },
+                            points: { type: Type.ARRAY, items: { type: Type.ARRAY, items: { type: Type.NUMBER } } }
+                          },
+                          required: ["points"]
+                        }
+                      },
+                      ballPath: {
+                        type: Type.ARRAY,
+                        items: {
+                          type: Type.OBJECT,
+                          properties: {
+                            color: { type: Type.STRING },
+                            points: { type: Type.ARRAY, items: { type: Type.ARRAY, items: { type: Type.NUMBER } } }
+                          },
+                          required: ["points"]
+                        }
+                      },
+                      zones: {
+                        type: Type.ARRAY,
+                        items: {
+                          type: Type.OBJECT,
+                          properties: {
+                            x: { type: Type.NUMBER }, y: { type: Type.NUMBER },
+                            w: { type: Type.NUMBER }, h: { type: Type.NUMBER },
+                            color: { type: Type.STRING }, label: { type: Type.STRING }
+                          },
+                          required: ["x", "y", "w", "h"]
+                        }
+                      },
+                      chains: {
+                        type: Type.ARRAY,
+                        items: {
+                          type: Type.OBJECT,
+                          properties: {
+                            fromX: { type: Type.NUMBER }, fromY: { type: Type.NUMBER },
+                            toX: { type: Type.NUMBER }, toY: { type: Type.NUMBER },
+                            color: { type: Type.STRING }, label: { type: Type.STRING }
+                          },
+                          required: ["fromX", "fromY", "toX", "toY"]
+                        }
+                      },
+                      optimalPositions: {
+                        type: Type.ARRAY,
+                        items: {
+                          type: Type.OBJECT,
+                          properties: {
+                            toX: { type: Type.NUMBER }, toY: { type: Type.NUMBER },
+                            note: { type: Type.STRING }, label: { type: Type.STRING }
+                          },
+                          required: ["toX", "toY"]
+                        }
+                      },
+                      lowConfidence: { type: Type.BOOLEAN, description: "true wenn diese Keyframe-Werte unsicher/geschätzt sind" }
+                    },
+                    required: ["timeSeconds", "players"]
+                  }
+                },
+                coaching: {
+                  type: Type.OBJECT,
+                  description: "Trainer-Ausgabe (Deutsch)",
+                  properties: {
+                    tacticalInsight: { type: Type.STRING, description: "Taktische Bedeutung der Szene" },
+                    errors: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Fehleranalyse (falls vorhanden)" },
+                    improvements: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Verbesserungsvorschläge" },
+                    coachingPoints: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Coaching-Punkte für die Ansprache" },
+                    importance: { type: Type.STRING, description: "Warum die Szene wichtig ist" }
+                  },
+                  required: ["tacticalInsight"]
+                }
+              },
+              required: ["summary", "attackDirection", "cameraMotion", "keyframes", "coaching"]
+            }
+          }
+        });
+        resultText = response?.text || null;
+      } catch (aiErr: any) {
+        console.warn("Gemini ultra-overlay call fehlgeschlagen:", String(aiErr?.message || aiErr || ''));
+      }
+
+      if (!resultText) {
+        return res.status(502).json({ error: "KI-Antwort für Ultra-Overlay nicht verfügbar. Bitte erneut versuchen." });
+      }
+
+      const parsed = typeof resultText === 'string' ? JSON.parse(resultText) : resultText;
+      if (!parsed || !Array.isArray(parsed.keyframes)) {
+        return res.status(502).json({ error: "Ungültiges Ultra-Overlay-Format von der KI erhalten." });
+      }
+      const ordered = [...parsed.keyframes].sort((a: any, b: any) => Number(a.timeSeconds) - Number(b.timeSeconds));
+      res.json({ ...parsed, keyframes: ordered, sceneId: sceneId || null, generatedAt: Date.now() });
+    } catch (error: any) {
+      console.error("Fehler in /api/video-analysis/ultra-overlay:", error);
+      res.status(500).json({ error: error.message || "Interner Serverfehler bei der Ultra-Overlay-Erkennung." });
+    }
+  });
+
+  // ============================================
   // VIDEO-ANALYSE: Trainingsplan aus Analyse
   // ============================================
 

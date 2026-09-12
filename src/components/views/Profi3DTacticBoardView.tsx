@@ -1150,19 +1150,29 @@ return { ...n, image: matched?.image || matched?.additionalImages?.[0] || n.imag
     notify(`✅ Aktuelle Startelf übernommen (${currentStartelfNodes.nodes.length} Spieler, ${withFoto} mit Foto)`);
   }, [currentStartelfNodes]);
 
-  // Neuer/aktualisierter Spielbericht → alte gespeicherte Präsentation NICHT mitnehmen, sondern frische Startelf mit Fotos übernehmen
+  // Automatische Aktualisierung NACH JEDEM SPIEL (letzter Spielbericht gewinnt immer):
+  //  - Neuer/aktualisierter Spielbericht (reportSrcId geändert) ⇒ frische Startelf mit Fotos übernehmen.
+  //  - Gleiche Quelle, aber Kader-Bilder aktueller ⇒ Fotos nachziehen, ohne die Aufstellung zu verändern.
   useEffect(() => {
     if (!currentStartelfNodes.ok || currentStartelfNodes.nodes.length === 0) return;
     let savedSrc = '';
     try { savedSrc = localStorage.getItem('fca_presentationLineup_src') || ''; } catch { /* ignore */ }
-    if (savedSrc === reportSrcId) return;
-    if (presentationLineup.length > 0) {
-      const curSig = JSON.stringify(presentationLineup.map((n: any) => `${n.number}:${n.name}`));
-      const nextSig = JSON.stringify(currentStartelfNodes.nodes.map((n: any) => `${n.number}:${n.name}`));
-      if (curSig === nextSig) return;
+    if (savedSrc !== reportSrcId) {
+      swappedPositionsRef.current = new Set();
+      setPresentationLineup(currentStartelfNodes.nodes);
+      return;
     }
-    setPresentationLineup(currentStartelfNodes.nodes);
-    swappedPositionsRef.current = new Set();
+    // Gleiche Quelle: nur Fotos aktualisieren (Kader-Fotos sind meist aktueller als die lokale Kopie)
+    const refreshPhotosOnly = (prev: Array<any>) => {
+      if (!Array.isArray(prev) || prev.length === 0) return currentStartelfNodes.nodes;
+      const next = prev.map((n: any, i: number) => {
+        const fresh = currentStartelfNodes.nodes[i] || currentStartelfNodes.nodes.find((c: any) => String(c.number) === String(n.number) || String(c.name) === String(n.name));
+        const img = fresh?.image || n.image;
+        return img === n.image ? n : { ...n, image: img };
+      });
+      return next.some((n: any, i: number) => n.image !== prev[i].image) ? next : prev;
+    };
+    setPresentationLineup(refreshPhotosOnly);
   }, [reportSrcId, currentStartelfNodes]);
 
   // 📐 Standard-Skizze aus dem Spielbericht exakt nachzeichnen (Text/Bild → Taktiktafel)

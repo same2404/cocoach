@@ -286,6 +286,8 @@ export interface TacticalVideoClip {
   qualityCheck?: string[];
   subTags?: string[];
   tacticBoard?: SceneTacticBoard;
+  // ⚡ Ultra-Overlay: KI-Keyframe-Tracking (läuft mit dem Video mit)
+  ultraOverlay?: UltraOverlayData;
 }
 
 // Once-Style Taktik-Grafik je Szene (Koordinaten in % auf dem kompletten Spielfeld)
@@ -299,6 +301,35 @@ export interface SceneTacticBoard {
   ballPath?: Array<{ points: Array<{ x: number; y: number }>; color?: string }>;
   zones?: Array<{ x: number; y: number; w: number; h: number; label?: string; color?: string }>;
   optimalPositions?: Array<{ label?: string; fromX?: number; fromY?: number; toX: number; toY: number; note?: string }>;
+}
+
+// ⚡ Ultra-Overlay (Kameratracking / Spieler-Tracking / Keyframes) – Browser interpoliert
+export interface UltraOverlayData {
+  summary?: string;
+  attackDirection?: string;
+  cameraMotion?: { type?: string; movement?: string };
+  keyframes?: UltraKeyframe[];
+  coaching?: {
+    tacticalInsight?: string;
+    errors?: string[];
+    improvements?: string[];
+    coachingPoints?: string[];
+    importance?: string;
+  };
+  sceneId?: string | null;
+  generatedAt?: number;
+}
+
+export interface UltraKeyframe {
+  timeSeconds: number;
+  players?: Array<{ id?: string; team?: string; label?: string; x: number; y: number; motion?: string }>;
+  passes?: Array<{ fromX: number; fromY: number; toX: number; toY: number; color?: string; action?: string }>;
+  runs?: Array<{ label?: string; color?: string; points: number[][] }>;
+  ballPath?: Array<{ color?: string; points: number[][] }>;
+  zones?: Array<{ x: number; y: number; w: number; h: number; color?: string; label?: string }>;
+  chains?: Array<{ fromX: number; fromY: number; toX: number; toY: number; color?: string; label?: string }>;
+  optimalPositions?: Array<{ toX: number; toY: number; note?: string; label?: string }>;
+  lowConfidence?: boolean;
 }
 
 const clampPct = (v: any, fallback: number = 50): number => {
@@ -468,6 +499,154 @@ const SceneTacticDiagram: React.FC<{ board?: SceneTacticBoard; expanded: boolean
         </div>
       )}
     </div>
+  );
+};
+
+// ⚡ Ultra-Overlay: lineare Interpolation zwischen Keyframes (Browser-Rechner)
+const lerpN = (a: number, b: number, t: number) => a + (b - a) * t;
+const lerpPct = (a: number, b: number, t: number) => Math.max(0, Math.min(100, lerpN(a, b, t)));
+const lerpPt = (a: number[], b: number[], t: number): number[] => [lerpPct(a[0], b[0], t), lerpPct(a[1], b[1], t)];
+const lerpPoly = (pa: number[][], pb: number[][], t: number): number[][] => {
+  if (!pa) return pb || [];
+  if (!pb) return pa;
+  if (pa.length === pb.length) return pa.map((p, k) => lerpPt(p, pb[k], t));
+  const shorter = pa.length < pb.length ? pa : pb;
+  const longer = pa.length < pb.length ? pb : pa;
+  return t < 0.5 ? shorter : longer;
+};
+
+const resolveUltraSnapshot = (overlay: UltraOverlayData | undefined, t: number): any => {
+  const empty = { players: [], passes: [], runs: [], ballPath: [], zones: [], chains: [], optimalPositions: [] };
+  if (!overlay || !Array.isArray(overlay.keyframes) || overlay.keyframes.length === 0) return empty;
+  const kfs = [...overlay.keyframes].sort((a, b) => a.timeSeconds - b.timeSeconds);
+  const t0 = kfs[0].timeSeconds || 0;
+  const tN = kfs[kfs.length - 1].timeSeconds || t0 + 1;
+  const tt = Math.max(t0, Math.min(tN, t));
+  let i = 0;
+  while (i < kfs.length - 1 && tt > kfs[i + 1].timeSeconds) i++;
+  const A = kfs[i];
+  const B = kfs[Math.min(i + 1, kfs.length - 1)];
+  const span = Math.max(0.05, (B.timeSeconds || t0) - (A.timeSeconds || t0));
+  const f = Math.max(0, Math.min(1, (tt - (A.timeSeconds || t0)) / span));
+
+  // Spieler stabil über Keyframes verfolgen (gleiche id = gleicher Spieler)
+  const playersById: any = {};
+  const aP = A.players || [];
+  const bP = B.players || [];
+  const ids = Array.from(new Set([...aP.map(p => p.id).filter(Boolean), ...bP.map(p => p.id).filter(Boolean)]));
+  ids.forEach(id => {
+    const pa = aP.find(p => p.id === id);
+    const pb = bP.find(p => p.id === id);
+    if (pa && pb) playersById[id] = { ...pa, x: lerpPct(pa.x, pb.x, f), y: lerpPct(pa.y, pb.y, f) };
+    else if (pa) playersById[id] = { ...pa };
+    else if (pb) playersById[id] = { ...pb };
+  });
+  (A.players || []).forEach((p: any, k: number) => {
+    if (!playersById[p.id]) playersById[`idx_${k}_${p.x.toFixed(1)}_${p.y.toFixed(1)}`] = { ...p };
+  });
+  (B.players || []).forEach((p: any, k: number) => {
+    if (!playersById[p.id]) playersById[`bidx_${k}_${p.x.toFixed(1)}_${p.y.toFixed(1)}`] = { ...p };
+  });
+
+  const interpList = (pa: any[], pb: any[], fn: (x: any, y: any, f: number) => any) =>
+    Array.from({ length: Math.max(pa.length, pb.length) }, (_, k) => {
+      if (!pa[k]) return pb[k];
+      if (!pb[k]) return pa[k];
+      return fn(pa[k], pb[k], f);
+    });
+
+  return {
+    players: Object.values(playersById).filter(Boolean),
+    passes: interpList(A.passes || [], B.passes || [], (x, y, f2) => ({
+      ...x, fromX: lerpPct(x.fromX, y.fromX, f2), fromY: lerpPct(x.fromY, y.fromY, f2),
+      toX: lerpPct(x.toX, y.toX, f2), toY: lerpPct(x.toY, y.toY, f2)
+    })),
+    zones: interpList(A.zones || [], B.zones || [], (x, y, f2) => ({
+      ...x, x: lerpPct(x.x, y.x, f2), y: lerpPct(x.y, y.y, f2), w: lerpPct(x.w, y.w, f2), h: lerpPct(x.h, y.h, f2)
+    })),
+    chains: interpList(A.chains || [], B.chains || [], (x, y, f2) => ({
+      ...x, fromX: lerpPct(x.fromX, y.fromX, f2), fromY: lerpPct(x.fromY, y.fromY, f2),
+      toX: lerpPct(x.toX, y.toX, f2), toY: lerpPct(x.toY, y.toY, f2)
+    })),
+    runs: interpList(A.runs || [], B.runs || [], (x, y, f2) => ({ ...x, points: lerpPoly(x.points, y.points, f2) })),
+    ballPath: interpList(A.ballPath || [], B.ballPath || [], (x, y, f2) => ({ ...x, points: lerpPoly(x.points, y.points, f2) })),
+    optimalPositions: interpList(A.optimalPositions || [], B.optimalPositions || [], (x, y, f2) => ({
+      ...x, toX: lerpPct(x.toX, y.toX, f2), toY: lerpPct(x.toY, y.toY, f2)
+    })),
+  };
+};
+
+// ⚡ Ultra-Overlay-Renderer (Once-Level): liegt über dem Video, klebt an Spielern/Kamera
+const UltraOverlaySVG: React.FC<{ overlay: UltraOverlayData; timeInClip: number }> = ({ overlay, timeInClip }) => {
+  const snap = resolveUltraSnapshot(overlay, timeInClip);
+  if (!overlay || !Array.isArray(overlay.keyframes) || overlay.keyframes.length === 0) return null;
+  if (snap.players.length === 0 && snap.passes.length === 0 && snap.zones.length === 0 && snap.runs.length === 0 && snap.chains.length === 0 && snap.optimalPositions.length === 0) return null;
+  const vs = (v: any, f: number = 50) => clampPct(v, f);
+  return (
+    <svg className="absolute inset-0 w-full h-full pointer-events-none z-[14]" viewBox="0 0 100 100" preserveAspectRatio="none">
+      <defs>
+        <marker id="ultraArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#22D3EE" />
+        </marker>
+      </defs>
+
+      {(snap.chains || []).map((c: any, i: number) => (
+        <g key={`uc${i}`}>
+          <line x1={vs(c.fromX)} y1={vs(c.fromY)} x2={vs(c.toX)} y2={vs(c.toY)} stroke={c.color || '#22D3EE'} strokeWidth="5.5" opacity="0.25" strokeLinecap="round" />
+          <line x1={vs(c.fromX)} y1={vs(c.fromY)} x2={vs(c.toX)} y2={vs(c.toY)} stroke={c.color || '#22D3EE'} strokeWidth="2.2" opacity="0.95" strokeLinecap="round" />
+        </g>
+      ))}
+
+      {(snap.ballPath || []).map((b: any, i: number) => b.points && b.points.length >= 2 ? (
+        <g key={`ub${i}`}>
+          <polyline points={b.points.map((p: number[]) => `${vs(p[0])},${vs(p[1])}`).join(' ')} fill="none" stroke={b.color || '#F59E0B'} strokeWidth="3" opacity="0.22" strokeLinecap="round" />
+          <polyline points={b.points.map((p: number[]) => `${vs(p[0])},${vs(p[1])}`).join(' ')} fill="none" stroke={b.color || '#F59E0B'} strokeWidth="1.7" strokeDasharray="2.4 1.8" opacity="0.98" strokeLinecap="round" />
+          {b.points.slice(1).map((pp: number[], j: number) => <circle key={j} cx={vs(pp[0])} cy={vs(pp[1])} r="1.5" fill={b.color || '#F59E0B'} />)}
+        </g>
+      ) : null)}
+
+      {(snap.runs || []).map((r: any, i: number) => r.points && r.points.length >= 2 ? (
+        <g key={`ur${i}`}>
+          <polyline points={r.points.map((p: number[]) => `${vs(p[0])},${vs(p[1])}`).join(' ')} fill="none" stroke={r.color || '#3B82F6'} strokeWidth="3" opacity="0.22" strokeLinecap="round" />
+          <polyline points={r.points.map((p: number[]) => `${vs(p[0])},${vs(p[1])}`).join(' ')} fill="none" stroke={r.color || '#3B82F6'} strokeWidth="1.7" strokeDasharray="2.4 1.8" opacity="0.98" strokeLinecap="round" />
+        </g>
+      ) : null)}
+
+      {(snap.passes || []).map((p: any, i: number) => (
+        <g key={`up${i}`}>
+          <line x1={vs(p.fromX)} y1={vs(p.fromY)} x2={vs(p.toX)} y2={vs(p.toY)} stroke={p.color || '#3B82F6'} strokeWidth="2.8" opacity="0.28" strokeLinecap="round" />
+          <line x1={vs(p.fromX)} y1={vs(p.fromY)} x2={vs(p.toX)} y2={vs(p.toY)} stroke={p.color || '#3B82F6'} strokeWidth="1.5" opacity="0.98" markerEnd="url(#ultraArrow)" />
+          <circle cx={vs(p.toX)} cy={vs(p.toY)} r="1.4" fill={p.color || '#3B82F6'} />
+        </g>
+      ))}
+
+      {(snap.zones || []).map((z: any, i: number) => (
+        <g key={`uz${i}`}>
+          <rect x={vs(z.x)} y={vs(z.y)} width={vs(z.w, 10)} height={vs(z.h, 10)} fill={z.color || '#F59E0B'} opacity="0.3" stroke={z.color || '#F59E0B'} strokeWidth="1.1" strokeDasharray="2 1.4" rx="1" />
+          {z.label ? <text x={vs(z.x) + 1.5} y={vs(z.y) + 4.5} fontSize="4.4" fontWeight="900" fill={z.color || '#F59E0B'} stroke="#000000" strokeWidth="0.5" paintOrder="stroke">{z.label}</text> : null}
+        </g>
+      ))}
+
+      {(snap.optimalPositions || []).map((o: any, i: number) => (
+        <g key={`uo${i}`}>
+          <circle cx={vs(o.toX)} cy={vs(o.toY)} r="5.5" fill="rgba(217,70,239,0.12)" stroke="#E879F9" strokeWidth="1.2" strokeDasharray="1.6 1" />
+          {o.note ? <text x={Math.min(vs(o.toX) + 6, 92)} y={Math.max(vs(o.toY) - 6, 5)} fontSize="4.2" fontWeight="900" fill="#F0ABFC" stroke="#000000" strokeWidth="0.5" paintOrder="stroke">{o.note}</text> : null}
+        </g>
+      ))}
+
+      {(snap.players || []).map((pl: any, i: number) => {
+        const isOwn = String(pl.team || '').toLowerCase() !== 'opponent';
+        const col = isOwn ? '#22D3EE' : '#EF4444';
+        return (
+          <g key={`upl${i}`}>
+            {pl.motion && pl.motion.toLowerCase().includes('sprint') ? <circle cx={vs(pl.x)} cy={vs(pl.y)} r="7" fill="none" stroke={col} strokeWidth="0.6" opacity="0.5" /> : null}
+            <circle cx={vs(pl.x)} cy={vs(pl.y)} r="4.4" fill={col} opacity="0.35" stroke={col} strokeWidth="1.4" />
+            <circle cx={vs(pl.x)} cy={vs(pl.y)} r="3.1" fill={col} stroke="#FFFFFF" strokeWidth="0.9" />
+            <text x={vs(pl.x)} y={vs(pl.y) + 1.3} fontSize="3.7" fontWeight="900" fill="#FFFFFF" stroke="#000000" strokeWidth="0.4" paintOrder="stroke" textAnchor="middle">{pl.label || '?'}</text>
+          </g>
+        );
+      })}
+    </svg>
   );
 };
 
@@ -1262,6 +1441,9 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
   // Live-Once-Tagger (direkt auf dem Video zeichnen)
   const tagContainerRef = useRef<HTMLDivElement | null>(null);
   const [tagTool, setTagTool] = useState<'pointer' | 'player' | 'chain' | 'pass' | 'run' | 'zone' | 'ball' | 'optimal'>('pointer');
+  // Live-Zeichnen AM LAUFENDEN VIDEO: AUS = Frame einfrieren beim Zeichnen (Standard),
+  // AN = Video läuft weiter, Zeichnungen (Spieler/Linien/Ketten/Räume) bleiben sichtbar.
+  const [tagKeepPlaying, setTagKeepPlaying] = useState<boolean>(false);
   const [tagTeam, setTagTeam] = useState<'FC Auggen' | 'Gegner'>('FC Auggen');
   const [tagLabel, setTagLabel] = useState<string>('#9');
   const [tagColor, setTagColor] = useState<string>('#3B82F6');
@@ -1284,6 +1466,17 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
     };
   };
   const tagPush = () => setTagHistory(prev => [...prev.slice(-30), tagBoard]);
+  // Live-Zeichnen umschalten: ein = Video läuft weiter, aus = beim Zeichnen einfrieren.
+  const toggleTagKeepPlaying = () => {
+    const v = mainVideoRef.current;
+    if (!v) return;
+    setTagKeepPlaying(prev => {
+      const next = !prev;
+      if (next) { setIsPlaying(true); void v.play().catch(() => {}); }
+      else if (!v.paused) { setIsPlaying(false); v.pause(); }
+      return next;
+    });
+  };
   const tagGuard = (b: SceneTacticBoard): SceneTacticBoard => ({
     ...b,
     players: b.players ? [...b.players] : [],
@@ -1298,7 +1491,8 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
     const p = tagPos(e);
     if (!p) return;
     if (tagTool === 'pointer') { tagRemoveNearest(p); return; }
-    if (mainVideoRef.current && !mainVideoRef.current.paused) { mainVideoRef.current.pause(); setIsPlaying(false); }
+    // Nur einfrieren, wenn der Live-Modus AUS ist – sonst läuft das Video beim Zeichnen weiter.
+    if (!tagKeepPlaying && mainVideoRef.current && !mainVideoRef.current.paused) { mainVideoRef.current.pause(); setIsPlaying(false); }
     if (tagTool === 'player' || tagTool === 'optimal') {
       tagPush();
       setTagBoard(prev => {
@@ -1464,6 +1658,11 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
 
   // Active clip preview modal
   const [activePlaybackClip, setActivePlaybackClip] = useState<TacticalVideoClip | null>(null);
+  // ⚡ Ultra-Overlay: KI-Tracking-Overlays je Szene (laufen mit dem Video mit)
+  const [ultraLoadingId, setUltraLoadingId] = useState<string | null>(null);
+  const [ultraShowForClip, setUltraShowForClip] = useState<string | null>(null);
+  const [ultraMsg, setUltraMsg] = useState<{ id: string; text: string } | null>(null);
+  const [ultraError, setUltraError] = useState<{ id: string; text: string } | null>(null);
 
   // Presentation Mode state
   const [showPresentationModal, setShowPresentationModal] = useState<boolean>(false);
@@ -2279,6 +2478,75 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
   // Update clip color marking
   const handleUpdateClipColor = async (clip: TacticalVideoClip, color: 'green' | 'red' | 'none') => {
     await saveClip({ ...clip, colorMarking: color });
+  };
+
+  // ⚡ Ultra-Overlay: Frames aus dem Clip-Bereich extrahieren
+  const extractClipFrames = async (videoEl: HTMLVideoElement, startSec: number, endSec: number, frameCount: number = 5): Promise<string[]> => {
+    const frames: string[] = [];
+    const canvas = document.createElement('canvas');
+    canvas.width = 848;
+    canvas.height = 477;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return frames;
+    const originalTime = videoEl.currentTime;
+    const wasPlaying = !videoEl.paused;
+    videoEl.pause();
+    const dur = Math.max(0.5, endSec - startSec);
+    const count = Math.max(2, Math.min(frameCount, 8));
+    const interval = dur / (count + 1);
+    for (let i = 1; i <= count; i++) {
+      const seekTime = Math.max(0, Math.min(videoDuration || endSec, startSec + interval * i));
+      videoEl.currentTime = seekTime;
+      await new Promise<void>(resolve => {
+        const onSeeked = () => { videoEl.removeEventListener('seeked', onSeeked); resolve(); };
+        videoEl.addEventListener('seeked', onSeeked);
+      });
+      ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+      frames.push(canvas.toDataURL('image/jpeg', 0.6));
+    }
+    videoEl.currentTime = originalTime;
+    if (wasPlaying) videoEl.play();
+    return frames;
+  };
+
+  // ⚡ Ultra-Overlay: KI-Keyframe-Tracking für eine Szene erzeugen
+  const handleGenerateUltraOverlay = async (clip: TacticalVideoClip) => {
+    const videoEl = mainVideoRef.current;
+    if (!videoEl || isVeoLink || !videoSource || (clip.videoUrl && clip.videoUrl !== videoSource)) {
+      setUltraError({ id: clip.id, text: '⚠ Bitte zuerst das Video dieser Szene laden (Veo-Link wird nicht unterstützt).' });
+      setUltraMsg(null);
+      return;
+    }
+    setUltraLoadingId(clip.id);
+    setUltraError(null);
+    setUltraMsg(null);
+    try {
+      const frames = await extractClipFrames(videoEl, clip.startTime || 0, clip.endTime || (clip.startTime || 0) + (clip.duration || 6), 5);
+      if (frames.length === 0) throw new Error('Keine Frames aus dem Video extrahieren können – bitte Spielvideo laden.');
+      const res = await apiFetch('/api/video-analysis/ultra-overlay', {
+        method: 'POST',
+        body: JSON.stringify({
+          videoTitle: clip.videoName || videoFileName || 'Spielvideo',
+          sceneDescription: clip.tacticalNote || clip.title || '',
+          sceneId: clip.id,
+          sampleFrames: frames,
+          squadPlayers,
+          clubName,
+        }),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => null);
+        throw new Error(errData?.error || `HTTP ${res.status}`);
+      }
+      const result = await res.json();
+      await saveClip({ ...clip, ultraOverlay: result });
+      setUltraMsg({ id: clip.id, text: `⚡ Ultra-Overlay erzeugt (${(result.keyframes || []).length} Keyframes) – jetzt im Video abspielen.` });
+      setUltraShowForClip(clip.id);
+    } catch (err: any) {
+      setUltraError({ id: clip.id, text: err.message || 'Ultra-Overlay-Erzeugung fehlgeschlagen.' });
+    } finally {
+      setUltraLoadingId(null);
+    }
   };
 
   // Tagger: annotiertes Bild + Taktik-Daten in Ziel-Szene (oder neue Szene) speichern
@@ -3575,6 +3843,18 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
                     <button onClick={tagClear} title="Alles löschen" className="px-2 py-1 rounded-lg bg-black/40 text-rose-400 border border-white/10 hover:bg-rose-950/60 cursor-pointer"><Eraser size={13} /></button>
                     <button onClick={tagDownloadImage} title="Annotiertes Bild mit deinen Zeichnungen als PNG speichern" className="px-2 py-1 rounded-lg bg-black/40 text-[#FBBF24] border border-[#F59E0B]/30 hover:bg-[#F59E0B]/20 cursor-pointer flex items-center gap-1"><Download size={13} /><span className="hidden sm:inline text-[10px] font-bold">Bild speichern</span></button>
 
+                    {/* Live-Modus: Video läuft beim Zeichnen weiter */}
+                    <button
+                      onClick={toggleTagKeepPlaying}
+                      className={`px-2 py-1 rounded-lg text-[10px] font-black flex items-center gap-1.5 border cursor-pointer transition-all ${
+                        tagKeepPlaying ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/50' : 'bg-black/40 text-[#94A3B8] border-white/10 hover:text-white'
+                      }`}
+                      title={tagKeepPlaying ? 'Live-Modus AN: Video läuft beim Zeichnen weiter' : 'Live-Modus AUS (Standard): Frame friert beim Zeichnen ein'}
+                    >
+                      {tagKeepPlaying ? <Pause size={13} /> : <Play size={13} />} <span className="hidden sm:inline">Live-Zeichnen</span>
+                    </button>
+                    <div className="mx-1 h-5 w-px bg-white/15" />
+
                     {/* Kontext-Optionen */}
                     {(tagTool === 'player' || tagTool === 'optimal') && (
                       <div className="flex items-center gap-1.5 ml-1">
@@ -3609,6 +3889,21 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
                   </div>
                 </>
               )}
+
+              {/* ⚡ Ultra-Overlay: KI-Tracking läuft mit dem Video mit */}
+              {!isVeoLink && !taggerOpen && ultraShowForClip && (() => {
+                const oc = (savedClips || []).find(c => c.id === ultraShowForClip);
+                if (!oc || !oc.ultraOverlay) return null;
+                const clipRel = Math.max(0, currentTime - (oc.startTime || 0));
+                return (
+                  <>
+                    <UltraOverlaySVG overlay={oc.ultraOverlay} timeInClip={clipRel} />
+                    <div className="absolute top-3 left-1/2 -translate-x-1/2 px-2.5 py-0.5 rounded-full bg-fuchsia-950/80 border border-fuchsia-500/50 z-30 text-[9px] font-black uppercase tracking-widest text-fuchsia-300 flex items-center gap-1 backdrop-blur-md">
+                      <Sparkles size={10} /> ⚡ Ultra-Overlay aktiv
+                    </div>
+                  </>
+                );
+              })()}
             </div>
 
             {/* Interactive Timeline Scrubbing & Marker Controls (nur bei nativem Video) */}
@@ -4115,6 +4410,77 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
                             >
                               <Target size={12} /> 🎯 Taktik direkt auf dieser Szene zeichnen
                             </button>
+
+                            {/* ⚡ Ultra-Overlay: KI-Keyframe-Tracking für diese Szene */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (ultraShowForClip === clip.id) { setUltraShowForClip(null); return; }
+                                if (clip.ultraOverlay) { setUltraShowForClip(clip.id); return; }
+                                void handleGenerateUltraOverlay(clip);
+                              }}
+                              disabled={ultraLoadingId !== null}
+                              className={`w-full px-2 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 border transition-all cursor-pointer ${
+                                ultraShowForClip === clip.id
+                                  ? 'bg-fuchsia-900/30 text-fuchsia-300 border-fuchsia-500/50'
+                                  : clip.ultraOverlay
+                                    ? 'bg-fuchsia-950/30 text-fuchsia-400 border-fuchsia-500/40 hover:bg-fuchsia-900/40'
+                                    : 'bg-[#10B981]/10 text-fuchsia-400 border-fuchsia-500/40 hover:bg-fuchsia-600 hover:text-white'
+                              } ${ultraLoadingId === clip.id ? 'opacity-70 cursor-wait' : ''}`}
+                              title={clip.ultraOverlay ? 'Ultra-Overlay vorhanden – ein-/ausblenden (spielt über dem Video mit)' : '⚡ Ultra-Tracking: KI erzeugt stabil verankerte Keyframe-Overlays, die sich mit Spielern & Kamera mitbewegen'}
+                            >
+                              {ultraLoadingId === clip.id ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                              {ultraLoadingId === clip.id ? 'Ultra-Tracking läuft…' : clip.ultraOverlay ? (ultraShowForClip === clip.id ? 'Ultra-Overlay aktiv' : 'Ultra-Overlay zeigen') : '⚡ Ultra-Overlay erzeugen'}
+                            </button>
+
+                            {ultraMsg?.id === clip.id && (
+                              <div className="px-2 py-1.5 rounded-lg bg-fuchsia-950/20 border border-fuchsia-500/30 text-fuchsia-200 text-[9px] flex items-start gap-1.5">
+                                <Sparkles size={10} className="shrink-0 mt-0.5 text-fuchsia-400" />
+                                <span>{ultraMsg.text}</span>
+                              </div>
+                            )}
+                            {ultraError?.id === clip.id && (
+                              <div className="px-2 py-1.5 rounded-lg bg-rose-950/20 border border-rose-500/30 text-rose-300 text-[9px] flex items-start gap-1.5">
+                                <AlertTriangle size={10} className="shrink-0 mt-0.5 text-rose-400" />
+                                <span>{ultraError.text}</span>
+                              </div>
+                            )}
+
+                            {clip.ultraOverlay && (
+                              <div className="px-2 py-1.5 rounded-lg bg-fuchsia-950/20 border border-fuchsia-500/20 space-y-1 text-[9px]">
+                                <div className="font-black text-fuchsia-300 uppercase tracking-wider">⚡ Ultra-Overlay</div>
+                                {clip.ultraOverlay.cameraMotion?.movement && (
+                                  <div className="text-[#94A3B8]">🎥 {clip.ultraOverlay.cameraMotion.type || 'Statik'} – {clip.ultraOverlay.cameraMotion.movement}</div>
+                                )}
+                                <div className="text-[#94A3B8]">🎞 {(clip.ultraOverlay.keyframes || []).length} Keyframes · ⚡ stabil verankert</div>
+                                {clip.ultraOverlay.summary && <div className="text-[#C4B5FD]">{clip.ultraOverlay.summary}</div>}
+                                {clip.ultraOverlay.coaching && (
+                                  <details className="rounded-lg bg-fuchsia-950/20 border border-fuchsia-500/20 px-2 py-1.5 space-y-1">
+                                    <summary className="font-black text-fuchsia-300 uppercase tracking-wider cursor-pointer">Taktische Bedeutung ansehen</summary>
+                                    {clip.ultraOverlay.coaching.tacticalInsight && <div className="text-[#C4B5FD] pt-1">{clip.ultraOverlay.coaching.tacticalInsight}</div>}
+                                    {Array.isArray(clip.ultraOverlay.coaching.errors) && clip.ultraOverlay.coaching.errors.length > 0 && (
+                                      <div>
+                                        <div className="text-rose-400 font-black uppercase tracking-wider">Fehleranalyse</div>
+                                        {clip.ultraOverlay.coaching.errors.map((e, ei) => <div key={ei} className="text-rose-200">• {e}</div>)}
+                                      </div>
+                                    )}
+                                    {Array.isArray(clip.ultraOverlay.coaching.improvements) && clip.ultraOverlay.coaching.improvements.length > 0 && (
+                                      <div>
+                                        <div className="text-emerald-300 font-black uppercase tracking-wider">Verbesserung</div>
+                                        {clip.ultraOverlay.coaching.improvements.map((e, ei) => <div key={ei} className="text-emerald-200">• {e}</div>)}
+                                      </div>
+                                    )}
+                                    {Array.isArray(clip.ultraOverlay.coaching.coachingPoints) && clip.ultraOverlay.coaching.coachingPoints.length > 0 && (
+                                      <div>
+                                        <div className="text-amber-300 font-black uppercase tracking-wider">Coaching-Punkte</div>
+                                        {clip.ultraOverlay.coaching.coachingPoints.map((e, ei) => <div key={ei} className="text-amber-200">• {e}</div>)}
+                                      </div>
+                                    )}
+                                    {clip.ultraOverlay.coaching.importance && <div className="text-[#94A3B8] font-bold">Warum wichtig: {clip.ultraOverlay.coaching.importance}</div>}
+                                  </details>
+                                )}
+                              </div>
+                            )}
 
                             {/* Color Marking Selector & Delete Button */}
                             <div className="pt-2 border-t border-[#242F42] flex items-center justify-between gap-2">
