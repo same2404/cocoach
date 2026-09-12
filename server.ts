@@ -1676,6 +1676,7 @@ resultText = response.text ?? null;
   // ============================================
 
   app.post("/api/video-analysis/ultra-overlay", async (req, res) => {
+    const t0 = Date.now();
     try {
       const { videoTitle, sceneDescription, sceneId, sampleFrames, squadPlayers, clubName } = req.body;
       const teamName = clubName || 'FC Auggen';
@@ -1903,6 +1904,7 @@ Extrahiere aus diesen Frames die ULTRA-OVERLAY-KEYFRAMES: stabil verankerte Spie
         return res.status(502).json({ error: "Ungültiges Ultra-Overlay-Format von der KI erhalten." });
       }
       const ordered = [...parsed.keyframes].sort((a: any, b: any) => Number(a.timeSeconds) - Number(b.timeSeconds));
+      console.log(`[ultra-overlay] ${Date.now() - t0}ms für ${frames.length} Frames / ${ordered.length} Keyframes`);
       res.json({ ...parsed, keyframes: ordered, sceneId: sceneId || null, generatedAt: Date.now() });
     } catch (error: any) {
       console.error("Fehler in /api/video-analysis/ultra-overlay:", error);

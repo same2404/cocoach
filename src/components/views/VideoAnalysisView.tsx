@@ -1595,9 +1595,9 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
   };
   const tagArrow = (ctx: CanvasRenderingContext2D, ax: number, ay: number, bx: number, by: number, color: string) => {
     const ang = Math.atan2(by - ay, bx - ax);
-    const len = 16;
+    const len = 12;
     ctx.strokeStyle = color;
-    ctx.lineWidth = 4;
+    ctx.lineWidth = 2.5;
     ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
     ctx.fillStyle = color;
     ctx.beginPath();
@@ -1616,40 +1616,40 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
     const X = (pct: number) => (Math.max(0, Math.min(100, pct)) / 100) * W;
     const Y = (pct: number) => (Math.max(0, Math.min(100, pct)) / 100) * H;
     (tagBoard.zones || []).forEach(z => {
-      ctx.fillStyle = z.color || '#F59E0B'; ctx.globalAlpha = 0.22;
+      ctx.fillStyle = z.color || '#F59E0B'; ctx.globalAlpha = 0.15;
       ctx.fillRect(X(z.x), Y(z.y), X(z.w), Y(z.h)); ctx.globalAlpha = 1;
-      ctx.strokeStyle = z.color || '#F59E0B'; ctx.setLineDash([8, 6]); ctx.lineWidth = 3;
+      ctx.strokeStyle = z.color || '#F59E0B'; ctx.setLineDash([7, 5]); ctx.lineWidth = 2;
       ctx.strokeRect(X(z.x), Y(z.y), X(z.w), Y(z.h)); ctx.setLineDash([]);
-      if (z.label) { ctx.fillStyle = z.color || '#F59E0B'; ctx.font = 'bold 16px Arial'; ctx.fillText(z.label, X(z.x) + 5, Y(z.y) + 18); }
+      if (z.label) { ctx.fillStyle = z.color || '#F59E0B'; ctx.font = 'bold 14px Arial'; ctx.fillText(z.label, X(z.x) + 5, Y(z.y) + 16); }
     });
     (tagBoard.chains || []).forEach(ch => {
-      ctx.strokeStyle = ch.color || '#22D3EE'; ctx.lineWidth = 5;
+      ctx.strokeStyle = ch.color || '#22D3EE'; ctx.lineWidth = 3;
       ctx.beginPath(); ctx.moveTo(X(ch.fromX), Y(ch.fromY)); ctx.lineTo(X(ch.toX), Y(ch.toY)); ctx.stroke();
     });
     (tagBoard.ballPath || []).forEach(bp => {
       if (bp.points.length < 2) return;
-      ctx.strokeStyle = bp.color || '#F59E0B'; ctx.lineWidth = 4; ctx.setLineDash([9, 7]);
+      ctx.strokeStyle = bp.color || '#F59E0B'; ctx.lineWidth = 2.5; ctx.setLineDash([8, 6]);
       ctx.beginPath(); bp.points.forEach((p, i) => i === 0 ? ctx.moveTo(X(p.x), Y(p.y)) : ctx.lineTo(X(p.x), Y(p.y))); ctx.stroke(); ctx.setLineDash([]);
-      bp.points.forEach((p, i) => { if (i === 0) return; ctx.beginPath(); ctx.arc(X(p.x), Y(p.y), 7, 0, Math.PI * 2); ctx.fillStyle = '#F59E0B'; ctx.fill(); });
+      bp.points.forEach((p, i) => { if (i === 0) return; ctx.beginPath(); ctx.arc(X(p.x), Y(p.y), 5, 0, Math.PI * 2); ctx.fillStyle = '#F59E0B'; ctx.fill(); });
     });
     (tagBoard.passes || []).forEach(p2 => tagArrow(ctx, X(p2.fromX), Y(p2.fromY), X(p2.toX), Y(p2.toY), p2.color || '#3B82F6'));
     (tagBoard.runs || []).forEach(r => {
       if (r.points.length < 2) return;
-      ctx.strokeStyle = r.color || '#3B82F6'; ctx.lineWidth = 4; ctx.setLineDash([9, 7]);
+      ctx.strokeStyle = r.color || '#3B82F6'; ctx.lineWidth = 2.5; ctx.setLineDash([8, 6]);
       ctx.beginPath(); r.points.forEach((p, i) => i === 0 ? ctx.moveTo(X(p.x), Y(p.y)) : ctx.lineTo(X(p.x), Y(p.y))); ctx.stroke(); ctx.setLineDash([]);
     });
     (tagBoard.optimalPositions || []).forEach(o => {
       const cx = X(o.toX), cy = Y(o.toY);
-      ctx.strokeStyle = '#F59E0B'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(cx, cy, 16, 0, Math.PI * 2); ctx.stroke();
-      ctx.fillStyle = 'rgba(245,158,11,0.25)'; ctx.fill();
-      if (o.note) { ctx.fillStyle = '#FBBF24'; ctx.font = 'bold 16px Arial'; ctx.fillText(o.note, cx + 20, cy + 4); }
+      ctx.strokeStyle = '#F59E0B'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(cx, cy, 10, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = 'rgba(245,158,11,0.18)'; ctx.fill();
+      if (o.note) { ctx.fillStyle = '#FBBF24'; ctx.font = 'bold 15px Arial'; ctx.fillText(o.note, cx + 14, cy + 4); }
     });
     (tagBoard.players || []).forEach(pl => {
       const cx = X(pl.x), cy = Y(pl.y);
       const isHome = pl.team === 'FC Auggen';
-      ctx.beginPath(); ctx.arc(cx, cy, 13, 0, Math.PI * 2);
+      ctx.beginPath(); ctx.arc(cx, cy, 12, 0, Math.PI * 2);
       ctx.fillStyle = isHome ? '#3B82F6' : '#EF4444'; ctx.fill();
-      ctx.lineWidth = 3; ctx.strokeStyle = '#FFFFFF'; ctx.stroke();
+      ctx.lineWidth = 2.5; ctx.strokeStyle = '#FFFFFF'; ctx.stroke();
       ctx.fillStyle = '#FFFFFF'; ctx.font = 'bold 14px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(pl.label, cx, cy);
       ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
@@ -1691,6 +1691,15 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
   const [ultraShowForClip, setUltraShowForClip] = useState<string | null>(null);
   const [ultraMsg, setUltraMsg] = useState<{ id: string; text: string } | null>(null);
   const [ultraError, setUltraError] = useState<{ id: string; text: string } | null>(null);
+  const [ultraPhase, setUltraPhase] = useState<{ id: string; label: string } | null>(null);
+  const [ultraElapsed, setUltraElapsed] = useState<number>(0);
+  useEffect(() => {
+    if (!ultraLoadingId) return;
+    setUltraElapsed(0);
+    const startedAt = Date.now();
+    const iv = setInterval(() => setUltraElapsed(Math.floor((Date.now() - startedAt) / 1000)), 1000);
+    return () => clearInterval(iv);
+  }, [ultraLoadingId]);
 
   // Presentation Mode state
   const [showPresentationModal, setShowPresentationModal] = useState<boolean>(false);
@@ -2548,9 +2557,11 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
     setUltraLoadingId(clip.id);
     setUltraError(null);
     setUltraMsg(null);
+    setUltraPhase({ id: clip.id, label: 'Frames extrahieren…' });
     try {
       const frames = await extractClipFrames(videoEl, clip.startTime || 0, clip.endTime || (clip.startTime || 0) + (clip.duration || 6), 5);
       if (frames.length === 0) throw new Error('Keine Frames aus dem Video extrahieren können – bitte Spielvideo laden.');
+      setUltraPhase({ id: clip.id, label: `KI analysiert ${frames.length} Frames & erzeugt Keyframes…` });
       const res = await apiFetch('/api/video-analysis/ultra-overlay', {
         method: 'POST',
         body: JSON.stringify({
@@ -2573,6 +2584,7 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
     } catch (err: any) {
       setUltraError({ id: clip.id, text: err.message || 'Ultra-Overlay-Erzeugung fehlgeschlagen.' });
     } finally {
+      setUltraPhase(null);
       setUltraLoadingId(null);
     }
   };
@@ -3749,61 +3761,61 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
                   >
                     <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
                       <defs>
-                        <marker id="tagArrowLive" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+                        <marker id="tagArrowLive" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse">
                           <path d="M0,0 L10,5 L0,10 z" fill="#3B82F6" />
                         </marker>
                       </defs>
                       {(tagBoard.chains || []).map((c, i) => (
                         <g key={`tc${i}`}>
-                          <line x1={c.fromX} y1={c.fromY} x2={c.toX} y2={c.toY} stroke={c.color || '#22D3EE'} strokeWidth="5.5" opacity="0.28" strokeLinecap="round" />
-                          <line x1={c.fromX} y1={c.fromY} x2={c.toX} y2={c.toY} stroke={c.color || '#22D3EE'} strokeWidth="2.4" opacity="0.95" strokeLinecap="round" />
+                          <line x1={c.fromX} y1={c.fromY} x2={c.toX} y2={c.toY} stroke={c.color || '#22D3EE'} strokeWidth="2.0" opacity="0.16" strokeLinecap="round" />
+                          <line x1={c.fromX} y1={c.fromY} x2={c.toX} y2={c.toY} stroke={c.color || '#22D3EE'} strokeWidth="0.9" opacity="0.95" strokeLinecap="round" />
                         </g>
                       ))}
                       {(tagBoard.ballPath || []).map((b, i) => b.points.length >= 2 ? (
                         <g key={`tb${i}`}>
-                          <polyline points={b.points.map(p => `${p.x},${p.y}`).join(' ')} fill="none" stroke={b.color || '#F59E0B'} strokeWidth="3.2" opacity="0.25" strokeLinecap="round" />
-                          <polyline points={b.points.map(p => `${p.x},${p.y}`).join(' ')} fill="none" stroke={b.color || '#F59E0B'} strokeWidth="1.9" strokeDasharray="2.4 1.8" opacity="0.98" strokeLinecap="round" />
-                          {b.points.slice(1).map((pp, j) => <circle key={j} cx={pp.x} cy={pp.y} r="1.6" fill={b.color || '#F59E0B'} />)}
+                          <polyline points={b.points.map(p => `${p.x},${p.y}`).join(' ')} fill="none" stroke={b.color || '#F59E0B'} strokeWidth="1.4" opacity="0.15" strokeLinecap="round" />
+                          <polyline points={b.points.map(p => `${p.x},${p.y}`).join(' ')} fill="none" stroke={b.color || '#F59E0B'} strokeWidth="0.8" strokeDasharray="2.4 1.8" opacity="0.95" strokeLinecap="round" />
+                          {b.points.slice(1).map((pp, j) => <circle key={j} cx={pp.x} cy={pp.y} r="0.8" fill={b.color || '#F59E0B'} />)}
                         </g>
                       ) : null)}
                       {(tagBoard.runs || []).map((r, i) => r.points.length >= 2 ? (
                         <g key={`tr${i}`}>
-                          <polyline points={r.points.map(p => `${p.x},${p.y}`).join(' ')} fill="none" stroke={r.color || '#3B82F6'} strokeWidth="3.2" opacity="0.25" strokeLinecap="round" />
-                          <polyline points={r.points.map(p => `${p.x},${p.y}`).join(' ')} fill="none" stroke={r.color || '#3B82F6'} strokeWidth="1.9" strokeDasharray="2.4 1.8" opacity="0.98" strokeLinecap="round" />
+                          <polyline points={r.points.map(p => `${p.x},${p.y}`).join(' ')} fill="none" stroke={r.color || '#3B82F6'} strokeWidth="1.4" opacity="0.15" strokeLinecap="round" />
+                          <polyline points={r.points.map(p => `${p.x},${p.y}`).join(' ')} fill="none" stroke={r.color || '#3B82F6'} strokeWidth="0.8" strokeDasharray="2.4 1.8" opacity="0.95" strokeLinecap="round" />
                         </g>
                       ) : null)}
                       {(tagBoard.passes || []).map((p, i) => (
                         <g key={`tp${i}`}>
-                          <line x1={p.fromX} y1={p.fromY} x2={p.toX} y2={p.toY} stroke={p.color || '#3B82F6'} strokeWidth="3.0" opacity="0.3" strokeLinecap="round" />
-                          <line x1={p.fromX} y1={p.fromY} x2={p.toX} y2={p.toY} stroke={p.color || '#3B82F6'} strokeWidth="1.6" opacity="0.98" markerEnd="url(#tagArrowLive)" />
-                          <circle cx={p.toX} cy={p.toY} r="1.5" fill={p.color || '#3B82F6'} />
+                          <line x1={p.fromX} y1={p.fromY} x2={p.toX} y2={p.toY} stroke={p.color || '#3B82F6'} strokeWidth="1.2" opacity="0.15" strokeLinecap="round" />
+                          <line x1={p.fromX} y1={p.fromY} x2={p.toX} y2={p.toY} stroke={p.color || '#3B82F6'} strokeWidth="0.75" opacity="0.95" markerEnd="url(#tagArrowLive)" />
+                          <circle cx={p.toX} cy={p.toY} r="0.8" fill={p.color || '#3B82F6'} />
                         </g>
                       ))}
                       {(tagBoard.zones || []).map((z, i) => (
                         <g key={`tz${i}`}>
-                          <rect x={z.x} y={z.y} width={z.w} height={z.h} fill={z.color || '#F59E0B'} opacity="0.3" stroke={z.color || '#F59E0B'} strokeWidth="1.1" strokeDasharray="2 1.5" rx="1" />
-                          {z.label ? <text x={z.x + 1.5} y={z.y + 4.5} fontSize="5" fontWeight="900" fill={z.color || '#F59E0B'} stroke="#000000" strokeWidth="0.5" paintOrder="stroke">{z.label}</text> : null}
+                          <rect x={z.x} y={z.y} width={z.w} height={z.h} fill={z.color || '#F59E0B'} opacity="0.14" stroke={z.color || '#F59E0B'} strokeWidth="0.5" strokeDasharray="1.8 1.4" rx="0.8" />
+                          {z.label ? <text x={z.x + 1.2} y={z.y + 3.2} fontSize="3.2" fontWeight="900" fill={z.color || '#F59E0B'} stroke="#000000" strokeWidth="0.4" paintOrder="stroke">{z.label}</text> : null}
                         </g>
                       ))}
                       {(tagBoard.optimalPositions || []).map((o, i) => (
                         <g key={`to${i}`}>
-                          <circle cx={o.toX} cy={o.toY} r="6" fill="rgba(245,158,11,0.3)" stroke="#F59E0B" strokeWidth="1.2" />
-                          {o.note ? <text x={Math.min(o.toX + 6.5, 92)} y={Math.max(o.toY - 6, 5)} fontSize="4.4" fontWeight="900" fill="#FBBF24" stroke="#000000" strokeWidth="0.5" paintOrder="stroke">{o.note || 'Optimale Position'}</text> : null}
+                          <circle cx={o.toX} cy={o.toY} r="3.2" fill="rgba(245,158,11,0.18)" stroke="#F59E0B" strokeWidth="0.7" />
+                          {o.note ? <text x={Math.min(o.toX + 4, 92)} y={Math.max(o.toY - 4, 4)} fontSize="3.1" fontWeight="900" fill="#FBBF24" stroke="#000000" strokeWidth="0.4" paintOrder="stroke">{o.note || 'Optimale Position'}</text> : null}
                         </g>
                       ))}
                       {(tagBoard.players || []).map((pl, i) => (
                         <g key={`tpl${i}`}>
-                          <circle cx={pl.x} cy={pl.y} r="4.8" fill={pl.team === 'FC Auggen' ? '#3B82F6' : '#EF4444'} stroke="#FFFFFF" strokeWidth="1.1" />
-                          <text x={pl.x} y={pl.y + 1.7} fontSize="4.2" fontWeight="900" fill="#FFFFFF" stroke="#000000" strokeWidth="0.45" paintOrder="stroke" textAnchor="middle">{pl.label}</text>
+                          <circle cx={pl.x} cy={pl.y} r="3.6" fill={pl.team === 'FC Auggen' ? '#3B82F6' : '#EF4444'} stroke="#FFFFFF" strokeWidth="0.9" />
+                          <text x={pl.x} y={pl.y + 1.3} fontSize="3.2" fontWeight="900" fill="#FFFFFF" stroke="#000000" strokeWidth="0.35" paintOrder="stroke" textAnchor="middle">{pl.label}</text>
                         </g>
                       ))}
                       {tagDragStart && tagDragEnd && (tagTool === 'chain' || tagTool === 'pass' || tagTool === 'zone') && (
                         tagTool === 'zone'
-                          ? <rect x={Math.min(tagDragStart.x, tagDragEnd.x)} y={Math.min(tagDragStart.y, tagDragEnd.y)} width={Math.abs(tagDragEnd.x - tagDragStart.x)} height={Math.abs(tagDragEnd.y - tagDragStart.y)} fill={tagColor} opacity="0.25" stroke={tagColor} strokeWidth="1.1" strokeDasharray="1.6 1" />
-                          : <line x1={tagDragStart.x} y1={tagDragStart.y} x2={tagDragEnd.x} y2={tagDragEnd.y} stroke={tagColor} strokeWidth="1.6" strokeDasharray="1.6 1" opacity="0.95" />
+                          ? <rect x={Math.min(tagDragStart.x, tagDragEnd.x)} y={Math.min(tagDragStart.y, tagDragEnd.y)} width={Math.abs(tagDragEnd.x - tagDragStart.x)} height={Math.abs(tagDragEnd.y - tagDragStart.y)} fill={tagColor} opacity="0.12" stroke={tagColor} strokeWidth="0.5" strokeDasharray="1.6 1" />
+                          : <line x1={tagDragStart.x} y1={tagDragStart.y} x2={tagDragEnd.x} y2={tagDragEnd.y} stroke={tagColor} strokeWidth="0.75" strokeDasharray="1.6 1" opacity="0.9" />
                       )}
                       {tagRunPts.length > 0 && (tagTool === 'run' || tagTool === 'ball') && (
-                        <polyline points={tagRunPts.map(p => `${p.x},${p.y}`).join(' ')} fill="none" stroke={tagTool === 'ball' ? '#F59E0B' : tagColor} strokeWidth="1.9" strokeDasharray="2.4 1.8" opacity="0.9" />
+                        <polyline points={tagRunPts.map(p => `${p.x},${p.y}`).join(' ')} fill="none" stroke={tagTool === 'ball' ? '#F59E0B' : tagColor} strokeWidth="1.0" strokeDasharray="2.4 1.8" opacity="0.85" />
                       )}
                     </svg>
                   </div>
@@ -4458,8 +4470,20 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
                               title={clip.ultraOverlay ? 'Ultra-Overlay vorhanden – ein-/ausblenden (spielt über dem Video mit)' : '⚡ Ultra-Tracking: KI erzeugt stabil verankerte Keyframe-Overlays, die sich mit Spielern & Kamera mitbewegen'}
                             >
                               {ultraLoadingId === clip.id ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-                              {ultraLoadingId === clip.id ? 'Ultra-Tracking läuft…' : clip.ultraOverlay ? (ultraShowForClip === clip.id ? 'Ultra-Overlay aktiv' : 'Ultra-Overlay zeigen') : '⚡ Ultra-Overlay erzeugen'}
+                              {ultraLoadingId === clip.id
+                                ? `⏳ ${ultraPhase?.id === clip.id ? ultraPhase.label : 'Ultra-Tracking läuft…'} · ${ultraElapsed}s`
+                                : clip.ultraOverlay ? (ultraShowForClip === clip.id ? 'Ultra-Overlay aktiv' : 'Ultra-Overlay zeigen') : '⚡ Ultra-Overlay erzeugen'}
                             </button>
+
+                            {ultraLoadingId === clip.id && (
+                              <div className="px-2 py-1.5 rounded-lg bg-fuchsia-950/20 border border-fuchsia-500/30 text-fuchsia-200 text-[9px] flex items-start gap-1.5">
+                                <Sparkles size={10} className="shrink-0 mt-0.5 text-fuchsia-400 animate-pulse" />
+                                <span>
+                                  ⏳ {ultraPhase?.id === clip.id ? ultraPhase.label : 'Ultra-Tracking läuft…'} · {ultraElapsed}s
+                                  <span className="text-fuchsia-400/70"> — Die KI analysiert die Frames & erzeugt Keyframes, das dauert in der Regel 1–3 Minuten.</span>
+                                </span>
+                              </div>
+                            )}
 
                             {ultraMsg?.id === clip.id && (
                               <div className="px-2 py-1.5 rounded-lg bg-fuchsia-950/20 border border-fuchsia-500/30 text-fuchsia-200 text-[9px] flex items-start gap-1.5">
