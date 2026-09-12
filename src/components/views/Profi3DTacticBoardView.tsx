@@ -1727,7 +1727,7 @@ return { ...n, image: matched?.image || matched?.additionalImages?.[0] || n.imag
   const [swapFirstPlayer, setSwapFirstPlayer] = useState<string | null>(null);
 
   // Persistierte Szenario-Edits je Slide/Diagramm (Zonen + Spieler frei bearbeitbar)
-  const [scenarioEdits, setScenarioEdits] = useState<Record<string, { zones: ScenarioZone[]; players: ScenarioPlayer[] }>>(() => {
+  const [scenarioEdits] = useState<Record<string, { zones: ScenarioZone[]; players: ScenarioPlayer[] }>>(() => {
     try {
       const s = localStorage.getItem('fca_presentation_scenarioEdits');
       if (s) return JSON.parse(s);
@@ -1737,9 +1737,6 @@ return { ...n, image: matched?.image || matched?.additionalImages?.[0] || n.imag
   useEffect(() => {
     try { localStorage.setItem('fca_presentation_scenarioEdits', JSON.stringify(scenarioEdits)); } catch { /* ignore */ }
   }, [scenarioEdits]);
-  const setEditsForScenario = useCallback((scenarioId: string, zones: ScenarioZone[], players: ScenarioPlayer[]) => {
-    setScenarioEdits((prev) => ({ ...prev, [scenarioId]: { zones, players } }));
-  }, []);
 
   // Aktuelle Startelf auf jedes Szenario-Diagramm übertragen (Nummern/Positionen) —
   // manuelle Draft-Anpassungen des Users haben Vorrang.
@@ -1781,55 +1778,6 @@ return { ...n, image: matched?.image || matched?.additionalImages?.[0] || n.imag
     try { if (v) localStorage.setItem('fca_presentationTitleOverride', v); else localStorage.removeItem('fca_presentationTitleOverride'); } catch { /* ignore */ }
   };
 
-  // Slide 8: eigene Spieler-Chips (Name + Bild) frei bewegbar auf dem Gegner-Diagramm (persistiert)
-  const [ownTop3Chips, setOwnTop3Chips] = useState<Array<{ name: string; number: string; image?: string; x: number; y: number }>>(() => {
-    try {
-      const s = localStorage.getItem('fca_presentation_top3_chips');
-      if (s) return JSON.parse(s);
-    } catch { /* ignore */ }
-    return [];
-  });
-  const [dragChipIndex, setDragChipIndex] = useState<number | null>(null);
-  const top3PitchRef = useRef<HTMLDivElement | null>(null);
-  const setChips = (next: Array<{ name: string; number: string; image?: string; x: number; y: number }>) => {
-    setOwnTop3Chips(next);
-    try { localStorage.setItem('fca_presentation_top3_chips', JSON.stringify(next)); } catch { /* ignore */ }
-  };
-  useEffect(() => {
-    // Beim ersten Öffnen: Startelf-Chips initial verteilen (falls noch nicht gesetzt)
-    if (ownTop3Chips.length === 0 && presentationLineup.length >= 11) {
-      const positions = [
-        { x: 14, y: 14 }, { x: 32, y: 10 }, { x: 50, y: 10 }, { x: 68, y: 10 }, { x: 86, y: 14 },
-        { x: 20, y: 40 }, { x: 50, y: 34 }, { x: 80, y: 40 },
-        { x: 30, y: 62 }, { x: 70, y: 62 },
-        { x: 50, y: 88 },
-      ];
-      const seeded = presentationLineup.slice(0, 11).map((p: any, i: number) => ({
-        name: p.name || 'Spieler',
-        number: String(p.number || i + 1),
-        image: p.image,
-        x: positions[i].x,
-        y: positions[i].y,
-      }));
-      setChips(seeded);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ownTop3Chips.length, presentationLineup]);
-
-  const handleChipMouseDown = (e: React.MouseEvent, i: number) => {
-    e.stopPropagation();
-    setDragChipIndex(i);
-  };
-  const handleChipMouseMove = (e: React.MouseEvent) => {
-    if (dragChipIndex === null || !top3PitchRef.current) return;
-    const rect = top3PitchRef.current.getBoundingClientRect();
-    const x = Math.max(3, Math.min(97, ((e.clientX - rect.left) / rect.width) * 100));
-    const y = Math.max(3, Math.min(97, ((e.clientY - rect.top) / rect.height) * 100));
-    const next = ownTop3Chips.map((c, i) => (i === dragChipIndex ? { ...c, x, y } : c));
-    setChips(next);
-  };
-  const handleChipMouseUp = () => setDragChipIndex(null);
-  
   // Slide 0: Titel & Match
   const [matchNotes, setMatchNotes] = useState({
     home: 'Stamm-System 4-2-3-1 mit doppelter Sechs und variabler Offensive.',
@@ -3260,6 +3208,19 @@ Regeln:
   const contextMenuPlayerNode = currentNodePositions.find(n => n.id === contextMenuPlayerId);
 
   // ═══ Helper render pitch for presentation slides (Main View + TV Mode Sync) ═══
+  // Präsentations-Folie → Taktiktafel-Theme (echte Spieler-Fotos statt Nummern)
+  const presRenderIdx = (presentationSlide: number): number => {
+    switch (presentationSlide) {
+      case 2: return 3;  // Defensiv → Pressing-Zone
+      case 3: return 4;  // Mit Ball → Spielaufbau/Dreiecke
+      case 4: return 5;  // Rotation → Bewegung & Umschalten
+      case 5: return 4;  // Dreiecks-Rotation → Dreiecke
+      case 6: return 5;  // Gegen den Ball → Gegenpressing
+      case 7: return 7;  // 1:1 Taktik → Duell
+      default: return presentationSlide;
+    }
+  };
+
   const renderPitchForSlide = (sIndex: number) => {
     return (
       <div 
@@ -3758,29 +3719,84 @@ Regeln:
           </div>
         )}
 
-        {/* SLIDE 7: COACHING POINTS HOTSPOTS PITCH */}
+        {/* SLIDE 7: 1:1 TAKTIK PITCH (Spieler-Fotos + Duell) */}
         {sIndex === 7 && (
           <div className="absolute inset-0 p-4">
-            {[
-              { id: 1, label: '1. Zweikampf & Gegenpressing', x: 48, y: 50, color: 'bg-rose-500' },
-              { id: 2, label: '2. Sechser-Andribbeln', x: 38, y: 35, color: 'bg-amber-400 text-slate-950' },
-              { id: 3, label: '3. Tiefenruns Akuegwu', x: 82, y: 50, color: 'bg-emerald-400 text-slate-950' },
-              { id: 4, label: '4. Restverteidigung 3er', x: 22, y: 50, color: 'bg-sky-400 text-slate-950' },
-              { id: 5, label: '5. Standards Sweden/Charles', x: 90, y: 85, color: 'bg-purple-500' },
-            ].map((hs) => (
+            {/* 1:1 Duell-Zone */}
+            <div className="absolute left-[42%] right-[6%] top-[16%] bottom-[26%] border-2 border-dashed border-violet-400 rounded-2xl bg-violet-500/10 pointer-events-none z-0" />
+            <div className="absolute top-[18%] right-[8%] z-20 bg-violet-500 text-white font-black text-[8px] uppercase px-1.5 py-0.5 rounded shadow">
+              📐 1:1 DUEL — Tiefe & Timing
+            </div>
+
+            {/* Duell-Pfeile */}
+            <svg className="absolute inset-0 w-full h-full pointer-events-none z-0" viewBox="0 0 100 100" preserveAspectRatio="none">
+              <defs>
+                <marker id="s7Arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                  <path d="M0,0 L10,5 L0,10 z" fill="#a855f7" />
+                </marker>
+              </defs>
+              <line x1="38%" y1="46%" x2="68%" y2="40%" stroke="#a855f7" strokeWidth="2" strokeDasharray="5 3" opacity="0.9" markerEnd="url(#s7Arrow)" />
+              <line x1="68%" y1="40%" x2="80%" y2="32%" stroke="#10b981" strokeWidth="3" strokeDasharray="5 3" opacity="0.95" markerEnd="url(#s7Arrow)" />
+            </svg>
+
+            {presentationLineup.map((n: any) => (
               <div
-                key={hs.id}
-                style={{ left: `${hs.x}%`, top: `${hs.y}%` }}
-                className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center z-20 group cursor-pointer"
+                key={`s7_${n.id}`}
+                style={{ left: `${n.xPercent}%`, top: `${n.yPercent}%` }}
+                className={`absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center z-10 ${pitchEditMode ? 'cursor-grab active:cursor-grabbing hover:ring-2 hover:ring-amber-400 hover:scale-125' : 'transition-all hover:scale-125'}`}
+                onMouseDown={pitchEditMode ? (e) => {
+                  e.stopPropagation();
+                  if (swapFirstPlayer) {
+                    if (swapFirstPlayer !== n.name) {
+                      const idx1 = presentationLineup.findIndex((p: any) => p.name === swapFirstPlayer);
+                      const idx2 = presentationLineup.findIndex((p: any) => p.name === n.name);
+                      if (idx1 >= 0 && idx2 >= 0) {
+                        swappedPositionsRef.current.add(idx1);
+                        swappedPositionsRef.current.add(idx2);
+                        setPresentationLineup((prev: any[]) => {
+                          const next = [...prev];
+                          [next[idx1], next[idx2]] = [next[idx2], next[idx1]];
+                          return next;
+                        });
+                        notify(`${swapFirstPlayer} ↔ ${n.name} getauscht`);
+                      }
+                      setSwapFirstPlayer(null);
+                    }
+                  } else {
+                    setSwapFirstPlayer(n.name);
+                  }
+                } : undefined}
+                title={`${n.name} (${n.position}) - ${n.role || ''}`}
               >
-                <span className={`w-7 h-7 rounded-full ${hs.color} font-black text-xs flex items-center justify-center shadow-xl border-2 border-white animate-pulse`}>
-                  {hs.id}
-                </span>
-                <span className="text-[8px] font-black uppercase text-white bg-slate-950/90 px-1.5 py-0.5 rounded mt-1 whitespace-nowrap shadow border border-slate-700">
-                  {hs.label}
+                {n.image ? (
+                  <div className="w-6 h-6 rounded-full overflow-hidden border-2 border-white shadow-lg">
+                    <img src={n.image} alt={n.name} className="w-full h-full object-cover" />
+                  </div>
+                ) : (
+                  <span className="w-5 h-5 rounded-full bg-violet-400 text-slate-950 font-black text-[9px] flex items-center justify-center shadow-lg border border-white">
+                    {n.number}
+                  </span>
+                )}
+                <span className="text-[7px] font-black uppercase text-violet-200 bg-slate-950/90 px-1 rounded mt-0.5 whitespace-nowrap">
+                  {n.name.split(' ').pop()}
                 </span>
               </div>
             ))}
+
+            {/* Coaching-Punkte (Text-Chips statt Nummern-Kreise) */}
+            <div className="absolute bottom-2 left-2 z-20 space-y-1">
+              {[
+                { txt: '⚔️ Zweikampf & direktes Gegenpressing', col: 'bg-rose-950/95 text-rose-300 border-rose-500/50' },
+                { txt: '🎯 Sechser-Andribbeln bei Ballgewinn', col: 'bg-amber-950/95 text-amber-300 border-amber-500/50' },
+                { txt: '🏃 Tiefenläufe nach Verlagerung', col: 'bg-emerald-950/95 text-emerald-300 border-emerald-500/50' },
+                { txt: '🧱 Restverteidigung als Dreierkette', col: 'bg-sky-950/95 text-sky-300 border-sky-500/50' },
+                { txt: '📐 Standards: kurze Variante', col: 'bg-purple-950/95 text-purple-300 border-purple-500/50' },
+              ].map((c, i) => (
+                <div key={i} className={`text-[7px] font-black uppercase px-1.5 py-0.5 rounded border shadow ${c.col}`}>
+                  {c.txt}
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
@@ -8422,14 +8438,7 @@ Regeln:
                     <div className="flex flex-col lg:flex-row gap-6 min-h-[480px]">
                       <div className="lg:w-[55%] shrink-0">
                         <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 flex items-center justify-center h-full">
-                          <TacticScenarioView
-                            scenario={ALL_SCENARIOS.find((s) => s.id === 'sys-4231')!}
-                            className="w-full max-h-[480px] aspect-square mx-auto"
-                            editable
-                            draftZones={scenarioEdits['sys-4231']?.zones}
-                            draftPlayers={scPlayersFor('sys-4231')}
-                            onDraftChange={(z, p) => setEditsForScenario('sys-4231', z, p)}
-                          />
+                          <div className="w-full max-h-[480px] aspect-square mx-auto">{renderPitchForSlide(presRenderIdx(2))}</div>
                         </div>
                       </div>
                       <div className="lg:w-[45%] space-y-4 overflow-y-auto max-h-[520px]">
@@ -8476,14 +8485,7 @@ Regeln:
                     <div className="flex flex-col lg:flex-row gap-6 min-h-[480px]">
                       <div className="lg:w-[55%] shrink-0">
                         <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 flex items-center justify-center h-full">
-                          <TacticScenarioView
-                            scenario={ALL_SCENARIOS.find((s) => s.id === 'f-mb')!}
-                            className="w-full max-h-[480px] aspect-square mx-auto"
-                            editable
-                            draftZones={scenarioEdits['f-mb']?.zones}
-                            draftPlayers={scPlayersFor('f-mb')}
-                            onDraftChange={(z, p) => setEditsForScenario('f-mb', z, p)}
-                          />
+                          <div className="w-full max-h-[480px] aspect-square mx-auto">{renderPitchForSlide(presRenderIdx(3))}</div>
                         </div>
                       </div>
                       <div className="lg:w-[45%] space-y-4 overflow-y-auto max-h-[520px]">
@@ -8514,29 +8516,11 @@ Regeln:
                     <div className="flex flex-col lg:flex-row gap-6 min-h-[480px]">
                       <div className="lg:w-[55%] shrink-0">
                         <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-3">
-                          <TacticScenarioView
-                            scenario={ALL_SCENARIOS.find((s) => s.id === 'f-r1')!}
-                            className="w-full max-h-[480px] aspect-square mx-auto"
-                            editable
-                            draftZones={scenarioEdits['f-r1']?.zones}
-                            draftPlayers={scPlayersFor('f-r1')}
-                            onDraftChange={(z, p) => setEditsForScenario('f-r1', z, p)}
-                          />
-                          <p className="text-[11px] text-slate-400 text-center mt-2 font-semibold">Bild 1 · Rotation · Zonen & Spieler frei ziehen</p>
+                          <div className="w-full max-h-[480px] aspect-square mx-auto">{renderPitchForSlide(presRenderIdx(4))}</div>
+                          <p className="text-[11px] text-slate-400 text-center mt-2 font-semibold">Rotation · echte Spieler-Fotos</p>
                         </div>
                       </div>
                       <div className="lg:w-[45%] space-y-4 overflow-y-auto max-h-[520px]">
-                        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-3">
-                          <TacticScenarioView
-                            scenario={ALL_SCENARIOS.find((s) => s.id === 'f-r2')!}
-                            className="w-full aspect-square mx-auto"
-                            editable
-                            draftZones={scenarioEdits['f-r2']?.zones}
-                            draftPlayers={scPlayersFor('f-r2')}
-                            onDraftChange={(z, p) => setEditsForScenario('f-r2', z, p)}
-                          />
-                          <p className="text-[11px] text-slate-400 text-center mt-2 font-semibold">Bild 2 · Rotation · Zonen & Spieler frei ziehen</p>
-                        </div>
                         <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4">
                           <h4 className="text-[10px] font-black text-sky-400 uppercase tracking-widest mb-2 flex items-center gap-2">
                             <span className="text-sm">📋</span> Offensiv-Guidelines
@@ -8560,29 +8544,11 @@ Regeln:
                     <div className="flex flex-col lg:flex-row gap-6 min-h-[480px]">
                       <div className="lg:w-[55%] shrink-0">
                         <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-3">
-                          <TacticScenarioView
-                            scenario={ALL_SCENARIOS.find((s) => s.id === 'f-d1')!}
-                            className="w-full max-h-[480px] aspect-square mx-auto"
-                            editable
-                            draftZones={scenarioEdits['f-d1']?.zones}
-                            draftPlayers={scPlayersFor('f-d1')}
-                            onDraftChange={(z, p) => setEditsForScenario('f-d1', z, p)}
-                          />
-                          <p className="text-[11px] text-slate-400 text-center mt-2 font-semibold">Bild 1 · Dreiecks-Rotation · frei ziehen</p>
+                          <div className="w-full max-h-[480px] aspect-square mx-auto">{renderPitchForSlide(presRenderIdx(5))}</div>
+                          <p className="text-[11px] text-slate-400 text-center mt-2 font-semibold">Dreiecks-Rotation · echte Spieler-Fotos</p>
                         </div>
                       </div>
                       <div className="lg:w-[45%] space-y-4 overflow-y-auto max-h-[520px]">
-                        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-3">
-                          <TacticScenarioView
-                            scenario={ALL_SCENARIOS.find((s) => s.id === 'f-d2')!}
-                            className="w-full aspect-square mx-auto"
-                            editable
-                            draftZones={scenarioEdits['f-d2']?.zones}
-                            draftPlayers={scPlayersFor('f-d2')}
-                            onDraftChange={(z, p) => setEditsForScenario('f-d2', z, p)}
-                          />
-                          <p className="text-[11px] text-slate-400 text-center mt-2 font-semibold">Bild 2 · Dreiecks-Rotation · frei ziehen</p>
-                        </div>
                         <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4">
                           <h4 className="text-[10px] font-black text-violet-400 uppercase tracking-widest mb-2 flex items-center gap-2">
                             <span className="text-sm">🔺</span> Dreiecks-Beschreibung
@@ -8598,14 +8564,7 @@ Regeln:
                     <div className="flex flex-col lg:flex-row gap-6 min-h-[480px]">
                       <div className="lg:w-[55%] shrink-0">
                         <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 flex items-center justify-center h-full">
-                          <TacticScenarioView
-                            scenario={ALL_SCENARIOS.find((s) => s.id === 'f-gb')!}
-                            className="w-full max-h-[480px] aspect-square mx-auto"
-                            editable
-                            draftZones={scenarioEdits['f-gb']?.zones}
-                            draftPlayers={scPlayersFor('f-gb')}
-                            onDraftChange={(z, p) => setEditsForScenario('f-gb', z, p)}
-                          />
+                          <div className="w-full max-h-[480px] aspect-square mx-auto">{renderPitchForSlide(presRenderIdx(6))}</div>
                         </div>
                       </div>
                       <div className="lg:w-[45%] space-y-4 overflow-y-auto max-h-[520px]">
@@ -8640,14 +8599,7 @@ Regeln:
                     <div className="flex flex-col lg:flex-row gap-6 min-h-[480px]">
                       <div className="lg:w-[55%] shrink-0">
                         <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 flex items-center justify-center h-full">
-                          <TacticScenarioView
-                            scenario={activeScenario}
-                            className="w-full max-h-[480px] aspect-square mx-auto"
-                            editable
-                            draftZones={scenarioEdits[activeScenario.id]?.zones}
-                            draftPlayers={scPlayersFor(activeScenario.id)}
-                            onDraftChange={(z, p) => setEditsForScenario(activeScenario.id, z, p)}
-                          />
+                          <div className="w-full max-h-[480px] aspect-square mx-auto">{renderPitchForSlide(presRenderIdx(7))}</div>
                         </div>
                       </div>
                       <div className="lg:w-[45%] space-y-4 overflow-y-auto max-h-[520px]">
@@ -8686,59 +8638,22 @@ Regeln:
                             {top3Saved ? <Check size={15} /> : <Save size={15} />} {top3Saved ? 'Gespeichert!' : 'Top 3 Speichern'}
                           </button>
                         </div>
-                        <div
-                            ref={top3PitchRef}
-                            className="bg-emerald-950/60 border border-emerald-800/40 rounded-2xl p-4 relative min-h-[350px] select-none touch-none"
-                            onMouseMove={handleChipMouseMove}
-                            onMouseUp={handleChipMouseUp}
-                            onMouseLeave={handleChipMouseUp}
-                          >
-                          {[
-                            { id: 'op1', num: '1', pos: 'TW', x: 50, y: 88 },
-                            { id: 'op2', num: '2', pos: 'RV', x: 18, y: 74 },
-                            { id: 'op3', num: '4', pos: 'IV', x: 38, y: 78 },
-                            { id: 'op4', num: '5', pos: 'IV', x: 62, y: 78 },
-                            { id: 'op5', num: '3', pos: 'LV', x: 82, y: 74 },
-                            { id: 'op6', num: '6', pos: 'DM', x: 50, y: 60 },
-                            { id: 'op7', num: '8', pos: 'ZM', x: 32, y: 54 },
-                            { id: 'op8', num: '10', pos: 'OM', x: 68, y: 54 },
-                            { id: 'op9', num: '7', pos: 'RA', x: 20, y: 42 },
-                            { id: 'op10', num: '9', pos: 'ST', x: 50, y: 36 },
-                            { id: 'op11', num: '11', pos: 'LA', x: 80, y: 42 },
-                          ].map((op) => (
-                            <div key={op.id} style={{ left: `${op.x}%`, top: `${op.y}%` }} className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center z-10">
-                              <span className="w-5 h-5 rounded-full bg-rose-500 text-white font-black text-[9px] flex items-center justify-center shadow-lg border border-white">{op.num}</span>
-                              <span className="text-[7px] font-black uppercase text-rose-300 bg-slate-950/80 px-1 rounded mt-0.5 whitespace-nowrap">{op.pos}</span>
+                        <div className="grid grid-cols-3 gap-4">
+                          {opponentTop3.map((p, i) => (
+                            <div key={i} className="bg-slate-950/60 border-2 border-amber-500/30 rounded-2xl overflow-hidden flex flex-col items-center text-center p-4 shadow-xl">
+                              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-amber-400/60 overflow-hidden bg-slate-900 flex items-center justify-center text-slate-500">
+                                {p.imageUrl ? (
+                                  <img src={p.imageUrl} alt={p.name || 'Gegner'} className="w-full h-full object-cover" />
+                                ) : (
+                                  <User size={44} />
+                                )}
+                              </div>
+                              <span className="text-[9px] font-black uppercase text-amber-400 tracking-wider mt-3">#{i + 1} Gegner-Star</span>
+                              <div className="text-sm font-black text-white uppercase leading-tight mt-1 text-center">{p.name || 'Unbekannt'}</div>
+                              <div className="text-[11px] text-slate-400 font-semibold mt-0.5">{p.position || 'Position'}</div>
+                              <span className="mt-2 bg-amber-400 text-slate-950 font-black text-base px-3 py-1 rounded-xl min-w-[44px]">{p.note || '–'}</span>
                             </div>
                           ))}
-                          {/* EIGENE SPIELER — frei bewegliche Chips (Name + Bild) */}
-                          {ownTop3Chips.map((c, i) => (
-                            <div
-                              key={`ownchip_${i}`}
-                              style={{ left: `${c.x}%`, top: `${c.y}%` }}
-                              className={`absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center z-20 ${dragChipIndex === i ? 'cursor-grabbing' : 'cursor-grab'}`}
-                              onMouseDown={(e) => handleChipMouseDown(e, i)}
-                            >
-                              <span className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-emerald-500 text-slate-950 font-black text-[9px] flex items-center justify-center shadow-lg border border-white z-10">
-                                {c.number}
-                              </span>
-                              {c.image ? (
-                                <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-emerald-400 shadow-xl bg-slate-900">
-                                  <img src={c.image} alt={c.name} className="w-full h-full object-cover" draggable={false} />
-                                </div>
-                              ) : (
-                                <span className="w-9 h-9 rounded-full bg-emerald-500 text-slate-950 font-black text-[11px] flex items-center justify-center shadow-xl border-2 border-white">
-                                  {c.number}
-                                </span>
-                              )}
-                              <span className="text-[8px] font-black uppercase text-white bg-slate-950/90 px-1.5 rounded mt-1 whitespace-nowrap shadow border border-emerald-500/40">
-                                {c.name.split(' ').pop()}
-                              </span>
-                            </div>
-                          ))}
-                          <span className="absolute bottom-2 left-2 right-2 text-center text-[9px] font-bold text-emerald-400/80 bg-slate-950/70 rounded-lg px-2 py-1 z-30 pointer-events-none">
-                            Grün = eigene Spieler frei ziehen · Rot = Gegner (statisch)
-                          </span>
                         </div>
                       </div>
                       <div className="lg:w-[45%] space-y-4 overflow-y-auto max-h-[520px]">
@@ -9141,11 +9056,7 @@ Regeln:
                     </div>
                   ) : presentationSlideIndex === 7 ? (
                     <div className="rounded-2xl overflow-hidden border-2 border-violet-500/40 aspect-square max-h-[540px] mx-auto w-full">
-                      <TacticScenarioView
-                        scenario={activeScenario}
-                        draftZones={scenarioEdits[activeScenario.id]?.zones}
-                        draftPlayers={scPlayersFor(activeScenario.id)}
-                      />
+                      {renderPitchForSlide(7)}
                     </div>
                   ) : presentationSlideIndex === 8 ? (
                     <div className="grid grid-cols-3 gap-4">
@@ -9174,29 +9085,7 @@ Regeln:
                   ) : (
                     (() => {
                       if (presentationSlideIndex === 1) return renderPitchForSlide(1);
-                      const tvScenarioId =
-                        presentationSlideIndex === 2 ? 'sys-4231'
-                        : presentationSlideIndex === 3 ? 'f-mb'
-                        : presentationSlideIndex === 4 ? 'f-r1'
-                        : presentationSlideIndex === 5 ? 'f-d1'
-                        : presentationSlideIndex === 6 ? 'f-gb'
-                        : null;
-                      if (tvScenarioId) {
-                        const sc = ALL_SCENARIOS.find((s) => s.id === tvScenarioId);
-                        if (sc) {
-                          return (
-                            <div className="rounded-2xl overflow-hidden border-2 border-emerald-500/30 aspect-square max-h-[540px] mx-auto w-full">
-                              <TacticScenarioView
-                                scenario={sc}
-                                draftZones={scenarioEdits[tvScenarioId]?.zones}
-                                draftPlayers={scPlayersFor(tvScenarioId)}
-                                highlightArrows={tvScenarioId !== 'sys-4231'}
-                              />
-                            </div>
-                          );
-                        }
-                      }
-                      return renderPitchForSlide(presentationSlideIndex);
+                      return renderPitchForSlide(presRenderIdx(presentationSlideIndex));
                     })()
                   )}
                 </div>
