@@ -357,7 +357,7 @@ export const MatchPlanningView: React.FC<MatchPlanningViewProps> = ({
         : [];
 
       const scorersText = ownGoals
-        .map((g: any) => `${g.minute}. Minute – ${g.scorer}`)
+        .map((g: any) => g.scorer ? `${g.minute}. Minute – ${g.scorer}` : `Tor in Minute ${g.minute}`)
         .join('\n');
       const cardsText = ownCards
         .map((c: any) => `${c.minute}. Minute – ${c.type} ${c.player}`)
@@ -368,7 +368,7 @@ export const MatchPlanningView: React.FC<MatchPlanningViewProps> = ({
         notesParts.push(`Startelf FCA: ${d.starters.filter((s: any) => s.team === 'own').map((s: any) => s.name).join(', ')}`);
       }
       if (oppGoals.length) {
-        notesParts.push(`Gegentore: ${oppGoals.map((g: any) => `${g.minute}.' ${g.scorer}`).join(', ')}`);
+        notesParts.push(`Gegentore: ${oppGoals.map((g: any) => `${g.minute}.' ${g.scorer || 'Gegner'}`).join(', ')}`);
       }
       if (Array.isArray(d.cards) && d.cards.length && d.cards.length > ownCards.length) {
         const opp = d.cards.filter((c: any) => c.team !== 'own');
