@@ -117,6 +117,8 @@ const KEY_TO_TAB: Record<string, string> = {
   'teamPhoto': 'Teamfoto',
   'testMatches': 'Testspiele',
   'testMinutes': 'Testspiele',
+  'u23Matches': 'Spiele U23',
+  'u23Minutes': 'Spiele U23',
 };
 
 const App: React.FC = () => {
@@ -639,6 +641,8 @@ const App: React.FC = () => {
     return _rawTestMatches;
   }, [_rawTestMatches, isSCSand, loadingTestMatches]);
   const { data: testMinutes, loading: loadingTestMinutes, addOrUpdateItem: saveTestMinutes, removeItem: deleteTestMinutes } = useCollectionSync<any>('test_minutes', 'playerId', undefined, 'asc', true);
+  const { data: u23Matches, loading: loadingU23Matches, addOrUpdateItem: saveU23Match, removeItem: deleteU23Match } = useCollectionSync<any>('u23_matches', 'id', 'date', 'asc', true);
+  const { data: u23Minutes, loading: loadingU23Minutes, addOrUpdateItem: saveU23Minutes, removeItem: deleteU23Minutes } = useCollectionSync<any>('u23_minutes', 'playerId', undefined, 'asc', true);
   const { data: opponents, loading: loadingOpponents, addOrUpdateItem: saveOpponent, removeItem: deleteOpponent } = useCollectionSync<any>('opponents', 'id', 'name', 'asc', true);
   const { data: playerSessionLogs, loading: loadingSessionLogs, addOrUpdateItem: savePlayerSessionLog, removeItem: deletePlayerSessionLog } = useCollectionSync<any>('player_session_logs', 'id', undefined, 'asc', true);
 
@@ -647,7 +651,7 @@ const App: React.FC = () => {
                     loadingCards || loadingScouting || loadingDepthChart || loadingFinanceMeta || loadingMeetings || loadingSessions ||
                     loadingIndividual || loadingRuns || loadingRunMeta || loadingPhysio || loadingFormation || loadingWinterConfig ||
                     loadingSommer || loadingWinter || loadingOpponents || loadingTestMatches || loadingTestMinutes || loadingAnalyses ||
-                    loadingSessionLogs;
+                    loadingSessionLogs || loadingU23Matches || loadingU23Minutes;
 
   // App sofort anzeigen: Warte höchstens 6 Sekunden auf große Collections, danach rendern wir trotzdem.
   // Die Daten kommen via onSnapshot weiterhin live nach – kein endloser Spinner, kein scheinbares Hängen.
@@ -867,6 +871,17 @@ const App: React.FC = () => {
   }, [players, competitiveMinutes, testMinutes]);
 
   const sortedPlayers = useMemo(() => sortPlayers(playersWithMinutes), [playersWithMinutes]);
+
+  // U23: automatisch alle Spieler ohne Einsatzzeit in der ersten Mannschaft
+  // (0 Minuten in Pflichtspielen UND Testspielen)
+  const u23Players = useMemo(
+    () => sortedPlayers.filter((p: any) =>
+      p.category === 'player' &&
+      (Number(p.einsatzzeitenGesamt) || 0) === 0 &&
+      (Number(p.testEinsatzzeitenGesamt) || 0) === 0
+    ),
+    [sortedPlayers]
+  );
 
   useEffect(() => {
     const handleStateChange = (e: any) => {
@@ -1901,7 +1916,7 @@ const App: React.FC = () => {
     if (['dashboard', 'developer_tasks'].includes(tabId)) return 'ubersicht';
     if (['personnel', 'team_list', 'player_portal', 'scouting'].includes(tabId)) return 'kader';
     if (['academy_analysis', 'attendance', 'training_planning', 'individual_control', 'runs_sw', 'summer_prep', 'winter_prep'].includes(tabId)) return 'training';
-    if (['champions_cup', 'competitive_planning', 'test_planning', 'match_report', 'tacticboard', 'trainer_view', 'video_analysis', 'match_analysis_pro'].includes(tabId)) return 'match';
+    if (['champions_cup', 'competitive_planning', 'test_planning', 'u23_planning', 'match_report', 'tacticboard', 'trainer_view', 'video_analysis', 'match_analysis_pro'].includes(tabId)) return 'match';
     if (['yearly', 'budget_finance', 'meetings_calendar', 'physio_plan', 'access_control'].includes(tabId)) return 'orga';
     return 'ubersicht';
   };
@@ -2531,6 +2546,21 @@ saveSpieler(updatedPlayer as Spieler);
             title="Testspiel-Planung"
           />
         );
+      case 'u23_planning':
+        return (
+          <MatchPlanningView 
+            players={u23Players}
+            matches={u23Matches}
+            matchMinutes={u23Minutes}
+            opponents={opponents}
+            onSaveMatch={saveU23Match}
+            onDeleteMatch={deleteU23Match}
+            onSaveMinutes={saveU23Minutes}
+            onSaveOpponent={saveOpponent}
+            onDeleteOpponent={deleteOpponent}
+            title="U23-Spiel-Planung"
+          />
+        );
       case 'match_report':
         return (
           <MatchReportView 
@@ -3094,9 +3124,9 @@ onNavigateToTacticBoard={(_matchId: any, draft?: any) => {
               { id: 'ubersicht', label: 'Übersicht', icon: LayoutDashboard, defaultTab: 'dashboard' as TabId, tabIds: isOwner ? ['dashboard', 'developer_tasks'] : ['dashboard'] },
               { id: 'kader', label: 'Kader & Spieler', icon: User, defaultTab: 'personnel' as TabId, tabIds: ['personnel', 'team_list', 'player_portal', 'scouting'] },
               { id: 'training', label: 'Training & Performance', icon: Activity, defaultTab: 'academy_analysis' as TabId, tabIds: ['academy_analysis', 'attendance', 'training_planning', 'individual_control', 'runs_sw', 'summer_prep', 'winter_prep'] },
-              { id: 'match', label: 'Match & Taktik', icon: Trophy, defaultTab: 'tacticboard' as TabId, tabIds: ['champions_cup', 'competitive_planning', 'test_planning', 'match_report', 'tacticboard', 'trainer_view', 'video_analysis', 'match_analysis_pro'] },
+              { id: 'match', label: 'Match & Taktik', icon: Trophy, defaultTab: 'tacticboard' as TabId, tabIds: ['champions_cup', 'competitive_planning', 'test_planning', 'u23_planning', 'match_report', 'tacticboard', 'trainer_view', 'video_analysis', 'match_analysis_pro'] },
               { id: 'orga', label: 'Organisation', icon: FolderKanban, defaultTab: 'yearly' as TabId, tabIds: isOwner ? ['yearly', 'budget_finance', 'meetings_calendar', 'physio_plan', 'access_control'] : ['yearly', 'budget_finance', 'meetings_calendar', 'physio_plan'] },
-              { id: 'all', label: isOwner ? 'Alle (27)' : 'Alle (25)', icon: Layers, defaultTab: 'dashboard' as TabId, tabIds: [] },
+              { id: 'all', label: isOwner ? 'Alle (28)' : 'Alle (26)', icon: Layers, defaultTab: 'dashboard' as TabId, tabIds: [] },
             ].map(cat => {
               const isCatActive = navCategory === cat.id;
               const Icon = cat.icon;
@@ -3244,7 +3274,7 @@ onNavigateToTacticBoard={(_matchId: any, draft?: any) => {
               if (navCategory === 'ubersicht') return ['dashboard', 'developer_tasks'].includes(tab.id);
               if (navCategory === 'kader') return ['personnel', 'team_list', 'player_portal', 'scouting'].includes(tab.id);
               if (navCategory === 'training') return ['academy_analysis', 'attendance', 'training_planning', 'individual_control', 'runs_sw', 'summer_prep', 'winter_prep'].includes(tab.id);
-              if (navCategory === 'match') return ['champions_cup', 'competitive_planning', 'test_planning', 'match_report', 'tacticboard', 'trainer_view', 'video_analysis', 'match_analysis_pro'].includes(tab.id);
+              if (navCategory === 'match') return ['champions_cup', 'competitive_planning', 'test_planning', 'u23_planning', 'match_report', 'tacticboard', 'trainer_view', 'video_analysis', 'match_analysis_pro'].includes(tab.id);
               if (navCategory === 'orga') return ['yearly', 'budget_finance', 'meetings_calendar', 'physio_plan', 'access_control'].includes(tab.id);
               return true;
             }).map(tab => {
@@ -3258,6 +3288,7 @@ onNavigateToTacticBoard={(_matchId: any, draft?: any) => {
               if (tab.id === 'champions_cup') displayLabel = 'Champions Cup Pro';
               if (tab.id === 'competitive_planning') displayLabel = 'Pflichtspiele';
               if (tab.id === 'test_planning') displayLabel = 'Testspiele';
+              if (tab.id === 'u23_planning') displayLabel = 'Spiele U23';
               if (tab.id === 'match_report') displayLabel = 'Spielbericht';
               if (tab.id === 'tacticboard') displayLabel = 'Taktiktafel';
               if (tab.id === 'trainer_view') displayLabel = 'Kaderübersicht & Grundordnung';

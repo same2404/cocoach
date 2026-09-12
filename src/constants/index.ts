@@ -9,6 +9,7 @@ export const TABS: { id: TabId; label: string }[] = [
   { id: 'champions_cup', label: '🏆 Champions Cup PRO' },
   { id: 'competitive_planning', label: 'Pflichtspiele' },
   { id: 'test_planning', label: 'Testspiele' },
+  { id: 'u23_planning', label: 'Spiele U23' },
   { id: 'match_report', label: 'Spielbericht' },
   { id: 'attendance', label: 'Anwesenheit' },
   { id: 'yearly', label: 'Jahresplan' },
