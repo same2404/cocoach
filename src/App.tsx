@@ -2549,7 +2549,7 @@ saveSpieler(updatedPlayer as Spieler);
       case 'u23_planning':
         return (
           <MatchPlanningView 
-            players={u23Players}
+            players={sortedPlayers}
             matches={u23Matches}
             matchMinutes={u23Minutes}
             opponents={opponents}
