@@ -117,8 +117,8 @@ const KEY_TO_TAB: Record<string, string> = {
   'teamPhoto': 'Teamfoto',
   'testMatches': 'Testspiele',
   'testMinutes': 'Testspiele',
-  'u23Matches': 'Spiele U23',
-  'u23Minutes': 'Spiele U23',
+  'u23Matches': 'U23 – Einsatzzeiten A‑Kader',
+  'u23Minutes': 'U23 – Einsatzzeiten A‑Kader',
 };
 
 const App: React.FC = () => {
@@ -2558,7 +2558,7 @@ saveSpieler(updatedPlayer as Spieler);
             onSaveMinutes={saveU23Minutes}
             onSaveOpponent={saveOpponent}
             onDeleteOpponent={deleteOpponent}
-            title="U23-Spiel-Planung"
+            title="U23 – Einsatzzeiten A‑Kader"
           />
         );
       case 'match_report':
@@ -3288,7 +3288,7 @@ onNavigateToTacticBoard={(_matchId: any, draft?: any) => {
               if (tab.id === 'champions_cup') displayLabel = 'Champions Cup Pro';
               if (tab.id === 'competitive_planning') displayLabel = 'Pflichtspiele';
               if (tab.id === 'test_planning') displayLabel = 'Testspiele';
-              if (tab.id === 'u23_planning') displayLabel = 'Spiele U23';
+              if (tab.id === 'u23_planning') displayLabel = 'U23 – Einsatzzeiten A‑Kader';
               if (tab.id === 'match_report') displayLabel = 'Spielbericht';
               if (tab.id === 'tacticboard') displayLabel = 'Taktiktafel';
               if (tab.id === 'trainer_view') displayLabel = 'Kaderübersicht & Grundordnung';

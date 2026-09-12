@@ -1246,14 +1246,66 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
   ];
   const TAGE_KURZ = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 
-  // ═══ 3–4-WOCHEN-BLOCK (Periodisierung) ═══
+  // Jahresplan & Saisonkalender 2026/2027: echte Pflicht-/Testspiele (den Pflichtspielen
+  // aus dem Jahresplan/Saisonkalender folgen) für die Wochen- und Block-Planung.
+  const allMatchesSorted = useMemo(() => {
+    const all = [...(competitiveMatches || []), ...(testMatches || [])]
+      .filter((m: any) => m && m.date)
+      .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    return all;
+  }, [competitiveMatches, testMatches]);
+  const toNoonDate = (m: any): Date => {
+    const s = (m && m.date) || '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return new Date(s + 'T12:00:00');
+    return new Date(s);
+  };
+  const nextMatch = useMemo(() => {
+    const now = new Date(); now.setHours(0, 0, 0, 0);
+    return allMatchesSorted.find((m: any) => toNoonDate(m) >= now) || null;
+  }, [allMatchesSorted]);
+  const weekIdxForDate = (d: Date): number => {
+    const monday = new Date(d); monday.setHours(0, 0, 0, 0);
+    monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+    return Math.max(0, Math.min(KW_START_DATES.length - 1, Math.floor((monday.getTime() - new Date(YEAR_START).getTime()) / (7 * 86400000))));
+  };
+  const matchesWithinWeek = (startIso: string, list: any[]): any[] => {
+    const monday = new Date(startIso + 'T12:00:00');
+    const sunday = new Date(monday); sunday.setDate(sunday.getDate() + 6);
+    return (list || []).filter((m: any) => {
+      const d = toNoonDate(m);
+      return !isNaN(d.getTime()) && d >= monday && d <= sunday;
+    });
+  };
+  const formatMatchLabel = (m: any): string => {
+    const opp = m.opponent || m.team || m.gegner || 'Gegner';
+    const home = m.isHome === true || m.home === true || m.hA === 'H' || m.ort === 'H';
+    const away = m.isHome === false || m.away === true || m.hA === 'A' || m.ort === 'A';
+    return `Pflichtspiel ${away ? '(A)' : '(H)'} ${opp}`;
+  };
+  const nextMatchWeekIdx = nextMatch ? weekIdxForDate(toNoonDate(nextMatch)) : null;
+
+  // ═══ 2–4-WOCHEN-BLOCK (Periodisierung) ═══
   // Zusatz-Modus: mehrere Wochen als zusammenhängenden Block planen.
   const [blockMode, setBlockMode] = useState<boolean>(() => { try { return localStorage.getItem('fca_trainingplan_block_mode') === '1'; } catch { return false; } });
-  const [blockWeeks, setBlockWeeks] = useState<3 | 4>(() => { try { return localStorage.getItem('fca_trainingplan_block_weeks') === '3' ? 3 : 4; } catch { return 4; } });
+  const [blockWeeks, setBlockWeeks] = useState<2 | 3 | 4>(() => { try { const v = Number(localStorage.getItem('fca_trainingplan_block_weeks')); return v === 2 || v === 3 ? v as 2 | 3 : 4; } catch { return 4; } });
   const [blockStartWeek, setBlockStartWeek] = useState<number>(() => loadIdx('fca_trainingplan_block_start', currentWeekIdx));
   useEffect(() => { try { localStorage.setItem('fca_trainingplan_block_mode', blockMode ? '1' : '0'); } catch { /* ignore */ } }, [blockMode]);
   useEffect(() => { try { localStorage.setItem('fca_trainingplan_block_weeks', String(blockWeeks)); } catch { /* ignore */ } }, [blockWeeks]);
   useEffect(() => { try { localStorage.setItem('fca_trainingplan_block_start', String(blockStartWeek)); } catch { /* ignore */ } }, [blockStartWeek]);
+
+  // Automatische Ausrichtung an Jahresplan/Saisonkalender: Der Block endet in der Woche
+  // des nächsten echten Pflichtspiels (letzte Woche = "Taper / Spiel").
+  const anchorBlockToNextMatch = () => {
+    if (nextMatchWeekIdx === null) {
+      setNotification('Kein kommendes Pflichtspiel im Kalender gefunden.');
+      setTimeout(() => setNotification(null), 3000);
+      return;
+    }
+    const target = Math.max(0, Math.min(KW_START_DATES.length - 1, nextMatchWeekIdx - (blockWeeks - 1)));
+    setBlockStartWeek(target);
+    setNotification(`Block auf Pflichtspiel ${formatMatchLabel(nextMatch)} (${KW_LABELS[nextMatchWeekIdx]}) ausgerichtet — letzte Blockwoche = Spielwoche.`);
+    setTimeout(() => setNotification(null), 4000);
+  };
 
   // Periodisierungs-Themen je Woche im Block (aufbauend)
   const BLOCK_THEMES = [
@@ -1268,16 +1320,35 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
 
   // Eigenständige Wochenplan-Rotation im Block: Stufen je Woche anheben/abflachen,
   // ohne die Spieltag-Vorlagen zu mutieren. Bearbeitbar per State.
+  // Echte Pflichtspiele aus Jahresplan/Saisonkalender überlagern die Vorlagen:
+  // Spieltage = tatsächlicher Match-Tag mit Gegner, spielfreie Wochen bekommen "Frei".
   const [blockPlans, setBlockPlans] = useState<WochenPlan[]>([]);
   const buildBlockPlans = (): WochenPlan[] => {
     if (!basePlan) return [];
     const count = blockWeeks;
     const weekThemes = BLOCK_THEMES.slice(0, count);
-    return weekThemes.map((theme) => {
-      const tage = (basePlan.tage || []).map((t) => {
+    return weekThemes.map((theme, wi) => {
+      const wkBaseIso = KW_START_DATES[(blockStartWeek + wi) % KW_START_DATES.length] || KW_START_DATES[0];
+      const weekMatches = matchesWithinWeek(wkBaseIso, allMatchesSorted);
+      const tage = (basePlan.tage || []).map((t, di) => {
+        const realMatch = weekMatches.find((m: any) => {
+          const d = toNoonDate(m);
+          return ((d.getDay() + 6) % 7) === di;
+        });
+        if (realMatch) {
+          const d = toNoonDate(realMatch);
+          return {
+            weekday: t.weekday,
+            stufe: 0,
+            dauer: 'SPIELTAG',
+            schwerpunkt: formatMatchLabel(realMatch),
+            inhalt: `SPIELTAG — ${formatMatchLabel(realMatch)}`,
+            uhrzeit: realMatch.kickoff || realMatch.uhrzeit || t.uhrzeit || '15:00',
+          };
+        }
         if (t.stufe === 0) {
-          // Spieltag bleibt Spieltag
-          return { ...t, schwerpunkt: 'Pflichtspiel', inhalt: t.inhalt || 'SPIELTAG' };
+          if (weekMatches.length === 0) return { ...t, schwerpunkt: 'Spielfrei', inhalt: 'Spielfrei — kein Pflichtspiel im Kalender' };
+          return { ...t, schwerpunkt: 'Spielfrei', inhalt: 'Kein Spiel an diesem Tag' };
         }
         const newStufe = Math.max(1, Math.min(9, Math.round(t.stufe * theme.stufenFaktor)));
         return { ...t, stufe: newStufe, schwerpunkt: theme.focus };
@@ -1288,7 +1359,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
   useEffect(() => {
     setBlockPlans(buildBlockPlans());
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blockStartWeek, blockWeeks, currentWeekPlans]);
+  }, [blockStartWeek, blockWeeks, currentWeekPlans, allMatchesSorted]);
 
   // Block-Tag bearbeiten: Stufe ändern
   const changeBlockDayStufe = (wIdx: number, dayIndex: number, stufe: number) => {
@@ -3670,6 +3741,12 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
               {blockMode && (
                 <div className="flex items-center gap-1">
                   <button
+                    onClick={() => setBlockWeeks(2)}
+                    className={`px-1.5 py-0.5 rounded text-[7px] font-black uppercase border cursor-pointer ${blockWeeks === 2 ? 'bg-emerald-500 text-black border-emerald-500' : 'bg-transparent text-slate-400 border-slate-600'}`}
+                  >
+                    2 Wo
+                  </button>
+                  <button
                     onClick={() => setBlockWeeks(3)}
                     className={`px-1.5 py-0.5 rounded text-[7px] font-black uppercase border cursor-pointer ${blockWeeks === 3 ? 'bg-emerald-500 text-black border-emerald-500' : 'bg-transparent text-slate-400 border-slate-600'}`}
                   >
@@ -3694,6 +3771,13 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
                     className="px-1.5 py-0.5 rounded text-[7px] font-black uppercase text-emerald-300 border border-emerald-500/60 hover:bg-emerald-500/10 cursor-pointer"
                     title={`Aktuelle Woche (${KW_LABELS[currentWeekIdx]})`}
                   >Heute</button>
+                  <button
+                    onClick={anchorBlockToNextMatch}
+                    title={nextMatch ? `Block ausrichten: letzte Woche endet beim ${formatMatchLabel(nextMatch)} am ${toNoonDate(nextMatch).toLocaleDateString('de-DE')}` : 'Kein kommendes Pflichtspiel im Kalender'}
+                    className={`px-2 py-0.5 rounded text-[7px] font-black uppercase border cursor-pointer ${nextMatch ? 'bg-[#F59E0B] text-black border-[#F59E0B] hover:bg-[#FBBF24]' : 'bg-transparent text-slate-600 border-slate-700 cursor-not-allowed'}`}
+                  >
+                    {nextMatch ? `🎯 ${formatMatchLabel(nextMatch)}` : 'Kein Spiel im Kalender'}
+                  </button>
                   <button
                     onClick={syncFullBlock}
                     className="px-2 py-0.5 rounded text-[7px] font-black uppercase border bg-sky-600 text-white border-sky-400 hover:bg-sky-500 cursor-pointer"
@@ -3823,46 +3907,52 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
                 const theme = BLOCK_THEMES[wIdx] || BLOCK_THEMES[BLOCK_THEMES.length - 1];
                 const wkBase = new Date(KW_START_DATES[(blockStartWeek + wIdx) % KW_START_DATES.length] || KW_START_DATES[0]);
                 const wkLabel = KW_LABELS[(blockStartWeek + wIdx) % KW_LABELS.length] || '';
+                const weekRealMatches = matchesWithinWeek(KW_START_DATES[(blockStartWeek + wIdx) % KW_START_DATES.length] || KW_START_DATES[0], allMatchesSorted);
                 return (
                   <div key={wIdx} className="rounded-md border border-slate-200 overflow-hidden">
                     <div className="px-2 py-1 bg-[#0F172A] flex items-center justify-between" style={{ borderLeft: `3px solid ${theme.farbe}` }}>
                       <span className="text-[8px] font-black uppercase" style={{ color: theme.farbe }}>
                         Woche {wIdx + 1} · {wkLabel}
                       </span>
-                      <span className="text-[7px] font-black uppercase text-slate-400">Trainingswoche</span>
+                      {weekRealMatches.length > 0 ? (
+                        <span className="text-[7px] font-black uppercase text-[#F59E0B]">🎯 SPIELWOCHE · {formatMatchLabel(weekRealMatches[0])}</span>
+                      ) : (
+                        <span className="text-[7px] font-black uppercase text-slate-400">Trainingswoche</span>
+                      )}
                     </div>
                     <div className="px-2 py-1.5 flex flex-wrap gap-1.5">
                       {plan.tage.map((tag, dayIndex) => {
                         const stufe = BELASTUNGS_STUFEN[tag.stufe];
+                        const cellFarbe = tag.stufe === 0 ? '#64748b' : (stufe?.farbe || '#94a3b8');
                         const d = new Date(wkBase);
                         d.setDate(wkBase.getDate() + dayIndex);
                         const dateStr = d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
                         return (
-                          <div key={dayIndex} className="flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 pl-1.5 pr-1 py-1" style={{ borderLeft: `3px solid ${tag.stufe === 0 ? '#64748b' : stufe?.farbe || '#94a3b8'}` }}>
+                          <div key={dayIndex} className="flex items-center gap-1 rounded-md border border-slate-200 pl-1.5 pr-1 py-1" style={{ borderLeft: `3px solid ${cellFarbe}`, backgroundColor: tag.stufe === 0 ? '#e2e8f0' : `${cellFarbe}1A` }}>
                             <div className="flex flex-col leading-none">
-                              <span className="text-[8px] font-black uppercase text-slate-600">{tag.weekday} · {dateStr}</span>
+                              <span className="text-[8px] font-black uppercase text-slate-700">{tag.weekday} · {dateStr}</span>
                               <input
                                 value={tag.schwerpunkt}
                                 onChange={(e) => changeBlockDayFocus(wIdx, dayIndex, e.target.value)}
-                                className="text-[8px] text-slate-700 bg-white border border-slate-300 rounded px-0.5 py-0.5 w-[110px] focus:outline-none focus:border-sky-400"
+                                className="text-[8px] text-slate-800 bg-white border border-slate-300 rounded px-0.5 py-0.5 w-[140px] focus:outline-none focus:border-sky-400"
                                 title="Schwerpunkt bearbeiten"
                               />
                             </div>
                             {tag.stufe === 0 ? (
-                              <span className="text-[8px] font-black uppercase px-1 py-0.5 rounded bg-slate-400 text-white">Spiel</span>
+                              <span className="text-[8px] font-black uppercase px-1 py-0.5 rounded" style={{ backgroundColor: '#475569', color: '#fff' }}>Spiel</span>
                             ) : (
                               <select
                                 value={tag.stufe}
                                 onChange={(e) => changeBlockDayStufe(wIdx, dayIndex, Number(e.target.value))}
                                 className="text-[8px] font-black border border-slate-300 rounded bg-white px-0.5 py-0.5 cursor-pointer"
-                                title="Belastungsstufe wählen (Intensität passt sich automatisch an)"
+                                title="Belastungsstufe wählen (Farbe & Intensität passen sich automatisch an)"
                               >
                                 {[1,2,3,4,5,6,7,8,9].map((s) => (
                                   <option key={s} value={s}>{s} · {BELASTUNGS_STUFEN[s].label}</option>
                                 ))}
                               </select>
                             )}
-                            <span className="text-[8px] font-black uppercase px-1 py-0.5 rounded" style={{ backgroundColor: stufe?.farbe || '#64748b', color: tag.stufe >= 7 ? '#fff' : '#111' }}>
+                            <span className="text-[8px] font-black uppercase px-1 py-0.5 rounded" style={{ backgroundColor: tag.stufe === 0 ? '#475569' : (cellFarbe || '#64748b'), color: tag.stufe >= 6 || tag.stufe === 0 ? '#fff' : '#111' }}>
                               {tag.stufe === 0 ? 'Spiel' : stufe?.intensity || ''}
                             </span>
                             <span className="text-[8px] font-bold text-slate-400">{tag.dauer}</span>
@@ -3913,23 +4003,23 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                 dateBase.setDate(dateBase.getDate() + i);
                 const dateStr = dateBase.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
                 return (
-                  <div key={i} className="flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 pl-1.5 pr-1 py-1" style={{ borderLeft: `3px solid ${tag.stufe === 0 ? '#64748b' : stufe?.farbe || '#94a3b8'}` }}>
+                  <div key={i} className="flex items-center gap-1 rounded-md border border-slate-200 pl-1.5 pr-1 py-1" style={{ borderLeft: `3px solid ${tag.stufe === 0 ? '#64748b' : stufe?.farbe || '#94a3b8'}`, backgroundColor: tag.stufe === 0 ? '#e2e8f0' : `${tag.stufe === 0 ? '#64748b' : stufe?.farbe || '#94a3b8'}1A` }}>
                     <div className="flex flex-col leading-none">
-                      <span className="text-[8px] font-black uppercase text-slate-600">{tag.weekday} · {dateStr}</span>
-                      <span className="text-[8px] text-slate-500 truncate max-w-[90px]">{tag.schwerpunkt}</span>
+                      <span className="text-[8px] font-black uppercase text-slate-700">{tag.weekday} · {dateStr}</span>
+                      <span className="text-[8px] text-slate-600 truncate max-w-[90px]">{tag.schwerpunkt}</span>
                     </div>
                     <select
                       value={tag.stufe}
                       onClick={(e) => e.stopPropagation()}
                       onChange={(e) => changeWeekDayStufe(i, Number(e.target.value))}
                       className="text-[8px] font-black border border-slate-300 rounded bg-white px-0.5 py-0.5 cursor-pointer"
-                      title="Belastungsstufe wählen (Intensität passt sich automatisch an)"
+                      title="Belastungsstufe wählen (Farbe & Intensität passen sich automatisch an)"
                     >
                       {[0,1,2,3,4,5,6,7,8,9].map((s) => (
                         <option key={s} value={s}>{s === 0 ? '0 · Spieltag' : `${s} · ${BELASTUNGS_STUFEN[s].label}`}</option>
                       ))}
                     </select>
-                    <span className="text-[8px] font-black uppercase px-1 py-0.5 rounded" style={{ backgroundColor: stufe?.farbe || '#64748b', color: tag.stufe >= 7 ? '#fff' : '#111' }}>
+                    <span className="text-[8px] font-black uppercase px-1 py-0.5 rounded" style={{ backgroundColor: tag.stufe === 0 ? '#475569' : (stufe?.farbe || '#64748b'), color: tag.stufe >= 6 || tag.stufe === 0 ? '#fff' : '#111' }}>
                       {tag.stufe === 0 ? 'Spiel' : stufe?.intensity || ''}
                     </span>
                     <button onClick={() => applyPlanToCurrentSession(tag, i)} className="text-[8px] font-black uppercase text-sky-700 hover:text-sky-500 cursor-pointer" title="In aktuelle Einheit übernehmen">✓</button>

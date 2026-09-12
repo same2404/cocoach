@@ -8096,15 +8096,15 @@ Regeln:
           {/* SLIDE STEPPER / TABS BAR (9 SLIDES) */}
           <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-1.5">
             {[
-              { id: 0, label: '1. Titel', icon: '⚽' },
-              { id: 1, label: '2. Aufstellung', icon: '👕' },
-              { id: 2, label: '3. Defensiv', icon: '🛡️' },
-              { id: 3, label: '4. Mit Ball', icon: '⚡' },
-              { id: 4, label: '5. Rotation', icon: '🔁' },
-              { id: 5, label: '6. Dreiecks-Rot.', icon: '🔺' },
-              { id: 6, label: '7. Gegen Ball', icon: '🗑️' },
-              { id: 7, label: '8. 1:1 Taktik', icon: '📐' },
-              { id: 8, label: '9. Gegner Top 3', icon: '⭐' },
+              { id: 0, label: 'Titel', icon: '⚽' },
+              { id: 1, label: 'Aufstellung', icon: '👕' },
+              { id: 2, label: 'Defensiv', icon: '🛡️' },
+              { id: 3, label: 'Mit Ball', icon: '⚡' },
+              { id: 4, label: 'Rotation', icon: '🔁' },
+              { id: 5, label: 'Dreiecks-Rot.', icon: '🔺' },
+              { id: 6, label: 'Gegen Ball', icon: '🗑️' },
+              { id: 7, label: '1:1 Taktik', icon: '📐' },
+              { id: 8, label: 'Gegner Top 3', icon: '⭐' },
             ].map((slide) => (
               <button
                 key={slide.id}
@@ -8232,17 +8232,45 @@ Regeln:
                           </button>
                           </div>
                         </div>
-                        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4">
-                          <TacticScenarioView
-                            scenario={ALL_SCENARIOS.find((s) => s.id === 'sys-433')!}
-                            className="w-full max-h-[480px] aspect-square mx-auto"
-                            editable
-                            draftZones={scenarioEdits['sys-433']?.zones}
-                            draftPlayers={scPlayersFor('sys-433')}
-                            onDraftChange={(z, p) => setEditsForScenario('sys-433', z, p)}
-                          />
-                          <p className="text-[11px] text-slate-400 text-center mt-2 font-semibold">4-3-3 · Startelf · frei bearbeitbar (Zonen & Spieler ziehen)</p>
+                        <div className="bg-emerald-950/60 border border-emerald-800/40 rounded-2xl p-3 relative min-h-[400px] overflow-hidden h-full">
+                          {/* PITCH MARKINGS */}
+                          <div className="absolute inset-3 border-2 border-emerald-400/25 rounded-lg pointer-events-none">
+                            <div className="absolute left-0 right-0 top-1/2 h-0.5 bg-emerald-400/25" />
+                            <div className="absolute top-1/2 left-1/2 w-28 h-28 rounded-full border-2 border-emerald-400/25 -translate-x-1/2 -translate-y-1/2" />
+                            <div className="absolute top-0 left-1/4 right-1/4 h-20 border-b-2 border-l-2 border-r-2 border-emerald-400/25" />
+                            <div className="absolute bottom-0 left-1/4 right-1/4 h-20 border-t-2 border-l-2 border-r-2 border-emerald-400/25" />
+                            <div className="absolute top-0 left-1/3 right-1/3 h-7 border-b-2 border-l-2 border-r-2 border-emerald-400/25" />
+                            <div className="absolute bottom-0 left-1/3 right-1/3 h-7 border-t-2 border-l-2 border-r-2 border-emerald-400/25" />
+                          </div>
+                          {/* STARTELF LETZTE SPIELE: ECHTE SPIELER MIT FOTO */}
+                          {presentationLineup.map((n: any) => (
+                            <div
+                              key={`aufs_${n.id}`}
+                              style={{ left: `${n.xPercent}%`, top: `${n.yPercent}%` }}
+                              className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center z-10"
+                              title={`${n.name} (${n.position})`}
+                            >
+                              <div className="relative">
+                                {n.image ? (
+                                  <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-emerald-400 shadow-xl bg-slate-900">
+                                    <img src={n.image} alt={n.name} className="w-full h-full object-cover" />
+                                  </div>
+                                ) : (
+                                  <span className="w-10 h-10 rounded-full bg-emerald-500 text-slate-950 font-black text-[13px] flex items-center justify-center shadow-xl border-2 border-white">
+                                    {n.number}
+                                  </span>
+                                )}
+                                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-slate-950 border border-emerald-400 text-[7px] font-black text-emerald-300 flex items-center justify-center shadow">
+                                  {n.number}
+                                </span>
+                              </div>
+                              <span className="text-[8px] font-black uppercase text-white bg-slate-950/90 px-1.5 rounded mt-1 whitespace-nowrap shadow border border-emerald-500/40">
+                                {String(n.name || '—').split(' ').pop()}
+                              </span>
+                            </div>
+                          ))}
                         </div>
+                        <p className="text-[11px] text-slate-400 text-center mt-2 font-semibold">Startelf · letzte Spiele · echte Spieler mit Foto statt Nummer</p>
                       </div>
                       <div className="lg:w-[45%] space-y-4 overflow-y-auto max-h-[520px]">
                         <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4">
@@ -8840,16 +8868,16 @@ Regeln:
                       KAPITEL {presentationSlideIndex + 1}
                     </span>
                     <h1 className="text-3xl sm:text-5xl font-black text-white uppercase tracking-tight">
-                      {[
-                        '1. Titel & Match',
-                        '2. Aufstellung 4-3-3',
-                        '3. Defensive Grundordnung',
-                        '4. Eigener Matchplan mit dem Ball',
-                        '5. Rotation Spielaufbau',
-                        '6. Dreiecks-Rotation',
-                        '7. Eigener Matchplan gegen den Ball',
-                        '8. 1:1 Taktik',
-                        '9. Gegner Top 3'
+{[ 
+                        'Titel & Match',
+                        'Aufstellung 4-3-3',
+                        'Defensive Grundordnung',
+                        'Eigener Matchplan mit dem Ball',
+                        'Rotation Spielaufbau',
+                        'Dreiecks-Rotation',
+                        'Eigener Matchplan gegen den Ball',
+                        '1:1 Taktik',
+                        'Gegner Top 3'
                       ][presentationSlideIndex]}
                     </h1>
                   </div>
