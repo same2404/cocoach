@@ -851,10 +851,12 @@ const App: React.FC = () => {
   const playersWithMinutes = useMemo(() => {
     return players.map(player => {
       const compRecord = competitiveMinutes.find((r: any) => r.playerId === player.id);
-      const compTotal = (compRecord?.minutes ? Object.values(compRecord.minutes).reduce((acc: number, curr: any) => acc + (Number(curr) || 0), 0) : 0) as number;
+      const compMerged = { ...(compRecord?.matchMinutes || {}), ...(compRecord?.minutes || {}) };
+      const compTotal = (compRecord ? Object.values(compMerged).reduce((acc: number, curr: any) => acc + (Number(curr) || 0), 0) : 0) as number;
       
       const testRecord = testMinutes.find((r: any) => r.playerId === player.id);
-      const testTotal = (testRecord?.minutes ? Object.values(testRecord.minutes).reduce((acc: number, curr: any) => acc + (Number(curr) || 0), 0) : 0) as number;
+      const testMerged = { ...(testRecord?.matchMinutes || {}), ...(testRecord?.minutes || {}) };
+      const testTotal = (testRecord ? Object.values(testMerged).reduce((acc: number, curr: any) => acc + (Number(curr) || 0), 0) : 0) as number;
 
       return {
         ...player,

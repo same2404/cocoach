@@ -340,7 +340,10 @@ export const MatchPlanningView: React.FC<MatchPlanningViewProps> = ({
     };
 
     const currentDetails = record.details || {};
-    const currentMinutes = record.minutes || {};
+
+    // Legacy-Daten (matchMinutes) mit einschließen, damit alte Einsatzzeiten
+    // beim Speichern nicht verloren gehen und korrekt mitgezählt werden.
+    const currentMinutes = { ...(record.matchMinutes || {}), ...(record.minutes || {}) };
     
     const matchDetails = currentDetails[selectedMatchId] || { start: '', end: '', notes: '' };
     const updatedDetails = { ...matchDetails, [field]: value };
@@ -369,8 +372,11 @@ export const MatchPlanningView: React.FC<MatchPlanningViewProps> = ({
 
   const calculateTotalMinutes = (playerId: string) => {
     const record = matchMinutes.find(r => r.playerId === playerId);
-    if (!record || !record.minutes) return 0;
-    return Object.values(record.minutes).reduce((acc, curr) => acc + (Number(curr) || 0), 0);
+    if (!record) return 0;
+
+    // Legacy-Daten (matchMinutes) und neue Daten (minutes) zusammen zählen
+    const allMinutes = { ...(record.matchMinutes || {}), ...(record.minutes || {}) };
+    return Object.values(allMinutes).reduce((acc, curr) => acc + (Number(curr) || 0), 0);
   };
 
   const handleResetPlayerMinutes = async (playerId: string) => {
@@ -1046,7 +1052,7 @@ export const MatchPlanningView: React.FC<MatchPlanningViewProps> = ({
                           {players.filter(isPlayer).map(player => {
                             const record = matchMinutes.find(r => r.playerId === player.id);
                             const details = record?.details?.[selectedMatchId] || { start: '', end: '', notes: '' };
-                            const minutes = record?.minutes?.[selectedMatchId] || 0;
+                            const minutes = record?.minutes?.[selectedMatchId] || record?.matchMinutes?.[selectedMatchId] || 0;
                             const totalMinutes = calculateTotalMinutes(player.id);
 
                             return (
