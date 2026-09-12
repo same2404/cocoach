@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Player, Match, MatchMinuteRecord, Opponent } from '../../types';
 import { isPlayer } from '../../utils/playerSorting';
+import { apiFetch } from '../../lib/apiClient';
 import { 
   Calendar, 
   MapPin, 
@@ -22,7 +23,10 @@ import {
   Sparkles,
   CheckCircle2,
   ChevronRight,
-  Shield
+  Shield,
+  Globe,
+  Loader2,
+  AlertTriangle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -75,6 +79,13 @@ export const MatchPlanningView: React.FC<MatchPlanningViewProps> = ({
   const [viewMode, setViewMode] = useState<'list' | 'detail' | 'table'>(title.includes('Test') ? 'table' : 'list');
   const [showOpponentModal, setShowOpponentModal] = useState(false);
   const [confirmWipe, setConfirmWipe] = useState(false);
+
+  // fussball.de-Import
+  const [showImport, setShowImport] = useState(false);
+  const [importUrl, setImportUrl] = useState('');
+  const [importLoading, setImportLoading] = useState(false);
+  const [importMsg, setImportMsg] = useState<string | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
 
   // Helper component for local state inputs to prevent focus jumping
   const EditableField = ({ 
@@ -303,9 +314,100 @@ export const MatchPlanningView: React.FC<MatchPlanningViewProps> = ({
     setSelectedMatchId(newMatch.id);
   };
 
+  const handleImportFussballDe = async () => {
+    const url = importUrl.trim();
+    if (!url) return;
+    setImportLoading(true);
+    setImportError(null);
+    setImportMsg(null);
+    try {
+      const res = await apiFetch('/api/fussball-de/match', {
+        method: 'POST',
+        body: JSON.stringify({ url }),
+      });
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => null);
+        throw new Error(errBody?.error || `HTTP ${res.status}`);
+      }
+      const result = await res.json();
+      const d = result.data;
+      if (!d || !d.opponent && !d.awayTeam && !d.homeTeam) {
+        throw new Error('Keine verwertbaren Spieldaten erhalten.');
+      }
+
+      const opponentName = d.opponent
+        || (d.isFCAHome ? d.awayTeam : d.homeTeam)
+        || 'Unbekannter Gegner';
+      const existing = matches.find(m =>
+        m.opponent && m.opponent.toLowerCase() === opponentName.toLowerCase()
+        && m.date && d.date && String(m.date).slice(0, 10) === String(d.date).slice(0, 10)
+      );
+
+      const resultString = d.isFCAHome
+        ? `${d.homeGoals ?? 0}:${d.awayGoals ?? 0}`
+        : `${d.awayGoals ?? 0}:${d.homeGoals ?? 0}`;
+      const ownGoals = Array.isArray(d.goals)
+        ? d.goals.filter((g: any) => g.team === 'own')
+        : [];
+      const oppGoals = Array.isArray(d.goals)
+        ? d.goals.filter((g: any) => g.team === 'opponent')
+        : [];
+      const ownCards = Array.isArray(d.cards)
+        ? d.cards.filter((c: any) => c.team === 'own')
+        : [];
+
+      const scorersText = ownGoals
+        .map((g: any) => `${g.minute}. Minute – ${g.scorer}`)
+        .join('\n');
+      const cardsText = ownCards
+        .map((c: any) => `${c.minute}. Minute – ${c.type} ${c.player}`)
+        .join('\n');
+      const notesParts: string[] = [];
+      if (d.competition) notesParts.push(`Wettbewerb: ${d.competition}`);
+      if (Array.isArray(d.starters) && d.starters.length) {
+        notesParts.push(`Startelf FCA: ${d.starters.filter((s: any) => s.team === 'own').map((s: any) => s.name).join(', ')}`);
+      }
+      if (oppGoals.length) {
+        notesParts.push(`Gegentore: ${oppGoals.map((g: any) => `${g.minute}.' ${g.scorer}`).join(', ')}`);
+      }
+      if (Array.isArray(d.cards) && d.cards.length && d.cards.length > ownCards.length) {
+        const opp = d.cards.filter((c: any) => c.team !== 'own');
+        if (opp.length) notesParts.push(`Gegner-Karten: ${opp.map((c: any) => `${c.minute}.' ${c.type} ${c.player}`).join(', ')}`);
+      }
+      if (d.notes) notesParts.push(d.notes);
+
+      const match: Match = {
+        id: existing?.id || `fussball_${result.spielId || Date.now()}`,
+        index: existing?.index ?? (matches.length > 0 ? Math.max(...matches.map(m => Number(m.index) || 0)) + 1 : 1),
+        opponent: opponentName,
+        location: d.venue || (d.isFCAHome ? 'Auggen' : 'Auswärts'),
+        isHome: !!d.isFCAHome,
+        kickOff: d.time || '',
+        meetingTime: existing?.meetingTime || '',
+        date: d.date || existing?.date || new Date().toISOString().split('T')[0],
+        competition: existing?.competition || d.competition || '',
+        result: existing?.result || resultString,
+        scorers: scorersText || existing?.scorers || undefined,
+        cards: cardsText || existing?.cards || undefined,
+        notes: notesParts.length ? notesParts.join('\n') : existing?.notes || '',
+        startingLineup: existing?.startingLineup || (Array.isArray(d.starters) ? d.starters.filter((s: any) => s.team === 'own').map((s: any) => s.name) : undefined),
+      };
+
+      await onSaveMatch(match);
+      setSelectedMatchId(match.id);
+      setImportMsg(`${existing ? 'Aktualisiert' : 'Importiert'}: ${opponentName} ${match.date} – ${resultString} (${d.isFCAHome ? 'Heim' : 'Auswärts'})`);
+      setImportUrl('');
+      setShowImport(false);
+    } catch (err: any) {
+      setImportError(err.message || 'Import fehlgeschlagen.');
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
   const handleDeleteMatch = async () => {
     if (!selectedMatchId) return;
-    
+
     const currentIdx = sortedMatches.findIndex(m => m.id === selectedMatchId);
     await onDeleteMatch(selectedMatchId);
     
@@ -455,6 +557,58 @@ export const MatchPlanningView: React.FC<MatchPlanningViewProps> = ({
             <Plus size={14} className="stroke-[3]" />
             <span>Neues Spiel</span>
           </button>
+
+          <button 
+            onClick={() => { setShowImport(v => !v); setImportError(null); setImportMsg(null); }}
+            className="bg-[#1A1A1A] hover:bg-[#2A2A2A] text-white px-4 py-2 font-black uppercase text-xs rounded-xl transition-all flex items-center gap-1.5 shadow-xs border border-[#1A1A1A] cursor-pointer"
+          >
+            <Globe size={14} className="stroke-[3]" />
+            <span>fussball.de-Import</span>
+          </button>
+
+          {showImport && (
+            <div className="w-full lg:w-[420px] bg-white border border-[#DADADA] rounded-2xl p-4 shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-black uppercase tracking-wider text-[#4C6FFF] flex items-center gap-1.5">
+                  <Globe size={14} className="stroke-[3]" /> Spiel per fussball.de-Link importieren
+                </span>
+                <button onClick={() => setShowImport(false)} className="text-[#4A4A4A] hover:text-[#1A1A1A] cursor-pointer">
+                  <X size={16} />
+                </button>
+              </div>
+              <p className="text-[10px] text-[#4A4A4A] mb-2">
+                Link zur Spielseite einfügen (Beispiel: fussball.de/spiel/.../spiel/spiel000000ABCD). Ergebnis, Tore, Karten und Startelf werden automatisch übernommen – bestehendes Spiel wird aktualisiert.
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={importUrl}
+                  onChange={(e) => setImportUrl(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') void handleImportFussballDe(); }}
+                  placeholder="https://www.fussball.de/spiel/..."
+                  className="flex-1 border-2 border-[#DADADA] focus:border-[#4C6FFF] rounded-lg px-3 py-2 text-xs font-bold outline-none"
+                />
+                <button
+                  onClick={() => void handleImportFussballDe()}
+                  disabled={importLoading || !importUrl.trim()}
+                  className="bg-[#4C6FFF] hover:bg-[#3B5BDB] disabled:opacity-50 text-white px-4 py-2 font-black uppercase text-xs rounded-lg flex items-center gap-1.5 cursor-pointer disabled:cursor-not-allowed"
+                >
+                  {importLoading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                  <span>{importLoading ? 'Importiert...' : 'Importieren'}</span>
+                </button>
+              </div>
+              {importMsg && (
+                <div className="mt-2 flex items-center gap-1.5 text-[11px] font-bold text-[#15803D] bg-[#DCFCE7] border border-[#4ADE80]/40 rounded-lg px-2.5 py-1.5">
+                  <CheckCircle2 size={13} className="stroke-[3]" /> {importMsg}
+                </div>
+              )}
+              {importError && (
+                <div className="mt-2 flex items-center gap-1.5 text-[11px] font-bold text-[#B91C1C] bg-[#FEE2E2] border border-[#FCA5A5]/40 rounded-lg px-2.5 py-1.5">
+                  <AlertTriangle size={13} className="stroke-[3]" /> {importError}
+                </div>
+              )}
+            </div>
+          )}
 
           <button 
             onClick={() => setShowOpponentModal(true)}

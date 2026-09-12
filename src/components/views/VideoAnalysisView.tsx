@@ -1713,6 +1713,25 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
   const [trainingPlanLoading, setTrainingPlanLoading] = useState<boolean>(false);
   const [trainingPlan, setTrainingPlan] = useState<any>(null);
   const [showTrainingPlan, setShowTrainingPlan] = useState<boolean>(false);
+  // Vom Trainer vorgegebene Szenen-Kategorien (bestimmen, wonach die KI schneidet)
+  const [sceneCategorySelection, setSceneCategorySelection] = useState<VideoCategory[]>(() => {
+    try {
+      const stored = localStorage.getItem('fca_scene_categories');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed.filter((c: any) => (VIDEO_CATEGORIES as readonly string[]).includes(c));
+      }
+    } catch { /* ignore */ }
+    return [...VIDEO_CATEGORIES];
+  });
+  // Kategorie-Umschalter: persistiert die Trainer-Auswahl dauerhaft
+  const toggleSceneCategory = (cat: VideoCategory) => {
+    setSceneCategorySelection(prev => {
+      const next = prev.includes(cat) ? prev.filter(x => x !== cat) : [...prev, cat];
+      localStorage.setItem('fca_scene_categories', JSON.stringify(next));
+      return next;
+    });
+  };
 
   // Hudl Sportscode / Coach Paint interaktive Overlays
   const [activePaintTools, setActivePaintTools] = useState<string[]>(['Passweg', 'Laufweg', 'Sprint-Pfeil']);
@@ -1770,11 +1789,11 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
 
   // Veo-ähnliche Auto-Analyse: gleichmäßig über das ganze Video verteilte Frames
   // mit sichtbarer Zeit-Einblendung, damit die KI Zeiten bestimmen kann.
-  const extractTimedFrames = async (videoEl: HTMLVideoElement, frameCount: number = 24): Promise<string[]> => {
+  const extractTimedFrames = async (videoEl: HTMLVideoElement, frameCount: number = 18): Promise<string[]> => {
     const frames: string[] = [];
     const canvas = document.createElement('canvas');
-    canvas.width = 848;
-    canvas.height = 477;
+    canvas.width = 640;
+    canvas.height = 360;
     const ctx = canvas.getContext('2d');
     if (!ctx) return frames;
 
@@ -1815,7 +1834,7 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
       const timeLabel = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
       ctx.fillText(timeLabel, 14, canvas.height - 28);
 
-      frames.push(canvas.toDataURL('image/jpeg', 0.55));
+      frames.push(canvas.toDataURL('image/jpeg', 0.5));
     }
 
     videoEl.currentTime = originalTime;
@@ -1848,6 +1867,7 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
           squadPlayers,
           sampleFrames: frames,
           clubName,
+          sceneCategories: sceneCategorySelection,
         }),
       });
 
@@ -1951,7 +1971,7 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
         throw new Error('Bitte zuerst ein eigenes Video laden (Veo-Link nicht unterstützt).');
       }
 
-      const frames = await extractTimedFrames(videoEl, 24);
+      const frames = await extractTimedFrames(videoEl, 18);
 
       const res = await apiFetch('/api/video-analysis/process', {
         method: 'POST',
@@ -1961,6 +1981,7 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
           squadPlayers,
           sampleFrames: frames,
           clubName,
+          sceneCategories: sceneCategorySelection,
         }),
       });
 
@@ -3335,8 +3356,38 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
           <p className="text-xs text-[#94A3B8] mb-4">
             {isVeoLink
               ? 'Veo-Video erkannt. Die KI analysiert basierend auf Kader und Spielkontext (Frames werden beim Veo-Embed nicht extrahiert).'
-              : 'Die KI analysiert 5 Frames oder tastet das ganze Spiel automatisch ab (wie Veo) und erkennt Spielszenen, Spieler-Positionen, Taktik und Schwachstellen.'}
+              : 'Die KI analysiert Frames oder tastet das ganze Spiel automatisch ab (wie Veo) und erkennt Spielszenen, Spieler-Positionen, Taktik und Schwachstellen.'}
           </p>
+
+          {/* Trainer-Kategorien-Auswahl: bestimmt, wonach die KI schneidet */}
+          <div className="mb-4">
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="text-[8px] font-black uppercase tracking-widest text-[#F59E0B]">Szenen-Kategorien (vom Trainer vorgegeben)</span>
+              <span className="text-[8px] text-[#64748B] ml-auto">{sceneCategorySelection.length} von {VIDEO_CATEGORIES.length} aktiv</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {(VIDEO_CATEGORIES as readonly VideoCategory[]).map(cat => {
+                const active = sceneCategorySelection.includes(cat);
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => toggleSceneCategory(cat)}
+                    title={active ? 'Kategorie abwählen' : 'Kategorie hinzufügen'}
+                    className={`px-2.5 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-wider border transition-all cursor-pointer ${
+                      active
+                        ? 'bg-[#F59E0B]/25 border-[#F59E0B] text-[#FBBF24]'
+                        : 'bg-[#111827] border-[#334155] text-[#64748B] hover:text-[#94A3B8] hover:border-[#F59E0B]/40'
+                    }`}
+                  >
+                    {active ? '✓ ' : ''}{cat}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[8px] text-[#64748B] mt-1.5">
+              Die KI erkennt danach <strong className="text-[#94A3B8]">nur diese Szenen</strong> – alles andere wird beim Schneiden übersprungen.
+            </p>
+          </div>
           <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={handleStartAIAnalysis}

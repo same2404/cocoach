@@ -976,10 +976,36 @@ Erstelle bitte den Wochenbericht gemäß den Vorgaben.
   // API Route for AI Video Analysis (Version 1: Core Tracking & Timeline Generation)
   app.post("/api/video-analysis/process", async (req, res) => {
     try {
-      const { videoTitle, videoUrl, squadPlayers, sampleFrames, clubName } = req.body;
+      const { videoTitle, videoUrl, squadPlayers, sampleFrames, clubName, sceneCategories } = req.body;
       console.log(`Processing AI Video Analysis for: "${videoTitle || 'Fußball Video'}" via Gemini...`);
 
       const teamName = clubName || 'FC Auggen';
+
+      // Vom Trainer vorgegebene Szenen-Kategorien (deutsche Labels) → erlaubte KATEGORIE-CODES
+      const TRAINER_LABEL_TO_CODES: Record<string, string[]> = {
+        'Tore': ['TORE', 'CHANCEN', 'ABSCHLUSS'],
+        'Gegentore': ['GEGENTOR', 'FEHLERANALYSE'],
+        'Spielaufbau': ['AUFBAU', 'BALLBESITZ', 'ÜBERLADUNG', 'DURCHBRUCH'],
+        'Pressing MIT Ball': ['PRESSING', 'DRUCKPHASE'],
+        'Pressing GEGEN den Ball': ['BALLGEWINN'],
+        'Standards': ['STANDARDS'],
+        'Ballverlust': ['BALLVERLUST', 'UMSCHALTMOMENTE', 'KONTER'],
+      };
+      const activeCodes = new Set<string>();
+      if (Array.isArray(sceneCategories) && sceneCategories.length > 0) {
+        sceneCategories.forEach((label: string) => {
+          const codes = TRAINER_LABEL_TO_CODES[label];
+          if (codes) codes.forEach((c) => activeCodes.add(c));
+        });
+      }
+      const clipMatchesCategories = (clip: any): boolean => {
+        if (activeCodes.size === 0) return true;
+        const candidates: string[] = [];
+        if (clip?.category) candidates.push(clip.category);
+        if (Array.isArray(clip?.categories)) candidates.push(...clip.categories);
+        if (Array.isArray(clip?.secondaryCategories)) candidates.push(...clip.secondaryCategories);
+        return candidates.some((c: string) => activeCodes.has(c));
+      };
 
       const squadStr = Array.isArray(squadPlayers)
         ? squadPlayers.map((p: any) => `- ID: ${p.id}, Name: ${p.lastName ? p.lastName + ' ' + (p.firstName || '') : p.name}, Position: ${p.position || 'Feldspieler'}, Nr: ${p.number || p.nummer || '?'}`).join('\n')
@@ -1134,11 +1160,17 @@ SPIELER-IDENTITÄT (STRENG):
 - Ein Spieler mit dem Status 'Verletzt' in der Kaderliste kann höchstens im Kader stehen, aber nicht sicher auf dem Platz sein - auch hier "unknown", nicht raten.
 
 VERHALTEN OHNE VIDEO-FRAMES:
-- Wenn KEINE Video-Frames übergeben wurden (z.B. Veo-Embed), kannst du den Spielverlauf NICHT konkret sehen. Dann:
-  - confidence.overall = "niedrig" UND lowConfidence = true.
-  - Benenne KEINE konkreten Spieler (unabhängig von der Kaderliste) als Handelnde.
-  - Erfinde KEINE konkreten Passequenzen, Laufwege oder Tor-Details. Markiere nicht belegbare Szenen als "unknown" bzw. beschreibe nur Technisches (z.B. "Es wurden keine Frames übergeben, eine gesicherte Szene ist nicht möglich") im aiCommentary.
-  - Die Erkennung dient dann nur als kontextuelle Vorschau, nicht als faktenbasierte Analyse.
+ - Wenn KEINE Video-Frames übergeben wurden (z.B. Veo-Embed), kannst du den Spielverlauf NICHT konkret sehen. Dann:
+   - confidence.overall = "niedrig" UND lowConfidence = true.
+   - Benenne KEINE konkreten Spieler (unabhängig von der Kaderliste) als Handelnde.
+   - Erfinde KEINE konkreten Passequenzen, Laufwege oder Tor-Details. Markiere nicht belegbare Szenen als "unknown" bzw. beschreibe nur Technisches (z.B. "Es wurden keine Frames übergeben, eine gesicherte Szene ist nicht möglich") im aiCommentary.
+   - Die Erkennung dient dann nur als kontextuelle Vorschau, nicht als faktenbasierte Analyse.
+
+VOM TRAINER VORGEGEBENE SZENEN-KATEGORIEN (verbindlich):
+${activeCodes.size > 0
+  ? `Der Trainer möchte AUSSCHLIESSLICH Szenen sehen, deren PRIMÄRKATEGORIE (category) ODER MEHRFACH-KATEGORIEN (categories/secondaryCategories) einen dieser KATEGORIE-CODES enthalten: ${[...activeCodes].join(', ')}.
+Erstelle NUR solche Szenen – alle Szenen, die zu KEINEM dieser Codes passen, KOMPLETT WEGLASSEN (Qualität > Quantität).`
+  : 'Keine Einschränkung: erstelle alle erkennbaren wertvollen Szenen.'}
 
 Antworte STRENG im geforderten JSON-Format.
 `;
@@ -1491,6 +1523,7 @@ resultText = response.text ?? null;
             const filtered = parsed.sceneClips
               .filter((c: any) => {
                 if (!c || typeof c !== 'object') return false;
+                if (!clipMatchesCategories(c)) return false;
                 if (!c.id && !c.title) return false;
                 const low = c.lowConfidence === true
                   || (c.confidence && c.confidence.overall === 'niedrig')
@@ -1661,6 +1694,10 @@ resultText = response.text ?? null;
           }
         ]
       };
+
+      if (Array.isArray(fallbackData.sceneClips)) {
+        fallbackData.sceneClips = fallbackData.sceneClips.filter(clipMatchesCategories);
+      }
 
       res.json(fallbackData);
     } catch (error: any) {
@@ -2210,6 +2247,100 @@ Antworte NUR mit valider JSON:
     } catch (error: any) {
       console.error("[Matchday] Fehler:", error?.message || error);
       return res.status(500).json({ error: error.message || "Spieltags-Automatik fehlgeschlagen" });
+    }
+  });
+
+  // ============================================
+  // FUSSBALL.DE-IMPORT: einzelnes Spiel per URL → Pflichtspiel-Datensatz
+  // ============================================
+
+  app.post("/api/fussball-de/match", async (req, res) => {
+    try {
+      const { url } = req.body || {};
+      const rawUrl = String(url || '').trim();
+      const matchUrl = rawUrl.replace(/#[\s\S]*$/, '').split('?')[0];
+      const idMatch = matchUrl.match(/\/spiel\/[a-z0-9\-]{0,80}\/spiel\/([A-Z0-9]+)/i) || matchUrl.match(/\/spiel\/([A-Z0-9]{24,})/i);
+      const spielId = idMatch ? idMatch[1] : null;
+      if (!matchUrl.includes('fussball.de') || !spielId) {
+        return res.status(400).json({ error: 'Bitte eine gültige fussball.de-Spiel-URL einfügen (enthält "spiel/{Spiel-ID}").' });
+      }
+
+      const pageResp = await fetch(matchUrl, { headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36", "Accept-Language": "de-DE,de;q=0.9" } });
+      if (!pageResp.ok) {
+        return res.status(502).json({ error: `fussball.de unerreichbar (HTTP ${pageResp.status})` });
+      }
+      const pageText = stripToText(await pageResp.text());
+      if (pageText.length < 400) {
+        return res.status(502).json({ error: 'fussball.de hat keine Spieldaten geliefert – Seite evtl. umgestellt. Bitte später erneut versuchen.' });
+      }
+
+      const systemInstruction = `Du bist der Spiel-Import-Assistent von CoCoach für den Verein FC Auggen (Verbandsliga Südbaden).
+Die Daten stammen von einer fussball.de-Spieldetailseite. Extrahiere daraus PUNKTGENAU den Spielbericht.
+Regeln:
+- "own" = FC Auggen, "opponent" = Gegner. Erkenne aus den Teamnamen bzw. dem Kontext, ob FC Auggen Heim- (isFCAHome=true) oder Auswärtsteam (false) ist.
+- Torschützen stehen im Spielverlauf (z.B. "37.' Yanik Roth"). Minute = Zahl, keine Nachkommazeit.
+- Karten nur aufnehmen, wenn ausdrücklich "Gelbe Karte"/"Gelb-Rote Karte"/"Rote Karte" im Text steht – sonst leeres Array (NICHT raten).
+- Datum: JJJJ-MM-TT. Zeit: HH:MM.
+- Wohnort/Stadion aus "Spielort" oder "Stadion" ableiten, sonst leer.
+- Stellen ANFANGTEXT VOR dem Spielverlauf NICHT als Ereignis-Kontext verwenden; nur echte Timeline-Events extrahieren.
+Antworte NUR mit valider JSON:
+{
+  "date": "YYYY-MM-DD",
+  "time": "HH:MM",
+  "competition": "z.B. Verbandsliga Südbaden",
+  "matchday": "Zahl oder leer",
+  "venue": "Stadion/Spielort",
+  "homeTeam": "Name Heim",
+  "awayTeam": "Name Gast",
+  "homeGoals": Zahl,
+  "awayGoals": Zahl,
+  "isFCAHome": true|false,
+  "goals": [{ "team": "own|opponent", "scorer": "Name", "minute": Zahl, "score": "x:y" }],
+  "cards": [{ "player": "Name", "team": "own|opponent", "type": "Gelb|Gelb-Rot|Rot", "minute": Zahl }],
+  "substitutions": [{ "team": "own|opponent", "in": "Name", "out": "Name", "minute": Zahl }],
+  "starters": [{ "team": "own|opponent", "name": "Nachname Vorname" }],
+  "notes": "Kurze Hinweise"
+}`;
+
+      const prompt = `Spiel-URL: ${matchUrl}\nSpiel-ID: ${spielId}\n\nSPIELSEITEN-TEXT (fussball.de):\n${pageText.substring(0, 14000)}`;
+
+      const response = await safeGenerateContent({
+        contents: [{ text: prompt }],
+        config: { systemInstruction, temperature: 0.1 },
+      });
+      const rawText = typeof response?.text === "string" ? response.text
+        : Array.isArray(response?.text) ? (response.text as readonly { text: string }[]).map(p => p.text).join("")
+        : JSON.stringify(response?.text || response || "");
+      let data: any = null;
+      try {
+        const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+        data = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+      } catch { data = null; }
+
+      // Meta-Fallback: Teams + Datum direkt aus der Seite ziehen, wenn Gemini fehlschlägt
+      if (!data || !data.homeTeam || !data.awayTeam) {
+        const titleMatch = pageText.match(/FC\s?Auggen\s*[\-–-]\s*([^–—]{2,40})\s*Ergebnis/i)
+          || pageText.match(/([A-Za-zÄÖÜäöüẞ .\-]{3,60})\s*Ergebnis/i);
+        const dm = pageText.match(/\b(\d{1,2})\.(\d{1,2})\.(\d{4})\b/);
+        const fallback = {
+          date: dm ? `${dm[3]}-${dm[2].padStart(2, '0')}-${dm[1].padStart(2, '0')}` : '',
+          homeGoals: 0,
+          awayGoals: 0,
+          isFCAHome: true,
+          notes: 'Fallback: Teams/Datum nur grob erkannt – Ergebnis nicht sicher.',
+        };
+        data = { ...(data || {}), ...fallback, homeTeam: data?.homeTeam || titleMatch?.[1] || '', awayTeam: data?.awayTeam || '' };
+      }
+
+      if (!data || (!data.homeTeam && !data.awayTeam)) {
+        return res.status(500).json({ error: "Spieldaten konnten nicht erkannt werden – bitte erneut versuchen" });
+      }
+
+      console.log(`[fussball.de] ${data.date} ${data.homeTeam} ${data.homeGoals || 0}:${data.awayGoals || 0} ${data.awayTeam} — Tore ${data.goals?.length || 0}, Karten ${data.cards?.length || 0}`);
+      return res.json({ success: true, spielId, data });
+    } catch (error: any) {
+      console.error("[fussball.de] Fehler:", error?.message || error);
+      return res.status(500).json({ error: error.message || "fussball.de-Import fehlgeschlagen" });
     }
   });
 
