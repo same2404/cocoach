@@ -34,7 +34,7 @@ const SCENES: DemoScene[] = [
 ];
 
 const FEATURES = [
-  { icon: Target, title: 'Taktiktafel', text: 'Laufwege, Ballwege, Passarten & Spielaufbau – zu 100 % manuell und frei gezeichnet. Keine KI-Vorgaben.' },
+  { icon: Target, title: 'Taktiktafel', text: 'Laufwege, Ballwege, Passarten & Spielaufbau – zu 100 % manuell und frei gezeichnet. Keine Analyse-Engine-Vorgaben.' },
   { icon: MonitorPlay, title: 'TV-Präsentation', text: 'Startelf, Bank und Spielsystem professionell präsentieren – im Broadcast-Look.' },
   { icon: Users, title: 'Kaderplanung', text: 'Spielerprofile, Rollen-Zuordnung und Einsatzplanung modern und zentral verwaltet.' },
   { icon: CalendarRange, title: 'Trainingsplanung', text: 'Kalender, Trainingsinhalte und automatische Spielerübernahme – alles an einem Ort.' },

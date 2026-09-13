@@ -43,7 +43,7 @@ export const NaomiChat: React.FC<NaomiChatProps> = ({ players = [], matchAnalyse
     const recentMatches = matchAnalyses.slice(-3).map((a: any) => `${a.date || '?'}: ${a.opponent || '?'} ${a.result || '?'}`).join('; ');
     const upcomingMatches = competitiveMatches.filter((m: any) => !m.result).slice(0, 3).map((m: any) => `${m.date || '?'}: vs. ${m.opponent || '?'} (${m.isHome ? 'Heim' : 'Auswärts'})`).join('; ');
 
-    return `Du bist Naomi, die KI-Assistentin von ${activeClub.name} (${activeClub.shortName || activeClub.name}).
+    return `Du bist Naomi, die Analyse-Engine-Assistentin von ${activeClub.name} (${activeClub.shortName || activeClub.name}).
 Du bist eine erfahrene Fußball-Analystin und Trainerin. Antworte IMMER auf Deutsch.
 Du kennst den Kader, die aktuellen Ergebnisse und die taktische Ausrichtung.
 
@@ -146,7 +146,7 @@ Regeln:
           </div>
           <div>
             <h3 className="font-black text-white text-sm uppercase tracking-wider">Naomi AI</h3>
-            <p className="text-[9px] text-violet-400">{activeClub.name} • KI-Assistentin</p>
+            <p className="text-[9px] text-violet-400">{activeClub.name} • Analyse-Engine-Assistentin</p>
           </div>
         </div>
         <button

@@ -748,7 +748,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
   const [redoStack, setRedoStack] = useState<TrainingSession[]>([]);
   const [initialSessionSnapshot, setInitialSessionSnapshot] = useState<TrainingSession | null>(null);
 
-  // KI Training Plan Generator State
+  // Analyse-Engine Training Plan Generator State
   const [kiLoading, setKiLoading] = useState(false);
   const [showKiModal, setShowKiModal] = useState(false);
   const [kiInputs, setKiInputs] = useState({
@@ -1586,17 +1586,17 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
             closingDuration: plan.schluss?.zeit || '15 Min'
           },
           importantInfo: plan.wichtigeInformationen || '',
-          remarks: `KI-generiert am ${today.toLocaleDateString('de-DE')}`
+          remarks: `automatisch generiert am ${today.toLocaleDateString('de-DE')}`
         };
         await saveSession(newSession);
         onSelectSession(newSession.id);
         setShowKiModal(false);
-        setNotification('KI-Trainingsplan erfolgreich erstellt!');
+        setNotification('Analyse-Engine-Trainingsplan erfolgreich erstellt!');
         setTimeout(() => setNotification(null), 3000);
       }
     } catch (err) {
-      console.error('KI Training Plan failed:', err);
-      setNotification('Fehler bei der KI-Generierung');
+      console.error('Analyse-Engine Training Plan failed:', err);
+      setNotification('Fehler bei der Analyse-Engine-Generierung');
       setTimeout(() => setNotification(null), 3000);
     } finally {
       setKiLoading(false);
@@ -2168,7 +2168,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
     }
   }, [localSession?.players, isEditing, lastSavedSquad, setLastSavedSquad]);
 
-  // Ähnliche vergangene Einheiten erkennen (KI-Hinweis "Du hast das mal gehabt")
+  // Ähnliche vergangene Einheiten erkennen (Analyse-Engine-Hinweis "Du hast das mal gehabt")
   const similarSessions = useMemo(() => {
     if (!localSession || sessions.length <= 1) return [];
     const currentTokens = tokenize(localSession.weeklyFocus + ' ' + localSession.sessionFocus + ' ' + sessionText(localSession));
@@ -3654,8 +3654,8 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
             <button onClick={handleAddSession} className="p-1.5 hover:bg-[#1f2937] rounded-md transition-colors flex items-center gap-1 text-[#94A3B8] hover:text-white" title="Hinzufügen">
               <Plus size={14} /><span className="text-[8px] font-bold uppercase hidden sm:inline">Hinzufügen</span>
             </button>
-            <button onClick={() => setShowKiModal(true)} className="p-1.5 hover:bg-purple-900/30 rounded-md transition-colors flex items-center gap-1 text-purple-400 hover:text-purple-300" title="KI-Trainingsplan generieren">
-              <BrainCircuit size={14} /><span className="text-[8px] font-bold uppercase hidden sm:inline">KI-Plan</span>
+            <button onClick={() => setShowKiModal(true)} className="p-1.5 hover:bg-purple-900/30 rounded-md transition-colors flex items-center gap-1 text-purple-400 hover:text-purple-300" title="Analyse-Engine-Trainingsplan generieren">
+              <BrainCircuit size={14} /><span className="text-[8px] font-bold uppercase hidden sm:inline">Analyse-Engine-Plan</span>
             </button>
             <button onClick={handleDelete} className="p-1.5 hover:bg-red-900/30 rounded-md transition-colors flex items-center gap-1 text-red-400 hover:text-red-300" title="Entfernen">
               <Trash2 size={14} /><span className="text-[8px] font-bold uppercase hidden sm:inline">Entfernen</span>
@@ -4312,7 +4312,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                 )}
               </div>
 
-              {/* KI-Hinweis: Ähnliche Einheit bereits gehabt */}
+              {/* Analyse-Engine-Hinweis: Ähnliche Einheit bereits gehabt */}
               {similarSessions.length > 0 && (
                 <div className="border-b-2 border-black bg-amber-50 px-4 py-2 print:hidden">
                   <div className="flex items-start gap-2">
@@ -5499,20 +5499,20 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
       </div>
       )}
 
-      {/* KI TRAINING PLAN MODAL */}
+      {/* Analyse-Engine TRAINING PLAN MODAL */}
       {showKiModal && (
         <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4" onClick={() => setShowKiModal(false)}>
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-black text-lg uppercase flex items-center gap-2">
                 <BrainCircuit size={20} className="text-purple-600" />
-                KI-Trainingsplan
+                Analyse-Engine-Trainingsplan
               </h3>
               <button onClick={() => setShowKiModal(false)} className="p-1 hover:bg-slate-100 rounded">
                 <X size={18} />
               </button>
             </div>
-            <p className="text-xs text-slate-500 mb-4">Fülle die Felder aus und die KI erstellt einen vollständigen Trainingsplan für {activeClub.name}.</p>
+            <p className="text-xs text-slate-500 mb-4">Fülle die Felder aus und die Analyse-Engine erstellt einen vollständigen Trainingsplan für {activeClub.name}.</p>
             <div className="grid grid-cols-2 gap-3 mb-4">
               <div>
                 <label className="text-[10px] font-bold uppercase text-slate-600">Gegner</label>
@@ -5563,7 +5563,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
               className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-50 text-white font-black uppercase tracking-wider rounded-xl py-3 flex items-center justify-center gap-2 cursor-pointer transition-all"
             >
               {kiLoading ? (
-                <><Loader2 size={16} className="animate-spin" /> KI generiert Trainingsplan...</>
+                <><Loader2 size={16} className="animate-spin" /> Die Analyse erstellt Trainingsplan...</>
               ) : (
                 <><BrainCircuit size={16} /> Trainingsplan generieren</>
               )}

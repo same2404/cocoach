@@ -43,10 +43,11 @@ Users,
    Eraser,
    MoveUpRight,
    Waypoints,
-   Footprints,
+Footprints,
    Square,
-   Crosshair
-  } from 'lucide-react';
+   Crosshair,
+   LocateFixed
+   } from 'lucide-react';
 import { useCollectionSync } from '../../hooks/useCollectionSync';
 import { Spieler, Player } from '../../types';
 import { VideoReelPlayerModal } from '../video/VideoReelPlayerModal';
@@ -286,7 +287,7 @@ export interface TacticalVideoClip {
   qualityCheck?: string[];
   subTags?: string[];
   tacticBoard?: SceneTacticBoard;
-  // ⚡ Ultra-Overlay: KI-Keyframe-Tracking (läuft mit dem Video mit)
+  // ⚡ Ultra-Overlay: Analyse-Engine-Keyframe-Tracking (läuft mit dem Video mit)
   ultraOverlay?: UltraOverlayData;
 }
 
@@ -1381,7 +1382,7 @@ const parseTimeInput = (str: string): number => {
 
 export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = [], clubName = 'FC Auggen', clubShortName = 'FCA' }) => {
   // Nur echte Feldspieler des aktuellen Kaders (kein Staff/Trainer/Ärzte/Physios)
-  // werden an die KI übergeben, damit sie nur aktuelle Spieler benannte.
+  // werden an die Analyse-Engine übergeben, damit sie nur aktuelle Spieler benannte.
   const squadPlayers = useMemo(() => players
     .filter(p => {
       const cat = String((p as any).category || 'player').toLowerCase();
@@ -1489,6 +1490,14 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
   const tagPlayerSeqRef = useRef<number>(1);
   const tagDragPlayerKeyRef = useRef<string | null>(null);
   const tagLineStartKeyRef = useRef<string | null>(null);
+  // 🔒 Spieler verfolgen (A+B): Marker folgt beim Abspielen dem Tracking (Keyframes)
+  // bzw. dem Mauszeiger – verankerte Linien/Passwege ziehen dabei mit.
+  const [tagFollowOn, setTagFollowOn] = useState<boolean>(false);
+  const [tagFollowKey, setTagFollowKey] = useState<string | null>(null);
+  const [tagFollowSource, setTagFollowSource] = useState<'auto' | 'pointer' | string>('auto');
+  const tagPointerMoveRef = useRef<{ x: number; y: number } | null>(null);
+  const [tagPointerNudge, setTagPointerNudge] = useState<number>(0);
+  const tagRenderedPosRef = useRef<Record<string, { x: number; y: number }>>({});
 
   const tagPos = (e: React.PointerEvent): { x: number; y: number } | null => {
     const el = tagContainerRef.current;
@@ -1555,6 +1564,43 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
     if (hit) return { x: hit.player.x, y: hit.player.y, playerKey: hit.player.key || `p${hit.index + 1}` };
     return { x: p.x, y: p.y };
   };
+  // Vom Ultra-Tracking aktuell verfolgte Spieler für die aktuelle Szene (0-100-Koordinaten)
+  const tagTrackedPlayers = (): Array<{ id: string; label: string; x: number; y: number }> => {
+    const oc = tagTargetClipId ? (savedClips || []).find(c => c.id === tagTargetClipId) : null;
+    const uo = oc?.ultraOverlay;
+    if (!uo || !Array.isArray(uo.keyframes) || uo.keyframes.length === 0) return [];
+    const snap = resolveUltraSnapshot(uo, Math.max(0, currentTime - (oc.startTime || 0)));
+    return (snap?.players || []).map((tp: any, i: number) => ({
+      id: String(tp.id ?? `kf_${i}`),
+      label: String(tp.label || tp.team || `Spieler ${i + 1}`),
+      x: clampPct(tp.x, 50),
+      y: clampPct(tp.y, 50),
+    }));
+  };
+  // 🔒 Aktuelle Follow-Positionen (Subject → Koordinate) für den Renderer
+  const tagFollowResolution = (): { subject: (typeof tagBoard.players)[number] | null; eff: Record<string, { x: number; y: number }> } => {
+    const empty = { subject: null as (typeof tagBoard.players)[number] | null, eff: {} as Record<string, { x: number; y: number }> };
+    if (!tagFollowOn) return empty;
+    const pls = tagBoard.players || [];
+    const subject = pls.find(pl => pl.key === tagFollowKey) || pls[pls.length - 1] || null;
+    if (!subject || !subject.key) return empty;
+    const eff: Record<string, { x: number; y: number }> = {};
+    const tracked = tagTrackedPlayers();
+    let src: { x: number; y: number } | null = null;
+    if (tagFollowSource === 'pointer') src = tagPointerMoveRef.current;
+    else if (tagFollowSource === 'auto' && tracked.length > 0) {
+      let best = tracked[0];
+      let bd = Infinity;
+      tracked.forEach(tp => { const d = Math.hypot(tp.x - subject.x, tp.y - subject.y); if (d < bd) { bd = d; best = tp; } });
+      src = { x: best.x, y: best.y };
+    } else if (tagFollowSource !== 'auto' && tracked.length > 0) {
+      const tp = tracked.find(t => t.id === tagFollowSource);
+      if (tp) src = { x: tp.x, y: tp.y };
+    }
+    if (!src && tagPointerMoveRef.current) src = tagPointerMoveRef.current;
+    if (src) eff[subject.key] = src;
+    return { subject, eff };
+  };
   const tagDown = (e: React.PointerEvent) => {
     const p = tagPos(e);
     if (!p) return;
@@ -1567,7 +1613,9 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
         const hit = tagPlayerAt(p);
         if (hit) {
           tagPush();
-          tagDragPlayerKeyRef.current = hit.player.key || `p${hit.index + 1}`;
+          const key = hit.player.key || `p${hit.index + 1}`;
+          tagDragPlayerKeyRef.current = key;
+          if (tagFollowOn) setTagFollowKey(key);
         } else {
           tagPush();
           const key = `pl${tagPlayerSeqRef.current++}`;
@@ -1576,6 +1624,7 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
             next.players!.push({ label: tagLabel, team: tagTeam, x: p.x, y: p.y, key });
             return next;
           });
+          if (tagFollowOn) setTagFollowKey(key);
         }
       } else {
         tagPush();
@@ -1605,6 +1654,14 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
       const p = tagPos(e);
       if (p) tagMovePlayer(tagDragPlayerKeyRef.current, p.x, p.y);
       return;
+    }
+    // 🔒 Follow: Mausposition für Pointer-Follow merken + Re-Render anstoßen
+    if (tagFollowOn) {
+      const p = tagPos(e);
+      if (p) {
+        tagPointerMoveRef.current = p;
+        setTagPointerNudge(n => n + 1);
+      }
     }
     if (!tagDragStart) return;
     const p = tagPos(e);
@@ -1698,6 +1755,12 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
     try { if (v && v.readyState >= 2) ctx.drawImage(v, 0, 0, W, H); else { ctx.fillStyle = '#0D1117'; ctx.fillRect(0, 0, W, H); } } catch { ctx.fillStyle = '#0D1117'; ctx.fillRect(0, 0, W, H); }
     const X = (pct: number) => (Math.max(0, Math.min(100, pct)) / 100) * W;
     const Y = (pct: number) => (Math.max(0, Math.min(100, pct)) / 100) * H;
+    // Follow-Positionen beim statischen Export berücksichtigen (Marker folgt Spielerbewegung)
+    const RPos = (key: string | undefined, x: number, y: number) => {
+      if (!key) return { x, y };
+      const rp = tagRenderedPosRef.current[key];
+      return rp ? { x: rp.x, y: rp.y } : { x, y };
+    };
     (tagBoard.zones || []).forEach(z => {
       ctx.fillStyle = z.color || '#F59E0B'; ctx.globalAlpha = 0.15;
       ctx.fillRect(X(z.x), Y(z.y), X(z.w), Y(z.h)); ctx.globalAlpha = 1;
@@ -1706,8 +1769,10 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
       if (z.label) { ctx.fillStyle = z.color || '#F59E0B'; ctx.font = 'bold 14px Arial'; ctx.fillText(z.label, X(z.x) + 5, Y(z.y) + 16); }
     });
     (tagBoard.chains || []).forEach(ch => {
+      const a = RPos(ch.fromPlayer, ch.fromX, ch.fromY);
+      const b = RPos(ch.toPlayer, ch.toX, ch.toY);
       ctx.strokeStyle = ch.color || '#22D3EE'; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.moveTo(X(ch.fromX), Y(ch.fromY)); ctx.lineTo(X(ch.toX), Y(ch.toY)); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(X(a.x), Y(a.y)); ctx.lineTo(X(b.x), Y(b.y)); ctx.stroke();
     });
     (tagBoard.ballPath || []).forEach(bp => {
       if (bp.points.length < 2) return;
@@ -1715,7 +1780,11 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
       ctx.beginPath(); bp.points.forEach((p, i) => i === 0 ? ctx.moveTo(X(p.x), Y(p.y)) : ctx.lineTo(X(p.x), Y(p.y))); ctx.stroke(); ctx.setLineDash([]);
       bp.points.forEach((p, i) => { if (i === 0) return; ctx.beginPath(); ctx.arc(X(p.x), Y(p.y), 5, 0, Math.PI * 2); ctx.fillStyle = '#F59E0B'; ctx.fill(); });
     });
-    (tagBoard.passes || []).forEach(p2 => tagArrow(ctx, X(p2.fromX), Y(p2.fromY), X(p2.toX), Y(p2.toY), p2.color || '#3B82F6'));
+    (tagBoard.passes || []).forEach(p2 => {
+      const a = RPos(p2.fromPlayer, p2.fromX, p2.fromY);
+      const b = RPos(p2.toPlayer, p2.toX, p2.toY);
+      tagArrow(ctx, X(a.x), Y(a.y), X(b.x), Y(b.y), p2.color || '#3B82F6');
+    });
     (tagBoard.runs || []).forEach(r => {
       if (r.points.length < 2) return;
       ctx.strokeStyle = r.color || '#3B82F6'; ctx.lineWidth = 2.5; ctx.setLineDash([8, 6]);
@@ -1728,7 +1797,8 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
       if (o.note) { ctx.fillStyle = '#FBBF24'; ctx.font = 'bold 15px Arial'; ctx.fillText(o.note, cx + 14, cy + 4); }
     });
     (tagBoard.players || []).forEach(pl => {
-      const cx = X(pl.x), cy = Y(pl.y);
+      const p3 = RPos(pl.key, pl.x, pl.y);
+      const cx = X(p3.x), cy = Y(p3.y);
       const isHome = pl.team === 'FC Auggen';
       ctx.beginPath(); ctx.arc(cx, cy, 12, 0, Math.PI * 2);
       ctx.fillStyle = isHome ? '#3B82F6' : '#EF4444'; ctx.fill();
@@ -1769,7 +1839,7 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
 
   // Active clip preview modal
   const [activePlaybackClip, setActivePlaybackClip] = useState<TacticalVideoClip | null>(null);
-  // ⚡ Ultra-Overlay: KI-Tracking-Overlays je Szene (laufen mit dem Video mit)
+  // ⚡ Ultra-Overlay: Analyse-Engine-Tracking-Overlays je Szene (laufen mit dem Video mit)
   const [ultraLoadingId, setUltraLoadingId] = useState<string | null>(null);
   const [ultraShowForClip, setUltraShowForClip] = useState<string | null>(null);
   const [ultraMsg, setUltraMsg] = useState<{ id: string; text: string } | null>(null);
@@ -1796,7 +1866,7 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
   const [trainingPlanLoading, setTrainingPlanLoading] = useState<boolean>(false);
   const [trainingPlan, setTrainingPlan] = useState<any>(null);
   const [showTrainingPlan, setShowTrainingPlan] = useState<boolean>(false);
-  // Vom Trainer vorgegebene Szenen-Kategorien (bestimmen, wonach die KI schneidet)
+  // Vom Trainer vorgegebene Szenen-Kategorien (bestimmen, wonach die Analyse-Engine schneidet)
   const [sceneCategorySelection, setSceneCategorySelection] = useState<VideoCategory[]>(() => {
     try {
       const stored = localStorage.getItem('fca_scene_categories');
@@ -1871,7 +1941,7 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
   };
 
   // Veo-ähnliche Auto-Analyse: gleichmäßig über das ganze Video verteilte Frames
-  // mit sichtbarer Zeit-Einblendung, damit die KI Zeiten bestimmen kann.
+  // mit sichtbarer Zeit-Einblendung, damit die Analyse-Engine Zeiten bestimmen kann.
   const extractTimedFrames = async (videoEl: HTMLVideoElement, frameCount: number = 18): Promise<string[]> => {
     const frames: string[] = [];
     const canvas = document.createElement('canvas');
@@ -1959,7 +2029,7 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
       const result = await res.json();
       applyAiResult(result);
     } catch (err: any) {
-      setAiAnalysisError(err.message || 'KI-Analyse fehlgeschlagen.');
+      setAiAnalysisError(err.message || 'Automatische Analyse fehlgeschlagen.');
     } finally {
       setAiAnalysisLoading(false);
     }
@@ -2650,7 +2720,7 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
     return frames;
   };
 
-  // ⚡ Ultra-Overlay: KI-Keyframe-Tracking für eine Szene erzeugen
+  // ⚡ Ultra-Overlay: Analyse-Engine-Keyframe-Tracking für eine Szene erzeugen
   const handleGenerateUltraOverlay = async (clip: TacticalVideoClip) => {
     const videoEl = mainVideoRef.current;
     if (!videoEl || isVeoLink || !videoSource || (clip.videoUrl && clip.videoUrl !== videoSource)) {
@@ -2665,7 +2735,7 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
     try {
       const frames = await extractClipFrames(videoEl, clip.startTime || 0, clip.endTime || (clip.startTime || 0) + (clip.duration || 6), 5);
       if (frames.length === 0) throw new Error('Keine Frames aus dem Video extrahieren können – bitte Spielvideo laden.');
-      setUltraPhase({ id: clip.id, label: `KI analysiert ${frames.length} Frames & erzeugt Keyframes…` });
+      setUltraPhase({ id: clip.id, label: `Analyse-Engine analysiert ${frames.length} Frames & erzeugt Keyframes…` });
       const res = await apiFetch('/api/video-analysis/ultra-overlay', {
         method: 'POST',
         body: JSON.stringify({
@@ -3442,22 +3512,22 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
       {/* END EXPERIMENTAL TOOLS */}
 
       {/* ═══════════════════════════════════════════════════════════════ */}
-      {/* KI VIDEO-ANALYSE: Frame-Extraktion + Gemini Vision           */}
+      {/* Analyse-Engine VIDEO-ANALYSE: Frame-Extraktion + Gemini Vision           */}
       {/* ═══════════════════════════════════════════════════════════════ */}
       {(videoSource || isVeoLink) && !aiAnalysisResult && (
         <div className="bg-gradient-to-br from-[#0A0E17] via-[#1a1040] to-[#0A0E17] border border-[#8B5CF6]/30 rounded-2xl p-5 shadow-2xl">
           <div className="flex items-center gap-2 mb-3">
             <div className="w-2 h-2 rounded-full bg-[#8B5CF6] animate-pulse" />
-            <span className="text-[9px] font-black uppercase tracking-widest text-[#A78BFA]">KI Video-Analyse Engine</span>
+            <span className="text-[9px] font-black uppercase tracking-widest text-[#A78BFA]">Analyse-Engine Video-Analyse Engine</span>
             <span className="text-[8px] text-[#64748B] ml-auto">Gemini Vision • Automatische Szenen-Erkennung</span>
           </div>
           <p className="text-xs text-[#94A3B8] mb-4">
             {isVeoLink
-              ? 'Veo-Video erkannt. Die KI analysiert basierend auf Kader und Spielkontext (Frames werden beim Veo-Embed nicht extrahiert).'
-              : 'Die KI analysiert Frames oder tastet das ganze Spiel automatisch ab (wie Veo) und erkennt Spielszenen, Spieler-Positionen, Taktik und Schwachstellen.'}
+              ? 'Veo-Video erkannt. Die Analyse-Engine analysiert basierend auf Kader und Spielkontext (Frames werden beim Veo-Embed nicht extrahiert).'
+              : 'Die Analyse-Engine analysiert Frames oder tastet das ganze Spiel automatisch ab (wie Veo) und erkennt Spielszenen, Spieler-Positionen, Taktik und Schwachstellen.'}
           </p>
 
-          {/* Trainer-Kategorien-Auswahl: bestimmt, wonach die KI schneidet */}
+          {/* Trainer-Kategorien-Auswahl: bestimmt, wonach die Analyse-Engine schneidet */}
           <div className="mb-4">
             <div className="flex items-center gap-2 mb-1.5">
               <span className="text-[8px] font-black uppercase tracking-widest text-[#F59E0B]">Szenen-Kategorien (vom Trainer vorgegeben)</span>
@@ -3483,7 +3553,7 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
               })}
             </div>
             <p className="text-[8px] text-[#64748B] mt-1.5">
-              Die KI erkennt danach <strong className="text-[#94A3B8]">nur diese Szenen</strong> – alles andere wird beim Schneiden übersprungen.
+              Die Die Analyse erkennt danach <strong className="text-[#94A3B8]">nur diese Szenen</strong> – alles andere wird beim Schneiden übersprungen.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -3495,12 +3565,12 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
               {aiAnalysisLoading ? (
                 <>
                   <Loader2 size={18} className="animate-spin" />
-                  <span>KI analysiert Video... (dauert ca. 30s)</span>
+                  <span>Analyse-Engine analysiert Video... (dauert ca. 30s)</span>
                 </>
               ) : (
                 <>
                   <Sparkles size={18} />
-                  <span>KI-Analyse starten</span>
+                  <span>Automatische Analyse starten</span>
                 </>
               )}
             </button>
@@ -3529,7 +3599,7 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
       )}
 
       {/* ═══════════════════════════════════════════════════════════════ */}
-      {/* KI ERGEBNISSE: Tracking, Szenen, Statistiken                  */}
+      {/* Analyse-Engine ERGEBNISSE: Tracking, Szenen, Statistiken                  */}
       {/* ═══════════════════════════════════════════════════════════════ */}
       {showAiResults && aiAnalysisResult && (
         <div className="space-y-4">
@@ -3538,7 +3608,7 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <CheckCircle2 size={20} className="text-[#10B981]" />
-                <span className="text-sm font-black text-white uppercase">KI-Analyse abgeschlossen</span>
+                <span className="text-sm font-black text-white uppercase">Automatische Analyse abgeschlossen</span>
               </div>
               <div className="flex gap-2">
                 <button
@@ -3908,18 +3978,31 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
                     onPointerUp={tagUp}
                     onPointerLeave={() => { setTagDragStart(null); setTagDragEnd(null); }}
                   >
+                    {(() => {
+                      const follow = tagFollowResolution();
+                      Object.assign(tagRenderedPosRef.current, follow.eff);
+                      const FPos = (key: string | undefined, x: number, y: number) => {
+                        if (!key) return { x, y };
+                        const rp = follow.eff[key];
+                        return rp ? { x: rp.x, y: rp.y } : { x, y };
+                      };
+                      return (
                     <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
                       <defs>
                         <marker id="tagArrowLive" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse">
                           <path d="M0,0 L10,5 L0,10 z" fill="#3B82F6" />
                         </marker>
                       </defs>
-                      {(tagBoard.chains || []).map((c, i) => (
+                      {(tagBoard.chains || []).map((c, i) => {
+                        const a = FPos(c.fromPlayer, c.fromX, c.fromY);
+                        const b = FPos(c.toPlayer, c.toX, c.toY);
+                        return (
                         <g key={`tc${i}`}>
-                          <line x1={c.fromX} y1={c.fromY} x2={c.toX} y2={c.toY} stroke={c.color || '#22D3EE'} strokeWidth="2.0" opacity="0.16" strokeLinecap="round" />
-                          <line x1={c.fromX} y1={c.fromY} x2={c.toX} y2={c.toY} stroke={c.color || '#22D3EE'} strokeWidth="0.9" opacity="0.95" strokeLinecap="round" />
+                          <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={c.color || '#22D3EE'} strokeWidth="2.0" opacity="0.16" strokeLinecap="round" />
+                          <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={c.color || '#22D3EE'} strokeWidth="0.9" opacity="0.95" strokeLinecap="round" />
                         </g>
-                      ))}
+                        );
+                      })}
                       {(tagBoard.ballPath || []).map((b, i) => b.points.length >= 2 ? (
                         <g key={`tb${i}`}>
                           <polyline points={b.points.map(p => `${p.x},${p.y}`).join(' ')} fill="none" stroke={b.color || '#F59E0B'} strokeWidth="1.4" opacity="0.15" strokeLinecap="round" />
@@ -3933,13 +4016,17 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
                           <polyline points={r.points.map(p => `${p.x},${p.y}`).join(' ')} fill="none" stroke={r.color || '#3B82F6'} strokeWidth="0.8" strokeDasharray="2.4 1.8" opacity="0.95" strokeLinecap="round" />
                         </g>
                       ) : null)}
-                      {(tagBoard.passes || []).map((p, i) => (
+                      {(tagBoard.passes || []).map((p, i) => {
+                        const a = FPos(p.fromPlayer, p.fromX, p.fromY);
+                        const b = FPos(p.toPlayer, p.toX, p.toY);
+                        return (
                         <g key={`tp${i}`}>
-                          <line x1={p.fromX} y1={p.fromY} x2={p.toX} y2={p.toY} stroke={p.color || '#3B82F6'} strokeWidth="1.2" opacity="0.15" strokeLinecap="round" />
-                          <line x1={p.fromX} y1={p.fromY} x2={p.toX} y2={p.toY} stroke={p.color || '#3B82F6'} strokeWidth="0.75" opacity="0.95" markerEnd="url(#tagArrowLive)" />
-                          <circle cx={p.toX} cy={p.toY} r="0.8" fill={p.color || '#3B82F6'} />
+                          <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={p.color || '#3B82F6'} strokeWidth="1.2" opacity="0.15" strokeLinecap="round" />
+                          <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={p.color || '#3B82F6'} strokeWidth="0.75" opacity="0.95" markerEnd="url(#tagArrowLive)" />
+                          <circle cx={b.x} cy={b.y} r="0.8" fill={p.color || '#3B82F6'} />
                         </g>
-                      ))}
+                        );
+                      })}
                       {(tagBoard.zones || []).map((z, i) => (
                         <g key={`tz${i}`}>
                           <rect x={z.x} y={z.y} width={z.w} height={z.h} fill={z.color || '#F59E0B'} opacity="0.14" stroke={z.color || '#F59E0B'} strokeWidth="0.5" strokeDasharray="1.8 1.4" rx="0.8" />
@@ -3952,12 +4039,17 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
                           {o.note ? <text x={Math.min(o.toX + 4, 92)} y={Math.max(o.toY - 4, 4)} fontSize="3.1" fontWeight="900" fill="#FBBF24" stroke="#000000" strokeWidth="0.4" paintOrder="stroke">{o.note || 'Optimale Position'}</text> : null}
                         </g>
                       ))}
-                      {(tagBoard.players || []).map((pl, i) => (
+                      {(tagBoard.players || []).map((pl, i) => {
+                        const fp = FPos(pl.key, pl.x, pl.y);
+                        const isFollow = follow.subject && pl.key === follow.subject.key;
+                        return (
                         <g key={`tpl${i}`}>
-                          <circle cx={pl.x} cy={pl.y} r="3.6" fill={pl.team === 'FC Auggen' ? '#3B82F6' : '#EF4444'} stroke="#FFFFFF" strokeWidth="0.9" />
-                          <text x={pl.x} y={pl.y + 1.3} fontSize="3.2" fontWeight="900" fill="#FFFFFF" stroke="#000000" strokeWidth="0.35" paintOrder="stroke" textAnchor="middle">{pl.label}</text>
+                          {isFollow ? <circle cx={fp.x} cy={fp.y} r="5.4" fill="none" stroke="#FBBF24" strokeWidth="0.55" strokeDasharray="1.3 1" opacity="0.95" /> : null}
+                          <circle cx={fp.x} cy={fp.y} r="3.6" fill={pl.team === 'FC Auggen' ? '#3B82F6' : '#EF4444'} stroke="#FFFFFF" strokeWidth="0.9" />
+                          <text x={fp.x} y={fp.y + 1.3} fontSize="3.2" fontWeight="900" fill="#FFFFFF" stroke="#000000" strokeWidth="0.35" paintOrder="stroke" textAnchor="middle">{pl.label}</text>
                         </g>
-                      ))}
+                        );
+                      })}
                       {tagDragStart && tagDragEnd && (tagTool === 'chain' || tagTool === 'pass' || tagTool === 'zone') && (
                         tagTool === 'zone'
                           ? <rect x={Math.min(tagDragStart.x, tagDragEnd.x)} y={Math.min(tagDragStart.y, tagDragEnd.y)} width={Math.abs(tagDragEnd.x - tagDragStart.x)} height={Math.abs(tagDragEnd.y - tagDragStart.y)} fill={tagColor} opacity="0.12" stroke={tagColor} strokeWidth="0.5" strokeDasharray="1.6 1" />
@@ -3967,6 +4059,8 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
                         <polyline points={tagRunPts.map(p => `${p.x},${p.y}`).join(' ')} fill="none" stroke={tagTool === 'ball' ? '#F59E0B' : tagColor} strokeWidth="1.0" strokeDasharray="2.4 1.8" opacity="0.85" />
                       )}
                     </svg>
+                      );
+                    })()}
                   </div>
 
 {/* Oben: Status + Speichern/Schließen */}
@@ -4042,6 +4136,56 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
                     >
                       {tagKeepPlaying ? <Pause size={13} /> : <Play size={13} />} <span className="hidden sm:inline">Live-Zeichnen</span>
                     </button>
+
+                    {/* 🔒 Spieler verfolgen: Marker folgt beim Abspielen der Bewegung (Tracking) bzw. dem Mauszeiger */}
+                    <button
+                      onClick={() => {
+                        const next = !tagFollowOn;
+                        setTagFollowOn(next);
+                        if (next) {
+                          const last = (tagBoard.players || [])[(tagBoard.players || []).length - 1];
+                          if (last?.key) setTagFollowKey(last.key);
+                          setTagFollowSource('auto');
+                        }
+                      }}
+                      className={`px-2 py-1 rounded-lg text-[10px] font-black flex items-center gap-1.5 border cursor-pointer transition-all ${
+                        tagFollowOn ? 'bg-amber-500/20 text-[#FBBF24] border-[#F59E0B]/60' : 'bg-black/40 text-[#94A3B8] border-white/10 hover:text-white'
+                      }`}
+                      title={tagFollowOn ? '🔒 Folgen AN: markierter Spieler folgt der Bewegung (bei vorhandenem Tracking) bzw. dem Mauszeiger' : '🔒 Folgen: markierten Spieler beim Abspielen automatisch der Bewegung folgen lassen (Linien/Passwege ziehen mit)'}
+                    >
+                      <LocateFixed size={13} /> <span className="hidden sm:inline">Folgen</span>
+                    </button>
+                    {tagFollowOn && (
+                      <div className="flex items-center gap-1 flex-wrap ml-0.5">
+                        {/* Subjects = eigene Marker */}
+                        {(tagBoard.players || []).map((pl) => (
+                          <button
+                            key={pl.key || pl.label}
+                            onClick={() => { if (pl.key) setTagFollowKey(pl.key); }}
+                            className={`px-1.5 py-0.5 rounded-md text-[9px] font-black cursor-pointer border ${tagFollowKey === pl.key ? 'bg-amber-500/25 text-[#FBBF24] border-[#F59E0B]/70' : 'bg-black/40 text-[#94A3B8] border-white/10 hover:text-white'}`}
+                            title="Dieser Marker folgt der Spielerbewegung"
+                          >
+                            {pl.label} ({pl.team === 'FC Auggen' ? 'FCA' : 'Gegner'})
+                          </button>
+                        ))}
+                        <span className="px-1 text-[9px] text-[#64748B] font-bold">Quelle:</span>
+                        <button onClick={() => setTagFollowSource('auto')} className={`px-1.5 py-0.5 rounded-md text-[9px] font-black cursor-pointer border ${tagFollowSource === 'auto' ? 'bg-[#10B981]/25 text-[#34D399] border-[#10B981]/70' : 'bg-black/40 text-[#94A3B8] border-white/10 hover:text-white'}`} title="Automatisch: dem Spieler folgen, der dem Marker am nächsten ist">Auto</button>
+                        <button onClick={() => setTagFollowSource('pointer')} className={`px-1.5 py-0.5 rounded-md text-[9px] font-black cursor-pointer border ${tagFollowSource === 'pointer' ? 'bg-[#10B981]/25 text-[#34D399] border-[#10B981]/70' : 'bg-black/40 text-[#94A3B8] border-white/10 hover:text-white'}`} title="Mauszeiger: Marker schwebt der Maus hinterher, während du der Bewegung folgst">Maus</button>
+                        {tagTrackedPlayers().map((tp) => (
+                          <button
+                            key={tp.id}
+                            onClick={() => setTagFollowSource(tp.id)}
+                            className={`px-1.5 py-0.5 rounded-md text-[9px] font-black cursor-pointer border ${tagFollowSource === tp.id ? 'bg-amber-500/25 text-[#FBBF24] border-[#F59E0B]/70' : 'bg-black/40 text-[#94A3B8] border-white/10 hover:text-white'}`}
+                            title={`Diesem verfolgten Spieler folgen (${tp.id})`}
+                          >
+                            ⚡ {tp.label}
+                          </button>
+                        ))}
+                        {!tagFollowKey && !(tagBoard.players || []).length && (
+                          <span className="text-[9px] text-[#FBBF24] font-bold">Füge zuerst einen Spieler-Marker hinzu</span>
+                        )}
+                      </div>
+                    )}
                     <div className="mx-1 h-5 w-px bg-white/15" />
 
                     {/* Kontext-Optionen */}
@@ -4079,7 +4223,7 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
                 </>
               )}
 
-              {/* ⚡ Ultra-Overlay: KI-Tracking läuft mit dem Video mit */}
+              {/* ⚡ Ultra-Overlay: Analyse-Engine-Tracking läuft mit dem Video mit */}
               {!isVeoLink && !taggerOpen && ultraShowForClip && (() => {
                 const oc = (savedClips || []).find(c => c.id === ultraShowForClip);
                 if (!oc || !oc.ultraOverlay) return null;
@@ -4600,7 +4744,7 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
                               <Target size={12} /> 🎯 Taktik direkt auf dieser Szene zeichnen
                             </button>
 
-                            {/* ⚡ Ultra-Overlay: KI-Keyframe-Tracking für diese Szene */}
+                            {/* ⚡ Ultra-Overlay: Analyse-Engine-Keyframe-Tracking für diese Szene */}
                             <button
                               type="button"
                               onClick={() => {
@@ -4616,7 +4760,7 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
                                     ? 'bg-fuchsia-950/30 text-fuchsia-400 border-fuchsia-500/40 hover:bg-fuchsia-900/40'
                                     : 'bg-[#10B981]/10 text-fuchsia-400 border-fuchsia-500/40 hover:bg-fuchsia-600 hover:text-white'
                               } ${ultraLoadingId === clip.id ? 'opacity-70 cursor-wait' : ''}`}
-                              title={clip.ultraOverlay ? 'Ultra-Overlay vorhanden – ein-/ausblenden (spielt über dem Video mit)' : '⚡ Ultra-Tracking: KI erzeugt stabil verankerte Keyframe-Overlays, die sich mit Spielern & Kamera mitbewegen'}
+                              title={clip.ultraOverlay ? 'Ultra-Overlay vorhanden – ein-/ausblenden (spielt über dem Video mit)' : '⚡ Ultra-Tracking: Analyse-Engine erzeugt stabil verankerte Keyframe-Overlays, die sich mit Spielern & Kamera mitbewegen'}
                             >
                               {ultraLoadingId === clip.id ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
                               {ultraLoadingId === clip.id
@@ -4629,7 +4773,7 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
                                 <Sparkles size={10} className="shrink-0 mt-0.5 text-fuchsia-400 animate-pulse" />
                                 <span>
                                   ⏳ {ultraPhase?.id === clip.id ? ultraPhase.label : 'Ultra-Tracking läuft…'} · {ultraElapsed}s
-                                  <span className="text-fuchsia-400/70"> — Die KI analysiert die Frames & erzeugt Keyframes, das dauert in der Regel 1–3 Minuten.</span>
+                                  <span className="text-fuchsia-400/70"> — Die Analyse-Engine analysiert die Frames & erzeugt Keyframes, das dauert in der Regel 1–3 Minuten.</span>
                                 </span>
                               </div>
                             )}

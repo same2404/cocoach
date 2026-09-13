@@ -294,7 +294,7 @@ export const AgentSystemControlCenterModal: React.FC<AgentSystemControlCenterMod
             </div>
           </div>
 
-          {/* RIGHT COLUMN: FINDINGS & RULES & KI-REVIEW */}
+          {/* RIGHT COLUMN: FINDINGS & RULES & REVIEW */}
           <div className="bg-slate-950 border-2 border-black rounded-xl p-3 flex flex-col overflow-y-auto custom-scrollbar gap-3">
             <div className="border-b-2 border-slate-800 pb-2">
               <h3 className="text-xs font-black uppercase text-amber-400 flex items-center gap-1.5">
@@ -328,7 +328,7 @@ export const AgentSystemControlCenterModal: React.FC<AgentSystemControlCenterMod
             <div className="bg-slate-900 border-2 border-slate-800 rounded-lg p-2.5 space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <h3 className="text-xs font-black uppercase text-amber-400 flex items-center gap-1.5">
-                  <Brain size={16} /> MONATS-KI-REVIEW
+                  <Brain size={16} /> MONATS-REVIEW
                 </h3>
                 <button
                   onClick={handleMonthlyReview}

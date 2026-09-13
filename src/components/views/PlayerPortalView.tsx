@@ -2757,7 +2757,7 @@ export const PlayerPortalView: React.FC<PlayerPortalViewProps> = ({
         )}
       </div>
 
-      {/* Persistent KI Upload & Quick Action Banner */}
+      {/* Persistent Analyse-Engine Upload & Quick Action Banner */}
       {selectedPlayer && (
         <div className="bg-[#121824] text-[#F8FAFC] border border-[#334155] p-4 rounded-xl shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">

@@ -160,7 +160,7 @@ WICHTIG: Antworte NUR mit dem JSON-Objekt. Kein zusätzlicher Text.`;
 
     if (!result) {
       return res.status(200).json({
-        summary: `KI-Analyse für "${videoTitle || 'Spielvideo'}" abgeschlossen. ${clubName || 'Team'} wurde analysiert.`,
+        summary: `Automatische Analyse für "${videoTitle || 'Spielvideo'}" abgeschlossen. ${clubName || 'Team'} wurde analysiert.`,
         formationDetected: '4-2-3-1',
         teamStrengths: ['Organisation', 'Kompaktheit', 'Umschaltspiel'],
         teamWeaknesses: ['Flügelverteidigung', 'Standardsverteidigung'],

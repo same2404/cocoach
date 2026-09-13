@@ -59,7 +59,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   clubName = 'FC Auggen',
   clubShortName = 'FCA',
 }) => {
-  // File upload state for Module 8 (KI-Datenimport)
+  // File upload state for Module 8 (Daten-Import)
   const [uploads, setUploads] = useState<Array<{
     id: string;
     name: string;

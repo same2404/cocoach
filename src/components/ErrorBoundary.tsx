@@ -103,7 +103,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
             <div className="pt-2 border-t border-slate-800 flex items-center justify-center gap-2 text-[10px] text-slate-500 font-mono">
               <ShieldCheck size={12} className="text-emerald-500" />
-              <span>CoCoach KI-System • Stabilitäts-Garantie</span>
+              <span>CoCoach Analyse-System • Stabilitäts-Garantie</span>
             </div>
           </div>
         </div>

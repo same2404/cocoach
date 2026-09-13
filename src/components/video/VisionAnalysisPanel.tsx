@@ -89,14 +89,14 @@ export const VisionAnalysisPanel: React.FC<VisionAnalysisPanelProps> = ({ videoR
       >
         <div className="w-2 h-2 rounded-full bg-[#8B5CF6] animate-pulse" />
         <span className="text-[9px] font-black uppercase tracking-widest text-[#8B5CF6]">Vision-Analyse (Bilderkennung)</span>
-        <span className="text-[8px] text-[#64748B] ml-auto">Formationserkennung • Spieler-Tracking • KI-gestützt</span>
+        <span className="text-[8px] text-[#64748B] ml-auto">Formationserkennung • Spieler-Tracking • automatisiert</span>
         {isExpanded ? <ChevronUp size={14} className="text-[#64748B]" /> : <ChevronDown size={14} className="text-[#64748B]" />}
       </div>
 
       {isExpanded && (
         <div className="space-y-3">
           <p className="text-[9px] text-[#94A3B8]">
-            Die KI analysiert Screenshots aus dem Video und erkennt automatisch: Formationen, Trikotnummern, Ballposition und Spielphase.
+            Die Analyse-Engine analysiert Screenshots aus dem Video und erkennt automatisch: Formationen, Trikotnummern, Ballposition und Spielphase.
           </p>
 
           {/* Controls */}

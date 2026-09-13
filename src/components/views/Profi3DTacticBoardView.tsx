@@ -144,7 +144,7 @@ export const PASS_ACTION_COLORS: Record<string, string> = {
   Torschuss: '#EF4444',
 };
 
-// ═══ KI-Szenen-Designer (Once-Style): strukturierte taktische Szene ═══
+// ═══ Analyse-Engine-Szenen-Designer (Once-Style): strukturierte taktische Szene ═══
 export interface SceneChain { name: string; positions: string[]; color: string; }
 export interface SceneZone { x: number; y: number; w: number; h: number; color: string; label?: string; }
 export interface SceneOptimalPosition { position: string; toX: number; toY: number; label?: string; }
@@ -663,7 +663,7 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
   const [fupaLoading, setFupaLoading] = useState(false);
   const [fupaLineupActive, setFupaLineupActive] = useState(false);
 
-  // ═══ KI-Szenen-Designer (Once-Style) State ═══
+  // ═══ Analyse-Engine-Szenen-Designer (Once-Style) State ═══
   const [sceneChains, setSceneChains] = useState<SceneChain[]>([]);
   const [sceneZones, setSceneZones] = useState<SceneZone[]>([]);
   const [sceneOptimalPositions, setSceneOptimalPositions] = useState<SceneOptimalPosition[]>([]);
@@ -873,7 +873,7 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
     swappedPositionsRef.current = new Set();
   }, [liveFormations, players]);
 
-  // ── Startelf aus dem AUFSTELLUNG-BILD des letzten Spielberichts per KI-Bilderkennung ──
+  // ── Startelf aus dem AUFSTELLUNG-BILD des letzten Spielberichts per Analyse-Engine-Bilderkennung ──
   const [analyzingLineupFromImage, setAnalyzingLineupFromImage] = useState(false);
   const loadStartelfFromLineupImages = useCallback(async () => {
     const report = [...(matchAnalyses || [])]
@@ -2810,7 +2810,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ═══ KI-Szenen-Designer (Once-Style): strukturierte taktische Szene via Gemini ═══
+  // ═══ Analyse-Engine-Szenen-Designer (Once-Style): strukturierte taktische Szene via Gemini ═══
   const KI_SCENE_PRESETS: Array<{ label: string; text: string }> = [
     { label: 'Pressingfalle Halbraum', text: 'Wir pressen im rechten Halbraum: ST läuft den Innenverteidiger an, OM schiebt nach rechts, DM sichert ab. Nach Ballgewinn sofort Steilpass in die Tiefe auf die rechte Seite.' },
     { label: 'Spielaufbau über den 6er', text: 'Spielaufbau von hinten über den 6er: RV und LV positionieren sich hoch und breit, DM bietet sich zwischen den Linien an, Absicherung durch die Innenverteidiger. Ziel: den Halbraum bespielen.' },
@@ -2824,7 +2824,7 @@ Gib mir in 3 kurzen, klaren Bullet Points:
     const prompt = (kiScenePrompt || '').trim();
     if (!prompt) { notify('Bitte zuerst eine Szene beschreiben (oder eine Vorlage anklicken).'); return; }
     const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || (typeof process !== 'undefined' ? (process as any).env?.GEMINI_API_KEY : '') || '';
-    if (!apiKey) { notify('Kein Gemini-API-Key konfiguriert – KI-Szene nicht verfügbar.'); return; }
+    if (!apiKey) { notify('Kein Gemini-API-Key konfiguriert – Analyse-Engine-Szene nicht verfügbar.'); return; }
     setKiSceneLoading(true);
     try {
       const lineup = currentNodePositions.map(n => `${n.position} (${n.name}) bei x=${Math.round(n.currentX)} y=${Math.round(n.currentY)}`).join('\n');
@@ -2861,11 +2861,11 @@ Regeln:
 - Leere Arrays sind erlaubt, wenn eine Kategorie nicht passt.`,
       });
       const text = (response as any).text || '';
-      if (!text) { notify('KI hat keine Antwort geliefert – bitte erneut versuchen.'); return; }
+      if (!text) { notify('Analyse-Engine hat keine Antwort geliefert – bitte erneut versuchen.'); return; }
       const cleaned = text.replace(/```(?:json)?/g, '').trim();
       const start = cleaned.indexOf('{');
       const end = cleaned.lastIndexOf('}');
-      if (start === -1 || end === -1) { notify('KI-Antwort enthielt kein JSON – bitte erneut versuchen.'); return; }
+      if (start === -1 || end === -1) { notify('Analyse-Antwort enthielt kein JSON – bitte erneut versuchen.'); return; }
       const data = JSON.parse(cleaned.slice(start, end + 1)) as {
         chains?: SceneChain[];
         zones?: SceneZone[];
@@ -2896,9 +2896,9 @@ Regeln:
       setSceneOptimalPositions(newOptimals);
       if (newStations.length >= 2) setPassStations(newStations);
       setPassBallPos(null);
-      notify(`✅ KI-Szene erstellt: ${newChains.length} Kette(n), ${newZones.length} Raum/Räume, ${newRuns.length} Laufwege, ${newStations.length} Ballstationen – ▶️ Abspielen für den Ballweg`);
+      notify(`✅ Analyse-Engine-Szene erstellt: ${newChains.length} Kette(n), ${newZones.length} Raum/Räume, ${newRuns.length} Laufwege, ${newStations.length} Ballstationen – ▶️ Abspielen für den Ballweg`);
     } catch (err: any) {
-      notify('KI-Szene konnte nicht erstellt werden: ' + (err?.message || 'Antwort nicht als JSON lesbar.'));
+      notify('Analyse-Engine-Szene konnte nicht erstellt werden: ' + (err?.message || 'Antwort nicht als JSON lesbar.'));
     } finally {
       setKiSceneLoading(false);
     }
@@ -2911,7 +2911,7 @@ Regeln:
     setSceneRuns([]);
     setPassStations(prev => prev.filter(s => !s.id.startsWith('sceneBall_')));
     setPassBallPos(null);
-    notify('🧹 KI-Szene entfernt');
+    notify('🧹 Analyse-Engine-Szene entfernt');
   }, [notify]);
 
   const nodeCoords = (pos: string): { x: number; y: number } | null => {
@@ -2969,7 +2969,7 @@ Regeln:
   const renderScenePanel = () => (
     <div className="w-full max-w-4xl bg-slate-950/95 border border-emerald-500/40 rounded-xl p-3 flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <span className="text-[11px] font-black uppercase tracking-wider text-emerald-300">🧠 KI-Szenen-Designer (Once-Style)</span>
+        <span className="text-[11px] font-black uppercase tracking-wider text-emerald-300">🧠 Analyse-Engine-Szenen-Designer (Once-Style)</span>
         <button onClick={() => setShowKIScenePanel(false)} className="px-1.5 py-0.5 text-[9px] font-black rounded hover:bg-rose-500/30 transition-all text-rose-300 cursor-pointer" title="Panel schließen">✖ Schließen</button>
       </div>
       <div className="flex items-center gap-1.5 flex-wrap">
@@ -2997,7 +2997,7 @@ Regeln:
           onClick={clearTacticScene}
           disabled={kiSceneLoading}
           className="px-2 py-1 text-[9.5px] font-black uppercase tracking-wider rounded-md border cursor-pointer disabled:opacity-40 text-rose-300 border-slate-800 hover:border-rose-500/60"
-          title="Alle KI-Szenen-Elemente vom Feld entfernen"
+          title="Alle Analyse-Engine-Szenen-Elemente vom Feld entfernen"
         >
           🧹 Szene leeren
         </button>
@@ -4613,9 +4613,9 @@ Regeln:
                   <button
                     onClick={() => setShowKIScenePanel(p => !p)}
                     className={`px-1.5 py-0.5 text-[9px] font-black rounded transition-all cursor-pointer ${showKIScenePanel ? 'bg-emerald-500 text-slate-950' : 'hover:bg-emerald-500/30 text-emerald-300'}`}
-                    title="KI-Szenen-Designer (Once-Style): Gemini erstellt komplette taktische Grafik (Ketten, Räume, Pass-/Lauf-/Ballwege, optimale Positionen)"
+                    title="Analyse-Engine-Szenen-Designer (Once-Style): Gemini erstellt komplette taktische Grafik (Ketten, Räume, Pass-/Lauf-/Ballwege, optimale Positionen)"
                   >
-                    🧠 KI-Szene
+                    🧠 Analyse-Engine-Szene
                   </button>
                 </div>
                 {showKIScenePanel && renderScenePanel()}
@@ -6164,9 +6164,9 @@ Regeln:
                 className={`px-2 py-0.5 text-[9.5px] font-black uppercase tracking-wider rounded-md border transition-all cursor-pointer ${
                   showKIScenePanel ? 'bg-emerald-500 text-slate-950 border-emerald-400' : 'bg-slate-900 text-emerald-300 border-slate-800 hover:border-emerald-500/60'
                 }`}
-                title="KI-Szenen-Designer (Once-Style): Gemini erstellt komplette taktische Grafik (Ketten, Räume, Pass-/Lauf-/Ballwege, optimale Positionen)"
+                title="Analyse-Engine-Szenen-Designer (Once-Style): Gemini erstellt komplette taktische Grafik (Ketten, Räume, Pass-/Lauf-/Ballwege, optimale Positionen)"
               >
-                🧠 KI-Szene
+                🧠 Analyse-Engine-Szene
               </button>
               {dragRunMode && (
                 <button onClick={() => { setDragRunPlayerId(null); setDragRunStart(null); setDragRunPreview([]); }} className="px-1.5 py-0.5 text-[8.5px] font-black rounded cursor-pointer hover:bg-rose-500/30 transition-all text-rose-300" title="Aktuellen Laufweg-Zug abbrechen">✖ Abbrechen</button>
@@ -7092,7 +7092,7 @@ Regeln:
               </p>
             </div>
 
-            {/* KI TAKTISCHE ANALYSE BUTTON */}
+            {/* Analyse-Engine TAKTISCHE ANALYSE BUTTON */}
             <button
               onClick={handleGenerateTacticalAnalysis}
               disabled={tacticalAnalysisLoading}
@@ -7101,23 +7101,23 @@ Regeln:
               {tacticalAnalysisLoading ? (
                 <>
                   <Loader2 size={16} className="animate-spin" />
-                  KI analysiert Taktik...
+                  Analyse-Engine analysiert Taktik...
                 </>
               ) : (
                 <>
                   <BrainCircuit size={16} />
-                  {activeClub.name} — Taktische KI-Analyse generieren
+                  {activeClub.name} — Taktische Automatische Analyse generieren
                 </>
               )}
             </button>
 
-            {/* KI TAKTISCHE ANALYSE ERGEBNIS */}
+            {/* Analyse-Engine TAKTISCHE ANALYSE ERGEBNIS */}
             {showTacticalAnalysis && tacticalAnalysis.length > 0 && (
               <div className="bg-slate-900 border-2 border-purple-500/40 rounded-2xl p-4 shadow-xl space-y-3">
                 <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                   <span className="font-black text-xs uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
                     <BrainCircuit size={14} className="text-purple-400" />
-                    Taktische KI-Analyse — {activeClub.name}
+                    Taktische Automatische Analyse — {activeClub.name}
                   </span>
                   <button onClick={() => setShowTacticalAnalysis(false)} className="p-1 rounded hover:bg-slate-800 cursor-pointer">
                     <X size={14} className="text-slate-500" />
@@ -8089,7 +8089,7 @@ Regeln:
                 onClick={loadStartelfFromLineupImages}
                 disabled={analyzingLineupFromImage}
                 className="bg-gradient-to-br from-sky-500 to-cyan-600 hover:from-sky-400 hover:to-cyan-500 text-white font-black text-xs uppercase px-4 py-2.5 rounded-xl shadow-lg transition-all flex items-center gap-1.5 active:scale-95 disabled:opacity-60 disabled:cursor-wait"
-                title="Startelf aus dem AUFSTELLUNG-Bild (von der letzten Aufstellung) des letzten Spielberichts per KI-Erkennung übernehmen – Namen per Trikotnummer dem Kader zuordnen, falls Name unlesbar"
+                title="Startelf aus dem AUFSTELLUNG-Bild (von der letzten Aufstellung) des letzten Spielberichts per automatische Erkennung übernehmen – Namen per Trikotnummer dem Kader zuordnen, falls Name unlesbar"
               >
                 <ScanSearch size={15} /> {analyzingLineupFromImage ? 'Erkenne…' : 'Ans Bild-Analyse'}
               </button>

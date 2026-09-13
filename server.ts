@@ -1012,7 +1012,7 @@ Erstelle bitte den Wochenbericht gemäß den Vorgaben.
         : "Keine Spielernamen bereitgestellt.";
 
       const systemInstruction = `
-Du bist das fortschrittliche Computer-Vision & KI-Videoanalyse-System des Vereins "${teamName}".
+Du bist das fortschrittliche Computer-Vision & Automatische Videoanalyse-System des Vereins "${teamName}".
 Deine Aufgabe ist es, die vollständige technische Grunderkennung UND die maximale taktische Informations-Extraktion (CoCoach "Maximum Information Extraction Engine") für ein Fußballvideo durchzuführen.
 
 WICHTIG – EINORDNUNG DER LIMITATIONEN:
@@ -1100,7 +1100,7 @@ Zusätzlich: TV-Grafiken/Scoreboards ignorieren - du analysierst AUSSCHLIESSLICH
    - Für jede Szene:
      - Berechne die Clip-Länge: startTimeSeconds = max(0, eventTimestamp - 6), endTimeSeconds = eventTimestamp + 6.
      - timestampFormatted (z.B. "04:12").
-     - aiCommentary: Erstelle einen präzisen 1-2 Satz KI-Kurzkommentar.
+     - aiCommentary: Erstelle einen präzisen 1-2 Satz Analysen-Kurzkommentar.
      - participatingPlayerNames: Gib 1-3 beteiligte Spielernamen an (idealerweise aus der Kaderliste).
      - pitchZone: "Abwehr" | "Mittelfeld" | "Angriff" | "Strafraum" | "Flügel" | "Halbraum".
      - teamInvolved: "${teamName}" | "Gegner" | "Beide".
@@ -1204,7 +1204,7 @@ Antworte STRENG im geforderten JSON-Format.
             responseSchema: {
               type: Type.OBJECT,
               properties: {
-                summary: { type: Type.STRING, description: "Gesamtzusammenfassung der technischen KI-Erkennung" },
+                summary: { type: Type.STRING, description: "Gesamtzusammenfassung der technischen automatische Erkennung" },
                 durationSeconds: { type: Type.INTEGER, description: "Geschätzte oder erkannte Videodauer in Sekunden" },
                 trackedPersons: {
                   type: Type.ARRAY,
@@ -1294,7 +1294,7 @@ Antworte STRENG im geforderten JSON-Format.
                       startTimeSeconds: { type: Type.NUMBER, description: "Startsekunde des Clips (Zeitstempel - 6s)" },
                       endTimeSeconds: { type: Type.NUMBER, description: "Endsekunde des Clips (Zeitstempel + 6s)" },
                       timestampFormatted: { type: Type.STRING, description: "Formatierte Zeit z.B. '04:12'" },
-                      aiCommentary: { type: Type.STRING, description: "1-2 Sätze KI-Kurzkommentar" },
+                      aiCommentary: { type: Type.STRING, description: "1-2 Sätze Analysen-Kurzkommentar" },
                       participatingPlayerNames: { 
                         type: Type.ARRAY, 
                         items: { type: Type.STRING },
@@ -1438,7 +1438,7 @@ Antworte STRENG im geforderten JSON-Format.
                                 toX: { type: Type.NUMBER },
                                 toY: { type: Type.NUMBER },
                                 action: { type: Type.STRING, description: "Direktpass, Steilpass, Flanke, Klatschball, Doppelpass, Verlagerung, Torschuss" },
-                                color: { type: Type.STRING, description: "#3B82F6 offensiv, #EF4444 defensiv, #F59E0B Umschalten-KI, #10B981 Struktur" }
+                                color: { type: Type.STRING, description: "#3B82F6 offensiv, #EF4444 defensiv, #F59E0B Umschalten, #10B981 Struktur" }
                               },
                               required: ["fromX", "fromY", "toX", "toY", "action"]
                             }
@@ -1568,7 +1568,7 @@ resultText = response.text ?? null;
       const p4Name = fallbackSquad[3] ? `${fallbackSquad[3].lastName || ''} ${fallbackSquad[3].firstName || ''}`.trim() : 'R. Bischoff';
 
       const fallbackData = {
-        summary: `Erfolgreiche KI-Videoanalyse v2 (Engine für "${videoTitle || 'Fußball Video'}"): Computer Vision Spieler- & Ball-Tracking abgeschlossen.`,
+        summary: `Erfolgreiche Automatische Videoanalyse v2 (Engine für "${videoTitle || 'Fußball Video'}"): Computer Vision Spieler- & Ball-Tracking abgeschlossen.`,
         durationSeconds: 180,
         trackedPersons: [
           { id: 'tp1', team: 'FC Auggen', jerseyNumber: String(fallbackSquad[0]?.number || '9'), mappedPlayerId: fallbackSquad[0]?.id || 'sp1', mappedPlayerName: p1Name, xPercent: 78, yPercent: 48, intensity: 'Sprint', speedKmh: 29.4 },
@@ -1933,12 +1933,12 @@ Extrahiere aus diesen Frames die ULTRA-OVERLAY-KEYFRAMES: stabil verankerte Spie
       }
 
       if (!resultText) {
-        return res.status(502).json({ error: "KI-Antwort für Ultra-Overlay nicht verfügbar. Bitte erneut versuchen." });
+        return res.status(502).json({ error: "Analyse-Antwort für Ultra-Overlay nicht verfügbar. Bitte erneut versuchen." });
       }
 
       const parsed = typeof resultText === 'string' ? JSON.parse(resultText) : resultText;
       if (!parsed || !Array.isArray(parsed.keyframes)) {
-        return res.status(502).json({ error: "Ungültiges Ultra-Overlay-Format von der KI erhalten." });
+        return res.status(502).json({ error: "Ungültiges Ultra-Overlay-Format von der Analyse-Engine erhalten." });
       }
       const ordered = [...parsed.keyframes].sort((a: any, b: any) => Number(a.timeSeconds) - Number(b.timeSeconds));
       console.log(`[ultra-overlay] ${Date.now() - t0}ms für ${frames.length} Frames / ${ordered.length} Keyframes`);
@@ -2614,7 +2614,7 @@ Regeln:
   };
   naomiWatchdog();
 
-  // Tactical Analysis Engine — KI-gestützte taktische Analyse
+  // Tactical Analysis Engine — automatisierte taktische Analyse
   app.post('/api/tactical-analysis', async (req, res) => {
     try {
       const { config, formation, clubName } = req.body;
@@ -2915,7 +2915,7 @@ Jeder Block soll fachlich präzise, sofort nutzbar und im Deutschen sein. Antwor
     });
   }, runCut);
 
-  // Monthly KI-Review für das Agentensystem (nur lesend, keine Datenänderungen)
+  // Monthly Review für das Agentensystem (nur lesend, keine Datenänderungen)
   app.post('/api/agent-monthly-review', async (req, res) => {
     try {
       const { players = [], matches = [], analyses = [] } = req.body || {};
@@ -2934,7 +2934,7 @@ Jeder Block soll fachlich präzise, sofort nutzbar und im Deutschen sein. Antwor
         gegnerHistorie: opponentList
       }, null, 2).slice(0, 60000);
 
-      const prompt = `Du bist der MemoryAgent des FC Auggen KI-Systems und erstellst einen kompakten, ehrlichen Monats-Review in BRETTERDEUTSCH (Fußball-Fachbegriffe, Trainer-Stil, KEINE Füllphrasen).
+      const prompt = `Du bist der MemoryAgent des FC Auggen Analyse-Systems und erstellst einen kompakten, ehrlichen Monats-Review in BRETTERDEUTSCH (Fußball-Fachbegriffe, Trainer-Stil, KEINE Füllphrasen).
 
 Nutze NUR die folgenden realen Daten (keine Erfindungen):
 ${dataDump}

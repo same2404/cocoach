@@ -252,7 +252,7 @@ const App: React.FC = () => {
     setShowLocalProfileModal(false);
     setShowLoginModal(false);
     setToast({ 
-      message: `Profil aktiviert: ${fullDisplayName} ${staff.email.toLowerCase() === ownerEmail.toLowerCase() ? '👑 (Voller Zugriff inkl. KI)' : '⚽ (Kader & Training Bearbeitung)'}`, 
+      message: `Profil aktiviert: ${fullDisplayName} ${staff.email.toLowerCase() === ownerEmail.toLowerCase() ? '👑 (Voller Zugriff inkl. Analysen)' : '⚽ (Kader & Training Bearbeitung)'}`, 
       id: Date.now() 
     });
   };
@@ -484,7 +484,7 @@ const App: React.FC = () => {
   const getAppBackupData = useCallback(() => {
     return {
       exportDate: new Date().toISOString(),
-      system: 'CoCoach KI-System',
+      system: 'CoCoach Analyse-System',
       players,
       competitiveMatches,
       training,
@@ -3047,7 +3047,7 @@ onNavigateToTacticBoard={(_matchId: any, draft?: any) => {
                 <div className="flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full inline-block shrink-0" style={{ background: '#00FFAA', boxShadow: '0 0 6px rgba(0,255,170,0.8)' }} />
                   <p className="text-[9px] font-medium truncate" style={{ color: '#7E9BB5' }}>
-                    {isOwner ? 'Owner (Voller KI-Zugriff)' : 'Trainer (Bearbeitung)'}
+                    {isOwner ? 'Owner (Voller Zugriff)' : 'Trainer (Bearbeitung)'}
                   </p>
                 </div>
               </div>
@@ -4605,7 +4605,7 @@ onNavigateToTacticBoard={(_matchId: any, draft?: any) => {
                 <span className="text-[#10B981]">✓</span> Trainer-Zugriff aktiv
               </p>
               <p className="text-[#94A3B8] leading-relaxed">
-                Alle Trainer-Kollegen haben vollen Zugriff auf Kaderverwaltung, Trainingsplanung, Taktiktafel, Spielberichte und Athletiksteuerung. Der <strong>Gemini KI-Chat</strong> ist exklusiv für Samer Khaleel reserviert.
+                Alle Trainer-Kollegen haben vollen Zugriff auf Kaderverwaltung, Trainingsplanung, Taktiktafel, Spielberichte und Athletiksteuerung. Der <strong>Gemini Assistenten-Chat</strong> ist exklusiv für Samer Khaleel reserviert.
               </p>
             </div>
 
@@ -4631,7 +4631,7 @@ onNavigateToTacticBoard={(_matchId: any, draft?: any) => {
                           <p className="text-xs font-bold text-[#F8FAFC] truncate">{staff.name}</p>
                           {isStaffOwner && (
                             <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-[#F59E0B]/20 text-[#F59E0B] border border-[#F59E0B]/30">
-                              Owner & KI
+                              Owner (Voller Zugriff)
                             </span>
                           )}
                         </div>

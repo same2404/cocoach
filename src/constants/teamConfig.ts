@@ -164,6 +164,6 @@ export const ACTICODE_TASKS = {
   empfehlungen: {
     name: 'Handlungsempfehlungen',
     icon: '💡',
-    description: 'KI-generierte Empfehlungen für Trainer und Spieler',
+    description: 'Automatisch erzeugte Empfehlungen für Trainer und Spieler',
   },
 } as const;

@@ -45,7 +45,7 @@ export const AIQualityFilterView: React.FC<AIQualityFilterViewProps> = ({ aiOutp
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-black text-white tracking-tight">AI-Qualitätsfilter</h1>
-          <p className="text-[10px] text-[#94A3B8] mt-0.5">Prüft KI-Outputs vor der Anzeige</p>
+          <p className="text-[10px] text-[#94A3B8] mt-0.5">Prüft Analyse-Outputs vor der Anzeige</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -84,7 +84,7 @@ export const AIQualityFilterView: React.FC<AIQualityFilterViewProps> = ({ aiOutp
         <textarea
           value={testText}
           onChange={e => setTestText(e.target.value)}
-          placeholder="KI-Output hier einfügen zum Testen..."
+          placeholder="Analyse-Output hier einfügen zum Testen..."
           className="w-full h-32 bg-[#0F172A] border border-[#334155]/60 rounded-xl p-3 text-xs text-[#E2E8F0] placeholder-[#475569] resize-none focus:outline-none focus:border-[#F59E0B]/50"
         />
         {testResult && (
@@ -127,7 +127,7 @@ export const AIQualityFilterView: React.FC<AIQualityFilterViewProps> = ({ aiOutp
       {/* Filtered Outputs */}
       {filteredOutputs.length > 0 && (
         <div className="space-y-2">
-          <h3 className="text-xs font-black text-white uppercase tracking-wider">Gefilterte KI-Ausgaben</h3>
+          <h3 className="text-xs font-black text-white uppercase tracking-wider">Gefilterte Analyse-Ausgaben</h3>
           <div className="space-y-1.5 max-h-64 overflow-y-auto">
             {filteredOutputs.map(output => {
               const quality = output.quality || filterAIOutput(output.text);

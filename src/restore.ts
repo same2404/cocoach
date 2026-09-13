@@ -5,7 +5,7 @@ import { doc, setDoc } from 'firebase/firestore';
 // Kompletter Daten-Restore inklusive aller detaillierten Trainingseinheiten
 export const completeRestoreData = {
   exportDate: "2026-08-12T08:40:42.766Z",
-  system: "CoCoach KI-System",
+  system: "CoCoach Analyse-System",
 
   // 1. Spieler
   players: [

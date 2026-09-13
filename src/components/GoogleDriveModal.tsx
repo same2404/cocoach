@@ -143,7 +143,7 @@ export const GoogleDriveModal: React.FC<GoogleDriveModalProps> = ({
     setLoading(true);
     setError(null);
     try {
-      const data = appExportData ? appExportData() : { backupTime: new Date().toISOString(), app: 'FC Auggen KI-System' };
+      const data = appExportData ? appExportData() : { backupTime: new Date().toISOString(), app: 'FC Auggen Analyse-System' };
       const dateStr = new Date().toISOString().slice(0, 10);
       const fileName = `FC_Auggen_Backup_${dateStr}.json`;
       const jsonContent = JSON.stringify(data, null, 2);

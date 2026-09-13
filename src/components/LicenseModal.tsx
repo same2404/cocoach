@@ -26,7 +26,7 @@ const TIER_CONFIG: Record<LicenseTier, { icon: React.ReactNode; color: string; n
     icon: <Crown className="w-6 h-6" />,
     color: 'from-amber-500 to-amber-700',
     name: 'Enterprise',
-    desc: 'Alles inkl. Video & Naomi KI-Agent',
+    desc: 'Alles inkl. Video & Naomi Analyse-Agent',
   },
 };
 

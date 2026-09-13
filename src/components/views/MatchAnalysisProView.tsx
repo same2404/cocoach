@@ -775,7 +775,7 @@ export const MatchAnalysisProView: React.FC<MatchAnalysisProProps> = ({ matchAna
           )}
           <div className="bg-slate-900/80 backdrop-blur-xl border border-white/5 rounded-2xl p-3 flex gap-2 shadow-xl">
             <button className="flex-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-[9px] font-bold py-2 rounded-lg transition-all flex items-center justify-center gap-1"><BarChart3 size={12} /> Bericht</button>
-            <button className="flex-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-[9px] font-bold py-2 rounded-lg transition-all flex items-center justify-center gap-1"><Zap size={12} /> KI-Zusammenfassung</button>
+            <button className="flex-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-[9px] font-bold py-2 rounded-lg transition-all flex items-center justify-center gap-1"><Zap size={12} /> Analyse-Engine-Zusammenfassung</button>
             <button className="flex-1 bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 text-[9px] font-bold py-2 rounded-lg transition-all flex items-center justify-center gap-1"><Activity size={12} /> Export</button>
           </div>
         </div>
