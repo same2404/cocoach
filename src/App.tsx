@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { auth, googleProvider, db, handleFirestoreError, OperationType, getWeekdayLabel, isQueryParamValid } from './firebase';
 import { doc, setDoc, deleteField, updateDoc, deleteDoc, writeBatch, query, collection, where, getDocs, getDoc, onSnapshot } from 'firebase/firestore';
-import { onAuthStateChanged, signInWithPopup, signOut, signInAnonymously } from 'firebase/auth';
+import { onAuthStateChanged, signInWithPopup, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 
 import { TABS, PLAYERS as INITIAL_PLAYERS, COMPETITIVE_MATCHES, TEST_MATCHES, SCOUTING_DATA as INITIAL_SCOUTING, INITIAL_FINANCE_DATA, INITIAL_MEETINGS_DATA, INITIAL_TRAINING_SESSIONS, INITIAL_SUMMER_PREP, INITIAL_WINTER_PREP, YEARLY_PLAN, DEPTH_CHART, FINANCE_META, INITIAL_FORMATION, CARD_RECORDS, COMPETITIVE_MINUTES, TEST_MINUTES } from './constants';
 import { SC_SAND_SEED } from './constants/sc-sand-data';
@@ -193,18 +193,7 @@ const App: React.FC = () => {
           if (user.displayName) setLocalName(user.displayName);
         }
       } else {
-        // Ohne Login kann keine Schreib-Autorisierung erfolgen.
-        // Wir melden anonym an, damit Firestore-Writes immer funktionieren.
-        try {
-          const cred = await signInAnonymously(auth);
-          setAuthUser({
-            ...cred.user,
-            isAnonymous: true
-          });
-        } catch (err: any) {
-          console.warn('Anonyme Anmeldung fehlgeschlagen:', err?.message || err);
-          setAuthUser(null);
-        }
+        setAuthUser(null);
       }
     });
   }, []);
@@ -270,10 +259,6 @@ const App: React.FC = () => {
 
   const handleEmailPasswordLogin = async (email: string, pass: string) => {
     const emailClean = email.trim().toLowerCase();
-    
-    if (pass && pass !== '0000') {
-      setToast({ message: 'Hinweis: Bitte nutze das Standard-Passwort 0000 für Trainer.', id: Date.now() });
-    }
 
     const matchedStaff = AUTHORIZED_STAFF_LIST.find(s => s.email.toLowerCase() === emailClean);
     const displayName = matchedStaff ? `${matchedStaff.name} (${matchedStaff.role})` : emailClean;
@@ -286,13 +271,19 @@ const App: React.FC = () => {
     try {
       setAuthLoading(true);
 
-      const cred = await signInAnonymously(auth);
-      setAuthUser({
-        ...cred.user,
-        email: emailClean,
-        displayName: displayName,
-        isAnonymous: true
-      });
+      // Echtes Firebase Email/Passwort-Auth
+      let cred: any;
+      try {
+        cred = await signInWithEmailAndPassword(auth, emailClean, pass);
+      } catch (signErr: any) {
+        if (signErr?.code === 'auth/user-not-found') {
+          // Konto existiert noch nicht – automatisch erstellen
+          cred = await createUserWithEmailAndPassword(auth, emailClean, pass);
+        } else {
+          throw signErr;
+        }
+      }
+      setAuthUser(cred.user);
 
       const userRef = doc(db, 'app_users', cred.user.uid);
       await setDoc(userRef, {
@@ -308,13 +299,7 @@ const App: React.FC = () => {
       setShowLoginModal(false);
     } catch (err: any) {
       console.error("Custom email/password login failed:", err);
-      setAuthUser({
-        uid: 'custom_session_' + emailClean.replace(/[^a-zA-Z0-9]/g, '_'),
-        email: emailClean,
-        displayName: displayName,
-        isCustom: true
-      });
-      setToast({ message: `Angemeldet als ${displayName}`, id: Date.now() });
+      setToast({ message: `Anmeldung fehlgeschlagen: ${err?.message || err}`, id: Date.now() });
       setShowLoginModal(false);
     } finally {
       setAuthLoading(false);
