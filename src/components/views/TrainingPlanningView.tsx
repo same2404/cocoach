@@ -16,6 +16,7 @@ import {
   limit 
 } from 'firebase/firestore';
 import { db } from '../../firebase';
+import { enqueueSyncOperation } from '../../lib/offlineStorage';
 import { 
   Plus, 
   Trash2, 
@@ -1112,8 +1113,10 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
       const { id: _skip, ...dataToSave } = updated as any;
       await setDoc(doc(db, 'training_sessions', updated.id), dataToSave, { merge: true });
     } catch (e: any) {
-      setHealStatus(`Fehler beim Speichern ${updated.id}: ${e?.message || e}`);
-      throw e;
+      // Offline-first: direkter Write scheitert (Auth/Regeln) → in Warteschlange legen,
+      // Daten sind bereits lokal + via saveSession gesichert. Kein Blockade-Fehler.
+      console.warn(`Direkter DB-Write ${updated.id} abgelehnt – wird über Warteschlange nachgespielt:`, e?.message || e);
+      enqueueSyncOperation('training_sessions', 'id', 'SET', updated.id, updated).catch(() => {});
     }
     return updated;
   };

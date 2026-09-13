@@ -2157,6 +2157,38 @@ Beschreibung:\n${String(text || "")}\nBilder: Siehe Referenzbild(er) — zeichne
 
   const FUPA_HEADERS = { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36", "Accept-Language": "de-DE,de;q=0.9" };
 
+  // Deterministische Startelf/Bank direkt aus fupa.net-REDUX_DATEN (window.REDUX_DATA)
+  // Die Aufstellung liegt als JSON im <script>-Block; stripToText würde sie zerstören.
+  const parseFupaReduxLineup = (html: string): { starters: any[]; bench: any[]; ownSide: 'home' | 'away' } | null => {
+    try {
+      const m = String(html || '').match(/window\.REDUX_DATA\s*=\s*(\{[\s\S]*?\})\s*;\s*<\/script>/i);
+      if (!m) return null;
+      const redux = JSON.parse(m[1]);
+      const page = redux?.dataHistory?.[0]?.MatchLineUpPage;
+      const matchInfo = redux?.dataHistory?.[0]?.MatchPage?.matchInfo;
+      if (!page?.lineup || !matchInfo) return null;
+      const isOwnHome = String(matchInfo?.homeTeam?.slug || matchInfo?.homeTeamName || '').toLowerCase().includes('auggen');
+      const side = isOwnHome ? 'homeTeam' : 'awayTeam';
+      const players = Array.isArray(page.lineup?.[side]?.lineup) ? page.lineup[side].lineup : [];
+      const norm = (p: any) => ({
+        number: p?.jerseyNumber ?? p?.number ?? '',
+        name: p?.player?.lastName || p?.lastName || '',
+        firstName: p?.player?.firstName || p?.firstName || '',
+        position: p?.position || p?.player?.position || 'unbekannt',
+        captain: !!p?.captain,
+        coach: !!p?.coach,
+        image: p?.player?.image?.path || '',
+      });
+      const roster = players.filter((p: any) => !p?.coach && p?.jerseyNumber != null).map(norm);
+      if (roster.length === 0) return null;
+      const startersRaw = players.filter((p: any) => p?.starting && !p?.coach && p?.jerseyNumber != null).map(norm);
+      const benchRaw = players.filter((p: any) => !p?.starting && !p?.coach && p?.jerseyNumber != null).map(norm);
+      return { starters: startersRaw, bench: benchRaw, ownSide: side === 'homeTeam' ? 'home' : 'away' };
+    } catch {
+      return null;
+    }
+  };
+
   app.post("/api/matchday/fetch", async (req, res) => {
     try {
       const { squadPlayers } = req.body || {};
@@ -2197,8 +2229,13 @@ Beschreibung:\n${String(text || "")}\nBilder: Siehe Referenzbild(er) — zeichne
 
       const pageResp = await fetch(matchUrl, { headers: FUPA_HEADERS });
       const lineupResp = await fetch(lineupUrl, { headers: FUPA_HEADERS });
-      const matchText = pageResp.ok ? stripToText(await pageResp.text()) : '';
-      const lineupText = lineupResp.ok ? stripToText(await lineupResp.text()) : '';
+      const pageHtml = pageResp.ok ? await pageResp.text() : '';
+      const lineupHtmlRaw = lineupResp.ok ? await lineupResp.text() : '';
+      const matchText = stripToText(pageHtml);
+      const lineupText = stripToText(lineupHtmlRaw);
+
+      // Deterministische Startelf/Bank direkt aus dem REDUX-JSON (zuverlässiger als Gemini)
+      const reduxLineup = parseFupaReduxLineup(lineupHtmlRaw);
 
       const systemInstruction = `Du bist der Spieltags-Assistent von CoCoach für den Verein FC Auggen (Verbandsliga Südbaden).
 Die Daten stammen vom fupa.net-Spielbericht. Extrahiere daraus ALLE verfügbaren Angaben PUNKTGENAU.
@@ -2237,7 +2274,16 @@ Antworte NUR mit valider JSON:
       if (!data || !data.match) {
         return res.status(500).json({ error: "Spieltagsdaten konnten nicht erkannt werden – bitte erneut versuchen" });
       }
-      console.log(`[Matchday] ${data.match.date} vs ${data.match.opponent} ${data.match.resultOwn}:${data.match.resultOpponent} (${data.match.isHome ? 'Heim' : 'Auswärts'}) — Startelf ${data.starters?.length || 0}, Tore ${data.goals?.length || 0}`);
+
+      // Deterministische Startelf/Bank (falls vorhanden) überschreibt die Gemini-Extraktion
+      if (reduxLineup && Array.isArray(reduxLineup.starters) && reduxLineup.starters.length > 0) {
+        data.starters = reduxLineup.starters;
+        if (Array.isArray(reduxLineup.bench) && reduxLineup.bench.length > 0) {
+          data.bench = reduxLineup.bench;
+        }
+        data.lineupSource = 'fupa-redux';
+      }
+      console.log(`[Matchday] ${data.match.date} vs ${data.match.opponent} ${data.match.resultOwn}:${data.match.resultOpponent} (${data.match.isHome ? 'Heim' : 'Auswärts'}) — Startelf ${data.starters?.length || 0}, Tore ${data.goals?.length || 0}${data.lineupSource ? ` [${data.lineupSource}]` : ''}`);
       return res.json({
         success: true,
         slug: chosen.slug,

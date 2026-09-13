@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { collection, onSnapshot, doc, setDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
+import { getLocalCollection, saveLocalCollection, enqueueSyncOperation } from '../lib/offlineStorage';
 
 function sanitizeFirestoreData<T>(obj: T): T {
   if (obj === undefined) return null as unknown as T;
@@ -109,6 +110,21 @@ export function useCollectionSync<T>(
   const [error, setError] = useState<Error | null>(null);
   const effectiveCollection = prefixed(collectionName);
   const prevCollectionRef = useRef(effectiveCollection);
+  const dataRef = useRef<T[]>([]);
+
+  // Offline-first: sofort lokale Daten (IndexedDB) anzeigen, bevor Firestore antwortet.
+  useEffect(() => {
+    let cancelled = false;
+    getLocalCollection(effectiveCollection).then((localItems) => {
+      if (cancelled) return;
+      if (Array.isArray(localItems) && localItems.length > 0) {
+        setData(localItems as T[]);
+        dataRef.current = localItems as T[];
+        setLoading(false);
+      }
+    }).catch((e) => console.warn(`[Offline] Lokale Daten für ${effectiveCollection} nicht lesbar:`, e));
+    return () => { cancelled = true; };
+  }, [effectiveCollection]);
 
   useEffect(() => {
     if (!enabled || !collectionName) {
@@ -119,6 +135,7 @@ export function useCollectionSync<T>(
     // Clear stale data when the club changes
     if (prevCollectionRef.current !== effectiveCollection) {
       setData([]);
+      dataRef.current = [];
       prevCollectionRef.current = effectiveCollection;
     }
 
@@ -149,12 +166,18 @@ export function useCollectionSync<T>(
         }
 
         setData(items);
+        dataRef.current = items;
         setLoading(false);
+        // Caching: Firestore-Stand immer lokal spiegeln, damit nichts verloren geht.
+        saveLocalCollection(effectiveCollection, items).catch((e) =>
+          console.warn(`[Offline] Cache ${effectiveCollection} nicht geschrieben:`, e)
+        );
       },
       (err) => {
         console.error(`[Firestore] Error ${effectiveCollection}:`, err.message);
         setError(err);
         setLoading(false);
+        // Beim Lesefehler lokale Daten behalten (nicht leeren!)
       }
     );
 
@@ -166,7 +189,7 @@ export function useCollectionSync<T>(
       const id = String((item as any)[idField] || (item as any).id);
       if (!id) return;
 
-      setData((prev) => {
+      const optimistic = (prev: T[]) => {
         const index = prev.findIndex((x) => String((x as any)[idField] || (x as any).id) === id);
         if (index >= 0) {
           const updated = [...prev];
@@ -174,7 +197,11 @@ export function useCollectionSync<T>(
           return updated;
         }
         return sortDirection === 'desc' ? [item, ...prev] : [...prev, item];
-      });
+      };
+      const next = optimistic(dataRef.current);
+      setData(next);
+      dataRef.current = next;
+      saveLocalCollection(effectiveCollection, next).catch(() => {});
 
       const docRef = doc(db, effectiveCollection, id);
       const { [idField]: _, ...dataToSave } = item as any;
@@ -185,7 +212,12 @@ export function useCollectionSync<T>(
         await writeAutoHistory(effectiveCollection, idField, item, 'save');
       } catch (err) {
         console.error(`Error saving item to Firestore ${effectiveCollection}/${id}:`, err);
-        throw err;
+        // Offline-first: Write in Warteschlange legen statt Fehler werfen,
+        // damit das Speichern UI-seitig als Erfolg durchgeht und die Daten
+        // lokal erhalten bleiben. Sobald Auth/Wiederholung verfügbar ist,
+        // wird der Write automatisch nachgespielt.
+        enqueueSyncOperation(effectiveCollection, String(idField), 'SET', id, item).catch(() => {});
+        return;
       }
     },
     [effectiveCollection, idField, sortDirection]
@@ -196,7 +228,10 @@ export function useCollectionSync<T>(
       const idStr = String(id);
       if (!idStr) return;
 
-      setData((prev) => prev.filter((x) => String((x as any)[idField] || (x as any).id) !== idStr));
+      const next = dataRef.current.filter((x) => String((x as any)[idField] || (x as any).id) !== idStr);
+      setData(next);
+      dataRef.current = next;
+      saveLocalCollection(effectiveCollection, next).catch(() => {});
 
       const docRef = doc(db, effectiveCollection, idStr);
       try {
@@ -207,6 +242,7 @@ export function useCollectionSync<T>(
         await deleteDoc(docRef);
       } catch (err) {
         console.error(`Error removing item from Firestore ${effectiveCollection}/${idStr}:`, err);
+        enqueueSyncOperation(effectiveCollection, String(idField), 'DELETE', idStr, {}).catch(() => {});
         throw err;
       }
     },
@@ -215,7 +251,7 @@ export function useCollectionSync<T>(
 
   const saveItem = useCallback(
     async (id: string, item: T) => {
-      setData((prev) => {
+      const optimistic = (prev: T[]) => {
         const index = prev.findIndex((x) => String((x as any)[idField] || (x as any).id) === id);
         if (index >= 0) {
           const updated = [...prev];
@@ -223,7 +259,11 @@ export function useCollectionSync<T>(
           return updated;
         }
         return sortDirection === 'desc' ? [item, ...prev] : [...prev, item];
-      });
+      };
+      const next = optimistic(dataRef.current);
+      setData(next);
+      dataRef.current = next;
+      saveLocalCollection(effectiveCollection, next).catch(() => {});
 
       const docRef = doc(db, effectiveCollection, id);
       const { [idField]: _, ...dataToSave } = item as any;
@@ -233,7 +273,8 @@ export function useCollectionSync<T>(
         await writeAutoHistory(effectiveCollection, idField, item, 'save');
       } catch (err) {
         console.error(`Error saving item to Firestore ${effectiveCollection}/${id}:`, err);
-        throw err;
+        enqueueSyncOperation(effectiveCollection, String(idField), 'SET', id, item).catch(() => {});
+        return;
       }
     },
     [effectiveCollection, idField, sortDirection]

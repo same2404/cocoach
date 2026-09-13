@@ -205,7 +205,7 @@ const buildStartelfNodes = (starters: StartelfStarter[], tpl: any, squad: any[])
       umschaltY: slot.umschaltY ?? slot.yPercent ?? 50,
       speedKmh: slot.speedKmh ?? 28,
       distanceKm: slot.distanceKm ?? 10,
-      image: player?.image || player?.additionalImages?.[0] || undefined,
+      image: player?.image || player?.additionalImages?.[0] || st?.image || undefined,
     };
   });
 };
@@ -1040,7 +1040,7 @@ export const Profi3DTacticBoardView: React.FC<Profi3DTacticBoardViewProps> = ({
           role: (slot as any).role || '',
           xPercent: (slot as any).xPercent ?? 50,
           yPercent: (slot as any).yPercent ?? 50,
-          image: player?.image || player?.additionalImages?.[0] || undefined,
+image: player?.image || player?.additionalImages?.[0] || undefined,
         };
       });
       return { ok: nodes.length > 0, nodes };

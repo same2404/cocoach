@@ -24,6 +24,13 @@ export const db = dbInstance;
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
+// Hintergrund-Sync für Offline-Warteschlange starten (Ziel: Firestore, sobald erreichbar/autorisiert)
+if (typeof window !== 'undefined') {
+  import('./lib/offlineStorage').then(({ setupBackgroundSync }) => {
+    setupBackgroundSync(db);
+  }).catch((e) => console.warn('Background-Sync nicht gestartet:', e));
+}
+
 export function getWeekdayLabel(dateStr: string): string {
   if (!dateStr) return '';
   const date = new Date(dateStr);
