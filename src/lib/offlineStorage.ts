@@ -43,6 +43,26 @@ export interface SyncOperation {
   timestamp: number;
 }
 
+export interface PendingLocalItem {
+  itemId: string;
+  data?: any;
+  operation: 'SET' | 'DELETE';
+}
+
+// Offene (noch nicht übertragene) Schreibvorgänge einer Collection holen,
+// damit sie im Snapshot wieder eingemischt werden können.
+export async function getPendingLocalItems(collectionName: string): Promise<PendingLocalItem[]> {
+  try {
+    const queue = await getSyncQueue();
+    return queue
+      .filter(op => op.collectionName === collectionName)
+      .map(op => ({ itemId: op.itemId, data: op.data, operation: op.operation }));
+  } catch (e) {
+    console.warn(`getPendingLocalItems(${collectionName}) fehlgeschlagen:`, e);
+    return [];
+  }
+}
+
 // Global DB instance cache
 let dbInstance: IDBDatabase | null = null;
 let initPromise: Promise<IDBDatabase> | null = null;

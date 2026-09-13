@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { collection, onSnapshot, doc, setDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
-import { getLocalCollection, saveLocalCollection, enqueueSyncOperation } from '../lib/offlineStorage';
+import { getLocalCollection, saveLocalCollection, enqueueSyncOperation, getPendingLocalItems } from '../lib/offlineStorage';
 
 function sanitizeFirestoreData<T>(obj: T): T {
   if (obj === undefined) return null as unknown as T;
@@ -147,7 +147,7 @@ export function useCollectionSync<T>(
 
     const unsubscribe = onSnapshot(
       q,
-      (snapshot) => {
+      async (snapshot) => {
         const items: T[] = [];
         snapshot.forEach((docSnap) => {
           items.push({ [idField]: docSnap.id, ...docSnap.data() } as unknown as T);
@@ -165,13 +165,42 @@ export function useCollectionSync<T>(
           });
         }
 
-        setData(items);
-        dataRef.current = items;
-        setLoading(false);
-        // Caching: Firestore-Stand immer lokal spiegeln, damit nichts verloren geht.
-        saveLocalCollection(effectiveCollection, items).catch((e) =>
-          console.warn(`[Offline] Cache ${effectiveCollection} nicht geschrieben:`, e)
-        );
+        // Offline-first: Noch nicht übertragene Writes (Sync-Queue) wieder in den
+        // Snapshot einmischen, damit abgelehnte Schreibvorgänge NICHT vom
+        // Serverzustand überschrieben werden und die Einheit sichtbar bleibt.
+        try {
+          const pending = await getPendingLocalItems(effectiveCollection);
+          let merged = items;
+          if (pending.length > 0) {
+            const setMap = new Map<string, any>();
+            const deleteIds = new Set<string>();
+            for (const op of pending) {
+              if (op.operation === 'SET' && op.data) setMap.set(op.itemId, op.data);
+              else if (op.operation === 'DELETE') deleteIds.add(op.itemId);
+            }
+            if (setMap.size > 0 || deleteIds.size > 0) {
+              merged = items.filter((it) => !deleteIds.has(String((it as any)[idField] || (it as any).id)));
+              for (const [pid, pdata] of setMap) {
+                const idx = merged.findIndex((it) => String((it as any)[idField] || (it as any).id) === pid);
+                const obj = { [idField]: pid, ...pdata } as unknown as T;
+                if (idx >= 0) merged[idx] = obj;
+                else merged.push(obj);
+              }
+            }
+          }
+          setData(merged);
+          dataRef.current = merged;
+          setLoading(false);
+          // Caching: Firestore-Stand + offene Writes lokal spiegeln.
+          saveLocalCollection(effectiveCollection, merged).catch((e) =>
+            console.warn(`[Offline] Cache ${effectiveCollection} nicht geschrieben:`, e)
+          );
+        } catch (e) {
+          console.warn(`[Offline] Merge der offenen Writes fehlgeschlagen:`, e);
+          setData(items);
+          dataRef.current = items;
+          setLoading(false);
+        }
       },
       (err) => {
         console.error(`[Firestore] Error ${effectiveCollection}:`, err.message);
