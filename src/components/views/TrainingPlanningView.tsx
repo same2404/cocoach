@@ -1867,13 +1867,13 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
       date: missingDate,
       weekday: today.toLocaleDateString('de-DE', { weekday: 'long' }),
       group: 'FC Auggen',
-      load: 'Mittel',
-      loadLevel: 5,
-      duration: '90 Min',
+      load: '40–50 %',
+      loadLevel: 1,
+      duration: '0–10 min',
       weeklyFocus: '',
       sessionFocus: '',
       trainer: 'Amin, marcel',
-      intensity: 'Mittel-Hoch',
+      intensity: '40–50 %',
       status: 'Geplant',
       opponent: '',
       location: 'Auggen',
@@ -2361,48 +2361,54 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
     return updatedCount;
   };
 
-  const handleAddSession = () => {
-    const today = new Date();
-    const inheritedPlayers = getPlayersFromLastSession(today);
-    
-    const newSession: TrainingSession = {
-      id: Date.now().toString(),
-      date: today.toISOString().split('T')[0],
-      weekday: today.toLocaleDateString('de-DE', { weekday: 'long' }),
-      group: 'FC Auggen',
-      load: 'Mittel',
-      loadLevel: 5,
-      duration: '90 Min',
-      weeklyFocus: '',
-      sessionFocus: '',
-      trainer: '',
-      intensity: 'Mittel',
-      status: 'Geplant',
-      opponent: '',
-      location: 'Auggen',
-      players: inheritedPlayers,
-      content: {
-        warmup: '',
-        warmupDuration: '',
-        warmupImages: [],
-        main1: '',
-        main1Duration: '',
-        main1Images: [],
-        main2: '',
-        main2Duration: '',
-        main2Images: [],
-        closing: '',
-        closingDuration: '',
-        closingImages: []
-      },
-      importantInfo: '',
-      importantInfoImages: [],
-      remarks: '',
-      remarksImages: []
-    };
-    saveSession(newSession);
-    onSelectSession(newSession.id);
-    setIsEditing(true);
+  const handleAddSession = async () => {
+    try {
+      const today = new Date();
+      const inheritedPlayers = getPlayersFromLastSession(today);
+      
+      const newSession: TrainingSession = {
+        id: Date.now().toString(),
+        date: today.toISOString().split('T')[0],
+        weekday: today.toLocaleDateString('de-DE', { weekday: 'long' }),
+        group: 'FC Auggen',
+        load: '40–50 %',
+        loadLevel: 1,
+        duration: '0–10 min',
+        weeklyFocus: '',
+        sessionFocus: '',
+        trainer: '',
+        intensity: '40–50 %',
+        status: 'Geplant',
+        opponent: '',
+        location: 'Auggen',
+        players: inheritedPlayers,
+        content: {
+          warmup: '',
+          warmupDuration: '',
+          warmupImages: [],
+          main1: '',
+          main1Duration: '',
+          main1Images: [],
+          main2: '',
+          main2Duration: '',
+          main2Images: [],
+          closing: '',
+          closingDuration: '',
+          closingImages: []
+        },
+        importantInfo: '',
+        importantInfoImages: [],
+        remarks: '',
+        remarksImages: []
+      };
+      await saveSession(newSession);
+      onSelectSession(newSession.id);
+      setIsEditing(true);
+    } catch (e: any) {
+      setNotification(`Fehler beim Erstellen: ${e?.message || e}`);
+      console.error('handleAddSession Fehler:', e);
+      setTimeout(() => setNotification(null), 5000);
+    }
   };
 
   const handleGenerateUnits = () => {
@@ -2428,13 +2434,13 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
         date: dateStr,
         weekday,
         group: 'FC Auggen',
-        load: 'Mittel',
-      loadLevel: 5,
-        duration: '90 Min',
+        load: '40–50 %',
+      loadLevel: 1,
+        duration: '0–10 min',
         weeklyFocus: '',
         sessionFocus: '',
         trainer: 'Amin, marcel',
-        intensity: 'Mittel-Hoch',
+        intensity: '40–50 %',
         status: 'Geplant',
         opponent: '',
         location: 'Auggen',
@@ -2492,13 +2498,13 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
       date: dateStr,
       weekday,
       group: 'FC Auggen',
-      load: 'Mittel',
-      loadLevel: 5,
-      duration: '90 Min',
+      load: '40–50 %',
+      loadLevel: 1,
+      duration: '0–10 min',
       weeklyFocus: '',
       sessionFocus: '',
       trainer: 'Amin, marcel',
-      intensity: 'Mittel-Hoch',
+      intensity: '40–50 %',
       status: 'Geplant',
       opponent: '',
       location: 'Auggen',
@@ -2531,19 +2537,26 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
 
   const handleSave = async () => {
     if (localSession) {
-      const cleanPlayers = deduplicateSessionPlayers(localSession.players || [], players);
-      const cleanedSession: TrainingSession = {
-        ...localSession,
-        players: cleanPlayers
-      };
-      await saveSession(cleanedSession);
-      setLocalSession(cleanedSession);
-      setIsEditing(false);
-      setShowHistory(true);
-      loadHistory(cleanedSession.id);
+      try {
+        const cleanPlayers = deduplicateSessionPlayers(localSession.players || [], players);
+        const cleanedSession: TrainingSession = {
+          ...localSession,
+          players: cleanPlayers
+        };
+        await saveSession(cleanedSession);
+        setLocalSession(cleanedSession);
+        setIsEditing(false);
+        setShowHistory(true);
+        loadHistory(cleanedSession.id);
 
-      setNotification('Einheit erfolgreich gespeichert!');
-      setTimeout(() => setNotification(null), 2500);
+        setNotification('Einheit erfolgreich gespeichert!');
+        setTimeout(() => setNotification(null), 2500);
+      } catch (e: any) {
+        setIsEditing(false);
+        setNotification(`Fehler beim Speichern: ${e?.message || e}`);
+        console.error('handleSave Fehler:', e);
+        setTimeout(() => setNotification(null), 5000);
+      }
     }
   };
 
@@ -4202,9 +4215,22 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                 </div>
               </div>
 
-              {/* Belastungsdiagramm – statische Tabelle exakt nach Vorgabe (nur Zahlen & %) */}
+              {/* Belastungsdiagramm – Trainer bestimmt Stufe per Klick (1-9) */}
               <div className="border-b-2 border-black bg-white">
-                <div className="text-center text-[9px] font-black uppercase tracking-widest text-slate-500 py-1 print:text-black">Belastungsdiagramm</div>
+                <div className="flex items-center justify-between px-2 py-1">
+                  <div className="text-center text-[9px] font-black uppercase tracking-widest text-slate-500 print:text-black">Belastungsdiagramm</div>
+                  {localSession && (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[8px] font-black uppercase text-slate-500 print:text-black">Gewählt:</span>
+                      <div
+                        className="w-5 h-5 border-2 border-black rounded-sm"
+                        style={{ backgroundColor: BELASTUNGS_STUFEN[localSession.loadLevel || 5]?.farbe || '#7ed957' }}
+                        title={`Stufe ${localSession.loadLevel || 5}`}
+                      />
+                      <span className="text-[9px] font-black text-slate-900">{localSession.loadLevel || 5}</span>
+                    </div>
+                  )}
+                </div>
                 <div
                   className="w-full overflow-hidden"
                   style={{
@@ -4230,15 +4256,40 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                         ['7', '100–110 %', '15–45 min'],
                         ['8', '110–120 %', '15–55 min'],
                         ['9', '120–130 %', '10–110 min'],
-                      ].map((row) => (
-                        <tr key={row[0]}>
-                          {row.map((cell, ci) => (
-                            <td key={ci} className="py-0.5 text-[11px] font-semibold" style={{ border: '1px solid rgba(255,255,255,0.5)', color: '#000' }}>{cell}</td>
-                          ))}
-                        </tr>
-                      ))}
+                      ].map((row) => {
+                        const rowNum = parseInt(row[0], 10);
+                        const isSelected = (localSession?.loadLevel || 5) === rowNum;
+                        return (
+                          <tr
+                            key={row[0]}
+                            onClick={() => {
+                              if (!isEditing) { setIsEditing(true); }
+                              updateField('loadLevel', rowNum);
+                              updateField('load', row[1]);
+                              updateField('intensity', row[1]);
+                              updateField('duration', row[2]);
+                              setNotification(`Belastung Stufe ${row[0]} gewählt · ${row[1]} · ${row[2]}`);
+                              setTimeout(() => setNotification(null), 3000);
+                            }}
+                            className={isEditing ? 'cursor-pointer transition-colors' : 'cursor-default'}
+                            style={{
+                              border: '1px solid rgba(255,255,255,0.5)',
+                              background: isSelected ? 'rgba(0,0,0,0.28)' : 'transparent',
+                              outline: isSelected ? '2px solid #000' : 'none',
+                              outlineOffset: '-2px',
+                            }}
+                          >
+                            {row.map((cell, ci) => (
+                              <td key={ci} className="py-0.5 text-[11px] font-semibold" style={{ border: '1px solid rgba(255,255,255,0.5)', color: '#000' }}>{cell}</td>
+                            ))}
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
+                  {isEditing && (
+                    <div className="text-center text-[8px] font-bold uppercase tracking-widest bg-black/10 text-black py-0.5">Tipp: Zeile anklicken = Belastung wählen</div>
+                  )}
                 </div>
               </div>
 
