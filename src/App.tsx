@@ -193,7 +193,18 @@ const App: React.FC = () => {
           if (user.displayName) setLocalName(user.displayName);
         }
       } else {
-        setAuthUser(null);
+        // Ohne Login kann keine Schreib-Autorisierung erfolgen.
+        // Wir melden anonym an, damit Firestore-Writes immer funktionieren.
+        try {
+          const cred = await signInAnonymously(auth);
+          setAuthUser({
+            ...cred.user,
+            isAnonymous: true
+          });
+        } catch (err: any) {
+          console.warn('Anonyme Anmeldung fehlgeschlagen:', err?.message || err);
+          setAuthUser(null);
+        }
       }
     });
   }, []);
