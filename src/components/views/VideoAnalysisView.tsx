@@ -293,10 +293,10 @@ export interface TacticalVideoClip {
 // Once-Style Taktik-Grafik je Szene (Koordinaten in % auf dem kompletten Spielfeld)
 export interface SceneTacticBoard {
   attackDirection?: string;
-  players?: Array<{ label: string; team: string; x: number; y: number }>;
+  players?: Array<{ label: string; team: string; x: number; y: number; key?: string }>;
   ball?: { x: number; y: number };
-  chains?: Array<{ label?: string; fromX: number; fromY: number; toX: number; toY: number; color?: string }>;
-  passes?: Array<{ fromLabel?: string; toLabel?: string; fromX: number; fromY: number; toX: number; toY: number; action?: string; color?: string }>;
+  chains?: Array<{ label?: string; fromX: number; fromY: number; toX: number; toY: number; color?: string; fromPlayer?: string; toPlayer?: string }>;
+  passes?: Array<{ fromLabel?: string; toLabel?: string; fromX: number; fromY: number; toX: number; toY: number; action?: string; color?: string; fromPlayer?: string; toPlayer?: string }>;
   runs?: Array<{ label?: string; points: Array<{ x: number; y: number }>; color?: string }>;
   ballPath?: Array<{ points: Array<{ x: number; y: number }>; color?: string }>;
   zones?: Array<{ x: number; y: number; w: number; h: number; label?: string; color?: string }>;
@@ -1482,6 +1482,10 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
   const [tagDragStart, setTagDragStart] = useState<{ x: number; y: number } | null>(null);
   const [tagDragEnd, setTagDragEnd] = useState<{ x: number; y: number } | null>(null);
   const [tagRunPts, setTagRunPts] = useState<Array<{ x: number; y: number }>>([]);
+  // Once-Tagger-Verfeinerung: eindeutige Spieler-Keys + verschobener Marker beim Ziehen
+  const tagPlayerSeqRef = useRef<number>(1);
+  const tagDragPlayerKeyRef = useRef<string | null>(null);
+  const tagLineStartKeyRef = useRef<string | null>(null);
 
   const tagPos = (e: React.PointerEvent): { x: number; y: number } | null => {
     const el = tagContainerRef.current;
@@ -1515,6 +1519,39 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
     zones: b.zones ? [...b.zones] : [],
     optimalPositions: b.optimalPositions ? [...b.optimalPositions] : [],
   });
+  // Nächsten Spieler-Marker innerhalb Toleranz finden (für Ziehen/Andocken)
+  const tagPlayerAt = (p: { x: number; y: number }, tol: number = 12): { index: number; player: { label: string; team: string; x: number; y: number; key?: string } } | null => {
+    const list = tagBoard.players || [];
+    let bestIndex = -1;
+    let bestD = tol;
+    list.forEach((pl, i) => {
+      const d = Math.hypot(pl.x - p.x, pl.y - p.y);
+      if (d < bestD) { bestD = d; bestIndex = i; }
+    });
+    if (bestIndex < 0) return null;
+    return { index: bestIndex, player: list[bestIndex] };
+  };
+  // Spieler-Marker verschieben + alle daran verankerten Linien/Passwege mitziehen
+  const tagMovePlayer = (key: string, x: number, y: number) => {
+    setTagBoard(prev => {
+      const next = tagGuard(prev);
+      const i = (next.players || []).findIndex(pl => pl.key === key);
+      if (i < 0) return prev;
+      const before = next.players![i];
+      next.players![i] = { ...before, x, y };
+      [next.chains, next.passes].forEach(arr => (arr || []).forEach(e => {
+        if (e.fromPlayer === key) { e.fromX = x; e.fromY = y; }
+        if (e.toPlayer === key) { e.toX = x; e.toY = y; }
+      }));
+      return next;
+    });
+  };
+  // Marker abschließen/anheften: Endpunkt auf nächstgelegenen Spieler docken
+  const tagSnap = (p: { x: number; y: number }, tol: number = 14): { x: number; y: number; playerKey?: string } => {
+    const hit = tagPlayerAt(p, tol);
+    if (hit) return { x: hit.player.x, y: hit.player.y, playerKey: hit.player.key || `p${hit.index + 1}` };
+    return { x: p.x, y: p.y };
+  };
   const tagDown = (e: React.PointerEvent) => {
     const p = tagPos(e);
     if (!p) return;
@@ -1522,35 +1559,78 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
     // Nur einfrieren, wenn der Live-Modus AUS ist – sonst läuft das Video beim Zeichnen weiter.
     if (!tagKeepPlaying && mainVideoRef.current && !mainVideoRef.current.paused) { mainVideoRef.current.pause(); setIsPlaying(false); }
     if (tagTool === 'player' || tagTool === 'optimal') {
-      tagPush();
-      setTagBoard(prev => {
-        const next = tagGuard(prev);
-        if (tagTool === 'player') next.players!.push({ label: tagLabel, team: tagTeam, x: p.x, y: p.y });
-        if (tagTool === 'optimal') next.optimalPositions!.push({ label: tagLabel, toX: p.x, toY: p.y, note: tagOptNote });
-        return next;
-      });
+      if (tagTool === 'player') {
+        // Bestehenden Marker ZIEHEN statt Duplikat erzeugen
+        const hit = tagPlayerAt(p);
+        if (hit) {
+          tagPush();
+          tagDragPlayerKeyRef.current = hit.player.key || `p${hit.index + 1}`;
+        } else {
+          tagPush();
+          const key = `pl${tagPlayerSeqRef.current++}`;
+          setTagBoard(prev => {
+            const next = tagGuard(prev);
+            next.players!.push({ label: tagLabel, team: tagTeam, x: p.x, y: p.y, key });
+            return next;
+          });
+        }
+      } else {
+        tagPush();
+        setTagBoard(prev => {
+          const next = tagGuard(prev);
+          next.optimalPositions!.push({ label: tagLabel, toX: p.x, toY: p.y, note: tagOptNote });
+          return next;
+        });
+      }
       return;
     }
     if (tagTool === 'run' || tagTool === 'ball') { setTagRunPts(prev => [...prev, p]); return; }
+    if (tagTool === 'chain' || tagTool === 'pass') {
+      // Passweg/Kette an Spieler-Marker andocken (Start-Ende)
+      const startSnap = tagSnap(p);
+      tagLineStartKeyRef.current = startSnap.playerKey || null;
+      setTagDragStart({ x: startSnap.x, y: startSnap.y });
+      setTagDragEnd({ x: startSnap.x, y: startSnap.y });
+      return;
+    }
     setTagDragStart(p);
     setTagDragEnd(p);
   };
   const tagMove = (e: React.PointerEvent) => {
+    // Spieler-Marker wird live gezogen (Video kann dabei weiterlaufen im Live-Modus)
+    if (tagDragPlayerKeyRef.current) {
+      const p = tagPos(e);
+      if (p) tagMovePlayer(tagDragPlayerKeyRef.current, p.x, p.y);
+      return;
+    }
     if (!tagDragStart) return;
     const p = tagPos(e);
     if (p) setTagDragEnd(p);
   };
   const tagUp = () => {
+    if (tagDragPlayerKeyRef.current) {
+      tagDragPlayerKeyRef.current = null;
+      setTagDragStart(null);
+      setTagDragEnd(null);
+      return;
+    }
     if (tagDragStart && tagDragEnd) {
       tagPush();
       setTagBoard(prev => {
         const next = tagGuard(prev);
-        if (tagTool === 'chain') next.chains!.push({ fromX: tagDragStart.x, fromY: tagDragStart.y, toX: tagDragEnd.x, toY: tagDragEnd.y, color: tagColor });
-        if (tagTool === 'pass') next.passes!.push({ fromX: tagDragStart.x, fromY: tagDragStart.y, toX: tagDragEnd.x, toY: tagDragEnd.y, action: 'Pass', color: tagColor });
+        if (tagTool === 'chain') {
+          const endSnap = tagSnap({ x: tagDragEnd.x, y: tagDragEnd.y });
+          next.chains!.push({ fromX: tagDragStart.x, fromY: tagDragStart.y, toX: endSnap.x, toY: endSnap.y, color: tagColor, fromPlayer: tagLineStartKeyRef.current || undefined, toPlayer: endSnap.playerKey });
+        }
+        if (tagTool === 'pass') {
+          const endSnap = tagSnap({ x: tagDragEnd.x, y: tagDragEnd.y });
+          next.passes!.push({ fromX: tagDragStart.x, fromY: tagDragStart.y, toX: endSnap.x, toY: endSnap.y, action: 'Pass', color: tagColor, fromPlayer: tagLineStartKeyRef.current || undefined, toPlayer: endSnap.playerKey });
+        }
         if (tagTool === 'zone') next.zones!.push({ x: Math.min(tagDragStart.x, tagDragEnd.x), y: Math.min(tagDragStart.y, tagDragEnd.y), w: Math.abs(tagDragEnd.x - tagDragStart.x), h: Math.abs(tagDragEnd.y - tagDragStart.y), label: tagZoneLabel, color: tagColor });
         return next;
       });
     }
+    tagLineStartKeyRef.current = null;
     setTagDragStart(null);
     setTagDragEnd(null);
   };
