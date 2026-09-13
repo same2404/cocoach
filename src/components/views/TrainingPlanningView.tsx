@@ -4339,6 +4339,43 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                 )}
               </div>
 
+              {/* Intensitäts-Farbleiste: unter Trainer, über der Aktivität – Farben = Belastungsdiagramm */}
+              <div className="border-b-2 border-black bg-white p-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {[1,2,3,4,5,6,7,8,9].map((s) => {
+                    const stufe = BELASTUNGS_STUFEN[s];
+                    const active = (localSession.loadLevel || 5) === s;
+                    return (
+                      <button
+                        key={s}
+                        onClick={() => {
+                          if (!isEditing) { setIsEditing(true); }
+                          updateField('loadLevel', s);
+                          updateField('load', stufe.label);
+                          updateField('intensity', stufe.intensity);
+                          updateField('duration', s <= 3 ? ['0–10 min','0–15 min','0–20 min'][s-1] : s <= 6 ? ['10–25 min','10–30 min','10–35 min'][s-4] : ['15–45 min','15–55 min','10–110 min'][s-7]);
+                        }}
+                        className="flex flex-col items-center rounded-md transition-transform cursor-pointer hover:scale-105"
+                        style={{ backgroundColor: stufe.farbe, boxShadow: active ? '0 0 0 2px #000 inset' : 'none' }}
+                        title={`Stufe ${s} · Intensität ${stufe.intensity}`}
+                      >
+                        <span className="text-[10px] font-black leading-none px-2 py-1" style={{ color: s >= 6 ? '#fff' : '#111' }}>{s}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="flex items-center justify-between mt-1.5 gap-2">
+                  <span className="text-[8px] font-black uppercase text-slate-600">Belastung</span>
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded" style={{ backgroundColor: (BELASTUNGS_STUFEN[localSession.loadLevel || 5] || BELASTUNGS_STUFEN[5]).farbe, color: (localSession.loadLevel || 5) >= 6 ? '#fff' : '#111' }}>
+                    {localSession.loadLevel || 5} · {localSession.load || BELASTUNGS_STUFEN[localSession.loadLevel || 5].label}
+                  </span>
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded" style={{ backgroundColor: (BELASTUNGS_STUFEN[localSession.loadLevel || 5] || BELASTUNGS_STUFEN[5]).farbe, color: (localSession.loadLevel || 5) >= 6 ? '#fff' : '#111' }}>
+                    {localSession.intensity || BELASTUNGS_STUFEN[localSession.loadLevel || 5].intensity}
+                  </span>
+                  <span className="text-[8px] font-black uppercase text-slate-600">{localSession.duration || 'Dauer'}</span>
+                </div>
+              </div>
+
               {/* Analyse-Engine-Hinweis: Ähnliche Einheit bereits gehabt */}
               {similarSessions.length > 0 && (
                 <div className="border-b-2 border-black bg-amber-50 px-4 py-2 print:hidden">

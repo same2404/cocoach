@@ -4718,21 +4718,39 @@ onNavigateToTacticBoard={(_matchId: any, draft?: any) => {
                   placeholder="z.B. samerkhaleel720@gmail.com"
                   className="w-full bg-[#1E293B] border border-[#334155] text-white rounded-xl p-2.5 text-xs font-semibold focus:outline-none focus:border-[#F59E0B]"
                 />
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {AUTHORIZED_STAFF_LIST.map((staff) => (
+                    <button
+                      key={staff.email}
+                      type="button"
+                      onClick={(e) => {
+                        const form = (e.currentTarget.closest('form') as HTMLFormElement);
+                        const emailInput = form.elements.namedItem('email') as HTMLInputElement;
+                        if (emailInput) emailInput.value = staff.email;
+                      }}
+                      className="px-2 py-1 rounded-md bg-[#1E293B] hover:bg-[#334155] border border-[#334155] text-[10px] font-bold text-[#94A3B8] hover:text-white transition cursor-pointer"
+                      title={`${staff.name} · ${staff.role}`}
+                    >
+                      {staff.icon} {staff.name.split(' ')[0]}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div>
                 <label className="text-[10px] font-black uppercase tracking-wider text-[#94A3B8] block mb-1">
-                  Trainer-PIN / Passwort
+                  Trainer-Passwort
                 </label>
                 <input
                   name="pass"
                   type="password"
-                  defaultValue="0000"
+                  defaultValue="fcauggen 26/27"
                   required
-                  placeholder="0000"
+                  placeholder="fcauggen 26/27"
                   className="w-full bg-[#1E293B] border border-[#334155] text-white rounded-xl p-2.5 text-xs font-semibold focus:outline-none focus:border-[#F59E0B]"
                 />
-                <p className="text-[10px] text-[#64748B] mt-1">Standard Trainer-PIN: 0000</p>
+                <p className="text-[10px] text-[#64748B] mt-1">Gemeinsames Trainer-Passwort: fcauggen 26/27</p>
+                <p className="text-[10px] text-[#F59E0B]/80 mt-1">Erst-Login erstellt das Konto automatisch.</p>
               </div>
 
               <button
