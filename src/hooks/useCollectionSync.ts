@@ -25,7 +25,7 @@ let CLUB_READONLY = true;
 export function setClubPrefix(prefix: string, isDemo: boolean) {
   CLUB_PREFIX = isDemo ? '' : `_${prefix}`;
   CLUB_IS_DEMO = isDemo;
-  CLUB_READONLY = isDemo;
+  CLUB_READONLY = false;
 }
 
 // Allow enabling writes while keeping the (empty) demo prefix so no data is lost
@@ -163,10 +163,6 @@ export function useCollectionSync<T>(
 
   const addOrUpdateItem = useCallback(
     async (item: T) => {
-      if (isReadOnly()) {
-        console.warn(`[Schreibschutz] FC Auggen Demo - Speichern von ${effectiveCollection} blockiert`);
-        return;
-      }
       const id = String((item as any)[idField] || (item as any).id);
       if (!id) return;
 
@@ -197,10 +193,6 @@ export function useCollectionSync<T>(
 
   const removeItem = useCallback(
     async (id: string | number) => {
-      if (isReadOnly()) {
-        console.warn(`[Schreibschutz] FC Auggen Demo - Löschen aus ${effectiveCollection} blockiert`);
-        return;
-      }
       const idStr = String(id);
       if (!idStr) return;
 
@@ -223,10 +215,6 @@ export function useCollectionSync<T>(
 
   const saveItem = useCallback(
     async (id: string, item: T) => {
-      if (isReadOnly()) {
-        console.warn(`[Schreibschutz] FC Auggen Demo - Speichern von ${effectiveCollection}/${id} blockiert`);
-        return;
-      }
       setData((prev) => {
         const index = prev.findIndex((x) => String((x as any)[idField] || (x as any).id) === id);
         if (index >= 0) {

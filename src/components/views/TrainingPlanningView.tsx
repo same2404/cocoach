@@ -858,17 +858,17 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
 
   const activeMatchDay = matchDayType || detectedMatchDay;
 
-  // Belastungsstufen 1-9 mit Intensitätsbereichen
+  // Belastungsstufen 1-9 – exakt nach Belastungsdiagramm-Vorgabe (nur Zahlen & %)
   const BELASTUNGS_STUFEN: Record<number, { label: string; intensity: string; hf: string; farbe: string }> = {
-    1: { label: 'Regeneration', intensity: '30-40%', hf: '50-60%', farbe: '#22c55e' },
-    2: { label: 'Lockeres Training', intensity: '40-50%', hf: '55-65%', farbe: '#4ade80' },
-    3: { label: 'Aktive Erholung', intensity: '50-60%', hf: '60-70%', farbe: '#86efac' },
-    4: { label: 'Technik-Arbeit', intensity: '55-65%', hf: '65-75%', farbe: '#facc15' },
-    5: { label: 'Mittlere Belastung', intensity: '60-70%', hf: '70-80%', farbe: '#fbbf24' },
-    6: { label: 'Mittel-Hoch', intensity: '60-80%', hf: '75-85%', farbe: '#f97316' },
-    7: { label: 'Spielnahe Aktivierung', intensity: '70-80%', hf: '80-90%', farbe: '#fb8c2b' },
-    8: { label: 'Hohe Intensität', intensity: '70-90%', hf: '85-95%', farbe: '#ea580c' },
-    9: { label: 'Maximale Belastung', intensity: '80-100%', hf: '90-100%', farbe: '#dc2626' },
+    1: { label: '40–50 %', intensity: '40–50 %', hf: '50–60 %', farbe: '#c8f7c5' },
+    2: { label: '50–60 %', intensity: '50–60 %', hf: '55–65 %', farbe: '#b5eeb0' },
+    3: { label: '60–70 %', intensity: '60–70 %', hf: '60–70 %', farbe: '#a0e499' },
+    4: { label: '70–80 %', intensity: '70–80 %', hf: '65–75 %', farbe: '#8bda83' },
+    5: { label: '80–90 %', intensity: '80–90 %', hf: '70–80 %', farbe: '#7ed957' },
+    6: { label: '90–100 %', intensity: '90–100 %', hf: '75–85 %', farbe: '#6ab94d' },
+    7: { label: '100–110 %', intensity: '100–110 %', hf: '80–90 %', farbe: '#56a143' },
+    8: { label: '110–120 %', intensity: '110–120 %', hf: '85–95 %', farbe: '#439239' },
+    9: { label: '120–130 %', intensity: '120–130 %', hf: '90–100 %', farbe: '#2e7d32' },
   };
 
   // WOCHENPLÄNE nach PDF-Vorgaben
@@ -1100,11 +1100,11 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
       date: iso,
       weekday: tag.weekday,
       location: tag.stufe === 0 ? (base.location || '') : 'Rasenplatz Auggen',
-      loadLevel: tag.stufe,
-      load: stufe?.label || '',
-      intensity: stufe?.intensity || '',
-      duration: tag.dauer,
-      sessionFocus: tag.schwerpunkt,
+      loadLevel: existing ? base.loadLevel : tag.stufe,
+      load: existing ? base.load : (stufe?.label || ''),
+      intensity: existing ? base.intensity : (stufe?.intensity || ''),
+      duration: existing ? base.duration : tag.dauer,
+      sessionFocus: existing ? base.sessionFocus : tag.schwerpunkt,
     };
     try {
       saveSession(updated);
@@ -1224,8 +1224,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
       const targetIso = targetDate.toISOString().split('T')[0];
       const match = sessions.find((s: any) => s.date === targetIso);
       if (match) {
-        const stufe = BELASTUNGS_STUFEN[tag.stufe];
-        saveSession({ ...match, loadLevel: tag.stufe, load: stufe?.label || '', intensity: stufe?.intensity || '', duration: tag.dauer, sessionFocus: tag.schwerpunkt });
+        saveSession(match);
       } else {
         upsertForDate(targetIso, tag).catch((e: any) => setHealStatus(`Fehler beim Anlegen ${targetIso}: ${e?.message || e}`));
       }
@@ -1422,8 +1421,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
         const iso = dateStr.toISOString().split('T')[0];
         const existing = sessions.find((s: any) => s.date === iso);
         if (existing) {
-          const stufe = BELASTUNGS_STUFEN[tag.stufe];
-          saveSession({ ...existing, loadLevel: tag.stufe, load: stufe?.label || '', intensity: stufe?.intensity || '', duration: tag.dauer, sessionFocus: tag.schwerpunkt });
+          saveSession(existing);
         } else if (localSession) {
           upsertForDate(iso, tag).catch((e: any) => setHealStatus(`Fehler beim Anlegen ${iso}: ${e?.message || e}`));
         }
@@ -3691,7 +3689,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
               <RotateCcw size={14} /><span className="text-[8px] font-bold uppercase hidden sm:inline">Zurücksetzen</span>
             </button>
             <div className="w-px h-5 bg-[#334155] mx-0.5" />
-            <button onClick={handleSave} className={`p-1.5 rounded-md transition-colors flex items-center gap-1 ${isEditing ? 'text-emerald-400 hover:bg-emerald-900/30' : 'opacity-30 text-[#475569]'}`} disabled={!isEditing} title="Speichern">
+            <button onClick={() => { if (!isEditing) setIsEditing(true); setTimeout(() => handleSave(), 50); }} className="p-1.5 rounded-md transition-colors flex items-center gap-1 text-emerald-400 hover:bg-emerald-900/30 cursor-pointer" title="Speichern">
               <Save size={14} /><span className="text-[8px] font-bold uppercase hidden sm:inline">Speichern</span>
             </button>
             <button onClick={() => setIsEditing(!isEditing)} className={`p-1.5 rounded-md transition-colors flex items-center gap-1 ${isEditing ? 'bg-[#e94560] text-white hover:bg-[#e94560]/80' : 'text-[#94A3B8] hover:bg-[#1f2937] hover:text-white'}`} title="Bearbeiten">
@@ -4149,7 +4147,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
             <div id="training-plan-card" className="max-w-6xl mx-auto bg-white text-slate-900 border-2 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-0 flex flex-col print:shadow-none print:max-w-none print:w-full print:border-none print:mx-0 print:overflow-visible print:h-auto">
               
               {/* Top Header Row - Responsive Columns */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-9 border-b-2 border-black bg-white text-[10px] font-black uppercase text-slate-900">
+              <div className="grid grid-cols-2 sm:grid-cols-4 border-b-2 border-black bg-white text-[10px] font-black uppercase text-slate-900">
                 <div className="p-2 border-r-2 border-black">
                   <span className="text-slate-600 font-bold block mb-0.5">Datum:</span>
                   {isEditing ? (
@@ -4189,7 +4187,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                     <div className="font-bold text-xs text-slate-900">{localSession.location || '-'}</div>
                   )}
                 </div>
-                <div className="p-2 border-r-2 border-black">
+                <div className="p-2">
                   <span className="text-slate-600 font-bold block mb-0.5">T.-Gruppe:</span>
                   {isEditing ? (
                     <input 
@@ -4202,67 +4200,45 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                     <div className="font-bold text-xs text-slate-900">{localSession.group}</div>
                   )}
                 </div>
-                <div className="p-2 border-r-2 border-black">
-                  <span className="text-slate-600 font-bold block mb-0.5">Belastung (1-9):</span>
-                  {isEditing ? (
-                    <select 
-                      value={localSession.loadLevel || 5}
-                      onChange={(e) => {
-                        const lvl = parseInt(e.target.value);
-                        const labels: Record<number, string> = { 1: 'Sehr leicht', 2: 'Leicht', 3: 'Leicht-mittel', 4: 'Mittel-leicht', 5: 'Mittel', 6: 'Mittel-hoch', 7: 'Hoch', 8: 'Sehr hoch', 9: 'Maximal' };
-                        updateField('loadLevel', lvl);
-                        updateField('load', labels[lvl] || 'Mittel');
-                        // Intensität automatisch aus Belastungsstufe (%-Bereich) übernehmen
-                        updateField('intensity', BELASTUNGS_STUFEN[lvl]?.intensity || localSession.intensity);
-                      }}
-                      className="w-full bg-white text-slate-900 border border-slate-300 rounded px-1 font-bold text-xs outline-none focus:border-black"
-                    >
-                      {[1,2,3,4,5,6,7,8,9].map(n => {
-                        const labels: Record<number, string> = { 1: 'Sehr leicht', 2: 'Leicht', 3: 'Leicht-mittel', 4: 'Mittel-leicht', 5: 'Mittel', 6: 'Mittel-hoch', 7: 'Hoch', 8: 'Sehr hoch', 9: 'Maximal' };
-                        return <option key={n} value={n} className="bg-white text-slate-900">{n} — {labels[n]}</option>;
-                      })}
-                    </select>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-xs text-slate-900">{localSession.loadLevel || 5}/9</span>
-                      <div className="flex gap-0.5">
-                        {[1,2,3,4,5,6,7,8,9].map(n => {
-                          const lvl = localSession.loadLevel || 5;
-                          const color = n <= lvl
-                          ? n <= 2 ? '#22c55e' : n <= 4 ? '#84cc16' : n <= 6 ? '#eab308' : n <= 8 ? '#fb923c' : '#dc2626'
-                          : '#e2e8f0';
-                          return <div key={n} className="w-2 h-3 rounded-sm" style={{ backgroundColor: color }} />;
-                        })}
-                      </div>
-                      <span className="text-[9px] text-slate-500 font-semibold">{localSession.load}</span>
-                    </div>
-                  )}
-                </div>
-                <div className="p-2 border-r-2 border-black">
-                  <span className="text-slate-600 font-bold block mb-0.5">Dauer:</span>
-                  {isEditing ? (
-                    <input 
-                      type="text" 
-                      value={localSession.duration}
-                      onChange={(e) => updateField('duration', e.target.value)}
-                      className="w-full bg-white text-slate-900 border border-slate-300 rounded px-1 font-bold text-xs outline-none focus:border-black"
-                    />
-                  ) : (
-                    <div className="font-bold text-xs text-slate-900">{localSession.duration || (autoTotalMinutes > 0 ? `${autoTotalMinutes} Min` : '—')}</div>
-                  )}
-                  {autoTotalMinutes > 0 && (
-                    <div className="text-[8px] font-black uppercase text-emerald-600 mt-0.5">auto · Teile: {autoTotalMinutes} Min</div>
-                  )}
-                </div>
-                <div className="p-2 border-r-2 border-black">
-                  <span className="text-slate-600 font-bold block mb-0.5">Intensität (auto):</span>
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-bold text-xs text-slate-900">{localSession.intensity || BELASTUNGS_STUFEN[localSession.loadLevel || 5]?.intensity || '—'}</span>
-                    <span className="text-[8px] font-bold text-slate-400 uppercase">aus Belastungsstufe</span>
-                  </div>
-                </div>
-                <div className="p-2 flex justify-end items-center">
-                  <div className="w-8 h-8 border-l-2 border-black" style={{ backgroundColor: BELASTUNGS_STUFEN[localSession.loadLevel || 5]?.farbe || '#ef4444' }} title="Farbe folgt Belastungsstufe" />
+              </div>
+
+              {/* Belastungsdiagramm – statische Tabelle exakt nach Vorgabe (nur Zahlen & %) */}
+              <div className="border-b-2 border-black bg-white">
+                <div className="text-center text-[9px] font-black uppercase tracking-widest text-slate-500 py-1 print:text-black">Belastungsdiagramm</div>
+                <div
+                  className="w-full overflow-hidden"
+                  style={{
+                    background: 'linear-gradient(180deg, #c8f7c5 0%, #7ed957 50%, #2e7d32 100%)',
+                  }}
+                >
+                  <table className="w-full border-collapse text-center" style={{ borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr>
+                        <th className="py-1.5 text-[10px] font-black uppercase tracking-wider text-black" style={{ border: '1px solid rgba(255,255,255,0.5)' }}>Schwerpunkte</th>
+                        <th className="py-1.5 text-[10px] font-black uppercase tracking-wider text-black" style={{ border: '1px solid rgba(255,255,255,0.5)' }}>Intens</th>
+                        <th className="py-1.5 text-[10px] font-black uppercase tracking-wider text-black" style={{ border: '1px solid rgba(255,255,255,0.5)' }}>Zeit</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[
+                        ['1', '40–50 %', '0–10 min'],
+                        ['2', '50–60 %', '0–15 min'],
+                        ['3', '60–70 %', '0–20 min'],
+                        ['4', '70–80 %', '10–25 min'],
+                        ['5', '80–90 %', '10–30 min'],
+                        ['6', '90–100 %', '10–35 min'],
+                        ['7', '100–110 %', '15–45 min'],
+                        ['8', '110–120 %', '15–55 min'],
+                        ['9', '120–130 %', '10–110 min'],
+                      ].map((row) => (
+                        <tr key={row[0]}>
+                          {row.map((cell, ci) => (
+                            <td key={ci} className="py-0.5 text-[11px] font-semibold" style={{ border: '1px solid rgba(255,255,255,0.5)', color: '#000' }}>{cell}</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
 

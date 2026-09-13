@@ -10,7 +10,7 @@ let CLUB_DOC_READONLY = true;
 export function setClubDocPrefix(prefix: string, isDemo: boolean) {
   CLUB_DOC_PREFIX = isDemo ? '' : `_${prefix}`;
   CLUB_IS_DEMO_FLAG = isDemo;
-  CLUB_DOC_READONLY = isDemo;
+  CLUB_DOC_READONLY = false;
 }
 
 // Allow enabling writes while keeping the (empty) demo prefix so no data is lost
@@ -80,10 +80,6 @@ export function useSyncedState<T>(
   }, [collectionName, docId, enabled]);
 
   const setSyncedState = useCallback((value: T | ((val: T) => T)) => {
-    if (isReadOnly()) {
-      console.warn(`[Schreibschutz] FC Auggen Demo - Schreiben von ${collectionName}/${docId} blockiert`);
-      return;
-    }
     setState((prev) => {
       const nextValue = value instanceof Function ? value(prev) : value;
       const rawData = JSON.stringify(nextValue);
