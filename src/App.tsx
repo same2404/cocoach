@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { auth, googleProvider, db, handleFirestoreError, OperationType, getWeekdayLabel, isQueryParamValid } from './firebase';
 import { doc, setDoc, deleteField, updateDoc, deleteDoc, writeBatch, query, collection, where, getDocs, getDoc, onSnapshot } from 'firebase/firestore';
-import { onAuthStateChanged, signInWithPopup, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { onAuthStateChanged, signInWithPopup, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, fetchSignInMethodsForEmail } from 'firebase/auth';
 
 import { TABS, PLAYERS as INITIAL_PLAYERS, COMPETITIVE_MATCHES, TEST_MATCHES, SCOUTING_DATA as INITIAL_SCOUTING, INITIAL_FINANCE_DATA, INITIAL_MEETINGS_DATA, INITIAL_TRAINING_SESSIONS, INITIAL_SUMMER_PREP, INITIAL_WINTER_PREP, YEARLY_PLAN, DEPTH_CHART, FINANCE_META, INITIAL_FORMATION, CARD_RECORDS, COMPETITIVE_MINUTES, TEST_MINUTES } from './constants';
 import { SC_SAND_SEED } from './constants/sc-sand-data';
@@ -271,17 +271,21 @@ const App: React.FC = () => {
     try {
       setAuthLoading(true);
 
-      // Echtes Firebase Email/Passwort-Auth
-      let cred: any;
+      // Konto-Existenz prüfen (Firebase gibt auth/invalid-credential sowohl bei
+      // falschem Passwort als auch bei unbekannter E-Mail zurück).
+      let methods: string[] = [];
       try {
+        methods = await fetchSignInMethodsForEmail(auth, emailClean);
+      } catch (mErr: any) {
+        console.warn('fetchSignInMethodsForEmail Fehler:', mErr?.code || mErr);
+      }
+
+      let cred: any;
+      if (methods.length === 0) {
+        // Konto existiert noch nicht – automatisch erstellen (Erst-Login)
+        cred = await createUserWithEmailAndPassword(auth, emailClean, pass);
+      } else {
         cred = await signInWithEmailAndPassword(auth, emailClean, pass);
-      } catch (signErr: any) {
-        if (signErr?.code === 'auth/user-not-found') {
-          // Konto existiert noch nicht – automatisch erstellen
-          cred = await createUserWithEmailAndPassword(auth, emailClean, pass);
-        } else {
-          throw signErr;
-        }
       }
       setAuthUser(cred.user);
 
@@ -299,7 +303,20 @@ const App: React.FC = () => {
       setShowLoginModal(false);
     } catch (err: any) {
       console.error("Custom email/password login failed:", err);
-      setToast({ message: `Anmeldung fehlgeschlagen: ${err?.message || err}`, id: Date.now() });
+      const code = err?.code || '';
+      let msg = err?.message || err;
+      if (code === 'auth/invalid-credential') {
+        msg = 'Passwort falsch – oder Konto-Hinweis: Mit diesem Passwort anmelden: fcauggen 26/27';
+      } else if (code === 'auth/email-already-in-use') {
+        msg = 'E-Mail schon vergeben – bitte direkt mit Passwort anmelden (fcauggen 26/27).';
+      } else if (code === 'auth/operation-not-allowed') {
+        msg = 'E-Mail/Passwort-Anmeldung nicht in Firebase aktiviert (Console → Authentication → Sign-in method).';
+      } else if (code === 'auth/invalid-email') {
+        msg = 'Ungültige E-Mail-Adresse.';
+      } else if (code === 'auth/weak-password') {
+        msg = 'Passwort zu kurz (min. 6 Zeichen).';
+      }
+      setToast({ message: `Anmeldung fehlgeschlagen: ${msg}`, id: Date.now() });
       setShowLoginModal(false);
     } finally {
       setAuthLoading(false);
