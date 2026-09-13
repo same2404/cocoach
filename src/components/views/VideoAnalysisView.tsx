@@ -1465,6 +1465,9 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
   const [highlightedClipId, setHighlightedClipId] = useState<string | null>(null);
   const [expandedTacticClipId, setExpandedTacticClipId] = useState<string | null>(null);
   const [taggerOpen, setTaggerOpen] = useState<boolean>(false);
+  // Experimentelle Tools (actiCode/Vision/Hudl/GPS) standardmäßig eingeklappt – klare Hauptkette im Fokus
+  const [showExperimentalTools, setShowExperimentalTools] = useState<boolean>(() => { try { return localStorage.getItem('fca_show_experimental_tools') === '1'; } catch { return false; } });
+  useEffect(() => { try { localStorage.setItem('fca_show_experimental_tools', showExperimentalTools ? '1' : '0'); } catch { /* noop */ } }, [showExperimentalTools]);
   const [tagTargetClipId, setTagTargetClipId] = useState<string | null>(null);
   // Live-Once-Tagger (direkt auf dem Video zeichnen)
   const tagContainerRef = useRef<HTMLDivElement | null>(null);
@@ -3269,8 +3272,24 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════ */}
-      {/* actiCode-Beta: Automatische Szenenerkennung                   */}
+      {/* EXPERIMENTELLE TOOLS: actiCode-Beta / Vision / Hudl / GPS      */}
       {/* ═══════════════════════════════════════════════════════════════ */}
+      <div className="rounded-2xl border border-[#1F2937] bg-[#0B0F19]/80 overflow-hidden">
+        <button
+          onClick={() => setShowExperimentalTools(prev => !prev)}
+          className="w-full flex items-center gap-2 px-4 py-2.5 cursor-pointer bg-gradient-to-r from-[#0B0F19] to-[#0E1220] hover:from-[#101525] transition-all text-left group"
+        >
+          <span className={`text-[10px] text-[#64748B] transition-transform ${showExperimentalTools ? 'rotate-90' : ''}`}>▶</span>
+          <span className="text-[9px] font-black uppercase tracking-widest text-[#8A93A6] group-hover:text-white transition-colors">Experimentelle Tools</span>
+          <span className="text-[8px] px-1.5 py-0.5 rounded bg-[#F59E0B]/15 text-[#FBBF24] font-black uppercase tracking-wider">Beta</span>
+          <span className="text-[8px] text-[#64748B] hidden sm:inline">actiCode • Vision-Analyse • Hudl Sportscode • GPS-Sync</span>
+          <span className="ml-auto text-[8px] text-[#64748B]">{showExperimentalTools ? 'Ausblenden' : 'Einblenden'}</span>
+        </button>
+
+        {showExperimentalTools && (
+        <div className="p-4 space-y-4 border-t border-[#1F2937]">
+
+      {/* actiCode-Beta: Automatische Szenenerkennung                   */}
       <div className="bg-gradient-to-br from-[#0A0E17] via-[#0a1a10] to-[#0A0E17] border border-[#10B981]/30 rounded-2xl p-4 shadow-2xl">
         <div className="flex items-center gap-2 mb-3">
           <div className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse" />
@@ -3290,14 +3309,10 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
         </div>
       </div>
 
-      {/* ═══════════════════════════════════════════════════════════════ */}
       {/* VISION-ANALYSE: Automatische Formationserkennung              */}
-      {/* ═══════════════════════════════════════════════════════════════ */}
       <VisionAnalysisPanel videoRef={mainVideoRef} clubName={clubName || 'FC Auggen'} players={players} />
 
-      {/* ═══════════════════════════════════════════════════════════════ */}
       {/* HUDL SPORTSCODE + COACH PAINT DASHBOARD (Profi-Videoanalyse)  */}
-      {/* ═══════════════════════════════════════════════════════════════ */}
       <div className="bg-gradient-to-br from-[#0A0E17] via-[#111827] to-[#0A0E17] border border-[#2563EB]/30 rounded-2xl p-4 shadow-2xl">
         <div className="flex items-center gap-2 mb-3">
           <div className="w-2 h-2 rounded-full bg-[#2563EB] animate-pulse" />
@@ -3421,7 +3436,10 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
           </div>
         </div>
       </div>
-      {/* END HUDL SPORTSCODE DASHBOARD */}
+        </div>
+        )}
+      </div>
+      {/* END EXPERIMENTAL TOOLS */}
 
       {/* ═══════════════════════════════════════════════════════════════ */}
       {/* KI VIDEO-ANALYSE: Frame-Extraktion + Gemini Vision           */}
