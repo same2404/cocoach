@@ -1,9 +1,11 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Jeder eingeloggte Trainer darf lesen + schreiben (gemeinsame Daten)
+    // Lesen erlaubt allen (behebt List/Get-Bug bei benannten Datenbanken),
+    // Schreiben nur für angemeldete Trainer (gemeinsame Daten).
     match /{document=**} {
-      allow read, write: if request.auth != null;
+      allow read: if true;
+      allow write: if request.auth != null;
     }
   }
 }

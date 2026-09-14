@@ -21,7 +21,7 @@ const firebaseConfig = {
   appId: process.env.FIREBASE_APP_ID || "1:367733626474:web:d792fc19f201f24c2c1c13",
   apiKey: process.env.FIREBASE_API_KEY || "AIzaSyDbN8YxHtGhTOeAT9Ete98KefDgVZ7c_1k",
   authDomain: process.env.FIREBASE_AUTH_DOMAIN || "gen-lang-client-0951111843.firebaseapp.com",
-  firestoreDatabaseId: process.env.FIREBASE_DB_ID || "ai-studio-fcauggenmanager2-20b6fe19-5950-4d1f-9c88-e7f55ed9a819",
+  firestoreDatabaseId: process.env.FIREBASE_DB_ID || "ai-studio-20b6fe19-5950-4d1f-9c88-e7f55ed9a819",
   storageBucket: process.env.FIREBASE_STORAGE || "gen-lang-client-0951111843.firebasestorage.app",
   messagingSenderId: process.env.FIREBASE_SENDER_ID || "367733626474",
 };

@@ -872,6 +872,19 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
     9: { label: '120–130 %', intensity: '120–130 %', hf: '90–100 %', farbe: '#2e7d32' },
   };
 
+  // Statisches Belastungsdiagramm – exakt nach Vorgabe: nur Zahlen/Prozent, keine Wörter
+  const BELASTUNGS_DIAGRAMM = [
+    { schwerpunkt: 1, intens: '40–50 %', zeit: '0–10 min' },
+    { schwerpunkt: 2, intens: '50–60 %', zeit: '0–15 min' },
+    { schwerpunkt: 3, intens: '60–70 %', zeit: '0–20 min' },
+    { schwerpunkt: 4, intens: '70–80 %', zeit: '10–25 min' },
+    { schwerpunkt: 5, intens: '80–90 %', zeit: '10–30 min' },
+    { schwerpunkt: 6, intens: '90–100 %', zeit: '10–35 min' },
+    { schwerpunkt: 7, intens: '100–110 %', zeit: '15–45 min' },
+    { schwerpunkt: 8, intens: '110–120 %', zeit: '15–55 min' },
+    { schwerpunkt: 9, intens: '120–130 %', zeit: '10–110 min' },
+  ];
+
   // WOCHENPLÄNE nach PDF-Vorgaben
   type TagesPlan = { weekday: string; stufe: number; dauer: string; schwerpunkt: string; inhalt: string; uhrzeit?: string };
   type WochenPlan = { tage: TagesPlan[] };

@@ -165,34 +165,51 @@ export function useCollectionSync<T>(
           });
         }
 
-        // Offline-first: Noch nicht übertragene Writes (Sync-Queue) wieder in den
-        // Snapshot einmischen, damit abgelehnte Schreibvorgänge NICHT vom
-        // Serverzustand überschrieben werden und die Einheit sichtbar bleibt.
+        // Offline-first: Server-Snapshot mit lokalen Quellen (Sync-Queue UND
+        // IndexedDB-Cache) vereinigen. Ein spärlicher Serverstand darf die
+        // lokal vorhandenen Einheiten NICHT ausblenden - sonst verschwinden
+        // nach einem Write alle Einheiten, die nur im Cache liegen.
         try {
-          const pending = await getPendingLocalItems(effectiveCollection);
-          let merged = items;
-          if (pending.length > 0) {
-            const setMap = new Map<string, any>();
-            const deleteIds = new Set<string>();
-            for (const op of pending) {
-              if (op.operation === 'SET' && op.data) setMap.set(op.itemId, op.data);
-              else if (op.operation === 'DELETE') deleteIds.add(op.itemId);
-            }
-            if (setMap.size > 0 || deleteIds.size > 0) {
-              merged = items.filter((it) => !deleteIds.has(String((it as any)[idField] || (it as any).id)));
-              for (const [pid, pdata] of setMap) {
-                const idx = merged.findIndex((it) => String((it as any)[idField] || (it as any).id) === pid);
-                const obj = { [idField]: pid, ...pdata } as unknown as T;
-                if (idx >= 0) merged[idx] = obj;
-                else merged.push(obj);
+          const [pending, cached] = await Promise.all([
+            getPendingLocalItems(effectiveCollection),
+            getLocalCollection(effectiveCollection),
+          ]);
+          const idKey = (it: any) => String(it?.[idField] || it?.id);
+
+          const setMap = new Map<string, any>();
+          const deleteIds = new Set<string>();
+          for (const op of pending) {
+            if (op.operation === 'SET' && op.data) setMap.set(op.itemId, op.data);
+            else if (op.operation === 'DELETE') deleteIds.add(op.itemId);
+          }
+          let mergedItems = items;
+          if (deleteIds.size > 0) {
+            mergedItems = items.filter((it) => !deleteIds.has(idKey(it)));
+          }
+          for (const [pid, pdata] of setMap) {
+            const idx = mergedItems.findIndex((it) => idKey(it) === pid);
+            const obj = { [idField]: pid, ...pdata } as unknown as T;
+            if (idx >= 0) mergedItems[idx] = obj;
+            else mergedItems.push(obj);
+          }
+          // Cache-Union: lokal bekannte Elemente, die der Server (noch) nicht
+          // hat, bleiben sichtbar und gehen NICHT verloren.
+          if (Array.isArray(cached)) {
+            const known = new Set(mergedItems.map(idKey));
+            for (const cachedItem of cached) {
+              const ck = idKey(cachedItem);
+              if (!ck || deleteIds.has(ck)) continue;
+              if (!known.has(ck)) {
+                mergedItems.push(cachedItem as T);
+                known.add(ck);
               }
             }
           }
-          setData(merged);
-          dataRef.current = merged;
+          setData(mergedItems);
+          dataRef.current = mergedItems;
           setLoading(false);
-          // Caching: Firestore-Stand + offene Writes lokal spiegeln.
-          saveLocalCollection(effectiveCollection, merged).catch((e) =>
+          // Caching: Firestore-Stand + offene Writes + Cache-Union lokal spiegeln.
+          saveLocalCollection(effectiveCollection, mergedItems).catch((e) =>
             console.warn(`[Offline] Cache ${effectiveCollection} nicht geschrieben:`, e)
           );
         } catch (e) {

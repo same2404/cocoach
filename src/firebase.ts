@@ -8,8 +8,9 @@ import firebaseConfig from '../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
 
-// Festgelegte ID deiner Datenbank mit all deinen Daten
-const TARGET_DATABASE_ID = "ai-studio-20b6fe19-5950-4d1f-9c88-e7f55ed9a819";
+// Die Datenbank-ID kommt EINHEITLICH aus der App-Config (firebase-applet-config.json),
+// damit Client und Server nie wieder auf verschiedene Datenbanken zeigen.
+const TARGET_DATABASE_ID = firebaseConfig.firestoreDatabaseId || '';
 
 let dbInstance;
 try {
