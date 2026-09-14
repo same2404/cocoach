@@ -165,10 +165,10 @@ export function useCollectionSync<T>(
           });
         }
 
-        // Offline-first: Server-Snapshot mit lokalen Quellen (Sync-Queue UND
-        // IndexedDB-Cache) vereinigen. Ein spärlicher Serverstand darf die
-        // lokal vorhandenen Einheiten NICHT ausblenden - sonst verschwinden
-        // nach einem Write alle Einheiten, die nur im Cache liegen.
+        // Offline-first: Server-Snapshot mit lokalen Quellen (Sync-Queue,
+        // IndexedDB-Cache UND In-Memory-Stand) vereinigen. Ein zeitweiser
+        // spärlicher Serverstand darf die lokal vorhandenen Einheiten NICHT
+        // ausblenden - sonst verschwinden nach einem Write alle Einheiten.
         try {
           const [pending, cached] = await Promise.all([
             getPendingLocalItems(effectiveCollection),
@@ -194,13 +194,14 @@ export function useCollectionSync<T>(
           }
           // Cache-Union: lokal bekannte Elemente, die der Server (noch) nicht
           // hat, bleiben sichtbar und gehen NICHT verloren.
-          if (Array.isArray(cached)) {
+          for (const source of [cached, dataRef.current]) {
+            if (!Array.isArray(source)) continue;
             const known = new Set(mergedItems.map(idKey));
-            for (const cachedItem of cached) {
-              const ck = idKey(cachedItem);
+            for (const localItem of source) {
+              const ck = idKey(localItem);
               if (!ck || deleteIds.has(ck)) continue;
               if (!known.has(ck)) {
-                mergedItems.push(cachedItem as T);
+                mergedItems.push(localItem as T);
                 known.add(ck);
               }
             }
