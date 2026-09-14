@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { auth, googleProvider, db, handleFirestoreError, OperationType, getWeekdayLabel, isQueryParamValid } from './firebase';
 import { doc, setDoc, deleteField, updateDoc, deleteDoc, writeBatch, query, collection, where, getDocs, getDoc, onSnapshot } from 'firebase/firestore';
-import { onAuthStateChanged, signInWithPopup, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, fetchSignInMethodsForEmail } from 'firebase/auth';
+import { onAuthStateChanged, signInAnonymously, signInWithPopup, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, fetchSignInMethodsForEmail } from 'firebase/auth';
 
 import { TABS, PLAYERS as INITIAL_PLAYERS, COMPETITIVE_MATCHES, TEST_MATCHES, SCOUTING_DATA as INITIAL_SCOUTING, INITIAL_FINANCE_DATA, INITIAL_MEETINGS_DATA, INITIAL_TRAINING_SESSIONS, INITIAL_SUMMER_PREP, INITIAL_WINTER_PREP, YEARLY_PLAN, DEPTH_CHART, FINANCE_META, INITIAL_FORMATION, CARD_RECORDS, COMPETITIVE_MINUTES, TEST_MINUTES } from './constants';
 import { SC_SAND_SEED } from './constants/sc-sand-data';
@@ -193,7 +193,16 @@ const App: React.FC = () => {
           if (user.displayName) setLocalName(user.displayName);
         }
       } else {
-        setAuthUser(null);
+        // Ohne Login kann keine Schreib-Autorisierung erfolgen - Firestore-Writes
+        // würden abgelehnt und neue Einheiten/Änderungen nur lokal landen.
+        // Anonym anmelden, damit Speichern & Sync für ALLE Trainer sofort funktionieren.
+        try {
+          const cred = await signInAnonymously(auth);
+          setAuthUser({ ...cred.user, isAnonymous: true });
+        } catch (err: any) {
+          console.warn('Anonyme Anmeldung fehlgeschlagen:', err?.message || err);
+          setAuthUser(null);
+        }
       }
     });
   }, []);
