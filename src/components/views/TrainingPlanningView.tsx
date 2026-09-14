@@ -748,6 +748,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
   const [undoStack, setUndoStack] = useState<TrainingSession[]>([]);
   const [redoStack, setRedoStack] = useState<TrainingSession[]>([]);
   const [initialSessionSnapshot, setInitialSessionSnapshot] = useState<TrainingSession | null>(null);
+  const [belastungOpen, setBelastungOpen] = useState(false);
 
   // Analyse-Engine Training Plan Generator State
   const [kiLoading, setKiLoading] = useState(false);
@@ -4231,82 +4232,77 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                 </div>
               </div>
 
-              {/* Belastungsdiagramm – Trainer bestimmt Stufe per Klick (1-9) */}
-              <div className="border-b-2 border-black bg-white">
-                <div className="flex items-center justify-between px-2 py-1">
-                  <div className="text-center text-[9px] font-black uppercase tracking-widest text-slate-500 print:text-black">Belastungsdiagramm</div>
-                  {localSession && (
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[8px] font-black uppercase text-slate-500 print:text-black">Gewählt:</span>
-                      <div
-                        className="w-5 h-5 border-2 border-black rounded-sm"
-                        style={{ backgroundColor: BELASTUNGS_STUFEN[localSession.loadLevel || 5]?.farbe || '#7ed957' }}
-                        title={`Stufe ${localSession.loadLevel || 5}`}
-                      />
-                      <span className="text-[9px] font-black text-slate-900">{localSession.loadLevel || 5}</span>
-                    </div>
-                  )}
-                </div>
-                <div
-                  className="w-full overflow-hidden"
-                  style={{
-                    background: 'linear-gradient(180deg, #c8f7c5 0%, #7ed957 50%, #2e7d32 100%)',
-                  }}
+              {/* Belastungsdiagramm: kompakte Unterleiste – Trainer tippt drauf, wählt Stufe 1-9 */}
+              <div className="relative border-b-2 border-black bg-white">
+                <button
+                  type="button"
+                  onClick={() => { if (!isEditing) { setIsEditing(true); } setBelastungOpen((v) => !v); }}
+                  title="Belastungsstufe wählen"
+                  className="w-full flex items-center justify-between px-2 py-1.5 cursor-pointer hover:bg-slate-50 transition-colors text-left"
+                  style={{ background: 'linear-gradient(90deg, #c8f7c5 0%, #7ed957 50%, #2e7d32 100%)' }}
                 >
-                  <table className="w-full border-collapse text-center" style={{ borderCollapse: 'collapse' }}>
-                    <thead>
-                      <tr>
-                        <th className="py-1.5 text-[10px] font-black uppercase tracking-wider text-black" style={{ border: '1px solid rgba(255,255,255,0.5)' }}>Schwerpunkte</th>
-                        <th className="py-1.5 text-[10px] font-black uppercase tracking-wider text-black" style={{ border: '1px solid rgba(255,255,255,0.5)' }}>Intens</th>
-                        <th className="py-1.5 text-[10px] font-black uppercase tracking-wider text-black" style={{ border: '1px solid rgba(255,255,255,0.5)' }}>Zeit</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {[
-                        ['1', '40–50 %', '0–10 min'],
-                        ['2', '50–60 %', '0–15 min'],
-                        ['3', '60–70 %', '0–20 min'],
-                        ['4', '70–80 %', '10–25 min'],
-                        ['5', '80–90 %', '10–30 min'],
-                        ['6', '90–100 %', '10–35 min'],
-                        ['7', '100–110 %', '15–45 min'],
-                        ['8', '110–120 %', '15–55 min'],
-                        ['9', '120–130 %', '10–110 min'],
-                      ].map((row) => {
-                        const rowNum = parseInt(row[0], 10);
-                        const isSelected = (localSession?.loadLevel || 5) === rowNum;
-                        return (
-                          <tr
-                            key={row[0]}
-                            onClick={() => {
-                              if (!isEditing) { setIsEditing(true); }
-                              updateField('loadLevel', rowNum);
-                              updateField('load', row[1]);
-                              updateField('intensity', row[1]);
-                              updateField('duration', row[2]);
-                              setNotification(`Belastung Stufe ${row[0]} gewählt · ${row[1]} · ${row[2]}`);
-                              setTimeout(() => setNotification(null), 3000);
-                            }}
-                            className={isEditing ? 'cursor-pointer transition-colors' : 'cursor-default'}
-                            style={{
-                              border: '1px solid rgba(255,255,255,0.5)',
-                              background: isSelected ? 'rgba(0,0,0,0.28)' : 'transparent',
-                              outline: isSelected ? '2px solid #000' : 'none',
-                              outlineOffset: '-2px',
-                            }}
-                          >
-                            {row.map((cell, ci) => (
-                              <td key={ci} className="py-0.5 text-[11px] font-semibold" style={{ border: '1px solid rgba(255,255,255,0.5)', color: '#000' }}>{cell}</td>
-                            ))}
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                  {isEditing && (
-                    <div className="text-center text-[8px] font-bold uppercase tracking-widest bg-black/10 text-black py-0.5">Tipp: Zeile anklicken = Belastung wählen</div>
-                  )}
-                </div>
+                  <span className="text-[9px] font-black uppercase tracking-widest text-black">Belastungsdiagramm</span>
+                  <span className="flex items-center gap-2">
+                    <span className="text-[10px] font-black text-black">{localSession.loadLevel || 5} · {localSession.load || BELASTUNGS_STUFEN[localSession.loadLevel || 5].label}</span>
+                    <span className={`text-black transition-transform ${belastungOpen ? 'rotate-180' : ''}`}>▾</span>
+                  </span>
+                </button>
+
+                {belastungOpen && (
+                  <div className="absolute left-0 right-0 z-30 border-2 border-black bg-white shadow-xl">
+                    <table className="w-full border-collapse text-center" style={{ borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr className="text-black" style={{ background: 'linear-gradient(180deg, #d6f5d2 0%, #7ed957 100%)' }}>
+                          <th className="py-1 text-[9px] font-black uppercase tracking-wider text-black" style={{ border: '1px solid rgba(255,255,255,0.6)' }}>Schwerpunkte</th>
+                          <th className="py-1 text-[9px] font-black uppercase tracking-wider text-black" style={{ border: '1px solid rgba(255,255,255,0.6)' }}>Intens</th>
+                          <th className="py-1 text-[9px] font-black uppercase tracking-wider text-black" style={{ border: '1px solid rgba(255,255,255,0.6)' }}>Zeit</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {[
+                          ['1', '40–50 %', '0–10 min'],
+                          ['2', '50–60 %', '0–15 min'],
+                          ['3', '60–70 %', '0–20 min'],
+                          ['4', '70–80 %', '10–25 min'],
+                          ['5', '80–90 %', '10–30 min'],
+                          ['6', '90–100 %', '10–35 min'],
+                          ['7', '100–110 %', '15–45 min'],
+                          ['8', '110–120 %', '15–55 min'],
+                          ['9', '120–130 %', '10–110 min'],
+                        ].map((row) => {
+                          const rowNum = parseInt(row[0], 10);
+                          const isSelected = (localSession?.loadLevel || 5) === rowNum;
+                          return (
+                            <tr
+                              key={row[0]}
+                              onClick={() => {
+                                if (!isEditing) { setIsEditing(true); }
+                                updateField('loadLevel', rowNum);
+                                updateField('load', row[1]);
+                                updateField('intensity', row[1]);
+                                updateField('duration', row[2]);
+                                setBelastungOpen(false);
+                                setNotification(`Belastung Stufe ${row[0]} gewählt · ${row[1]} · ${row[2]}`);
+                                setTimeout(() => setNotification(null), 3000);
+                              }}
+                              className="cursor-pointer transition-colors hover:bg-slate-100"
+                              style={{
+                                border: '1px solid rgba(255,255,255,0.6)',
+                                background: isSelected ? 'rgba(0,0,0,0.28)' : 'rgba(255,255,255,0.4)',
+                                outline: isSelected ? '2px solid #000' : 'none',
+                                outlineOffset: '-2px',
+                              }}
+                            >
+                              {row.map((cell, ci) => (
+                                <td key={ci} className="py-1 text-[11px] font-semibold" style={{ border: '1px solid rgba(255,255,255,0.6)', color: '#000' }}>{cell}</td>
+                              ))}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
 
               {/* Focus Row */}
