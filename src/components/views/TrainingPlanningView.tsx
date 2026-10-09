@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { flushSync } from 'react-dom';
+import { ensurePrintHardening, hidePrintOverlays } from '../../lib/printHardening';
 import { useSyncedState } from '../../hooks/useSyncedState';
 import { ExternalPerson, Player, TrainingSession, TrainingDocumentGlobal, TrainingDocumentContent } from '../../types';
 import { isPlayer } from '../../utils/playerSorting';
+import { useLiteCollectionSync } from '../../hooks/useLiteCollectionSync';
 import { useCollectionSync } from '../../hooks/useCollectionSync';
 import { 
   collection, 
@@ -725,11 +728,11 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
   testMatches = []
 }) => {
   const { activeClub } = useClub();
-  const { data: sessions, addOrUpdateItem: saveSession, removeItem: deleteSession } = useCollectionSync<TrainingSession>('training_sessions', 'id', 'date', 'asc');
+  const { data: sessions, addOrUpdateItem: saveSession, removeItem: deleteSession } = useLiteCollectionSync<TrainingSession>('training_sessions', 'id', 'date', 'asc', true, true);
   const { data: globalDocs, addOrUpdateItem: saveGlobalDoc, removeItem: deleteGlobalDoc } = useCollectionSync<TrainingDocumentGlobal>('training_documents_global', 'id');
   const [externalPersons] = useSyncedState<ExternalPerson[]>('external_persons_v1', []);
   const [lastSavedSquad, setLastSavedSquad] = useSyncedState<any[]>('last_training_squad_v1', []);
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(true);
   const [localSession, setLocalSession] = useState<TrainingSession | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showGenerateConfirm, setShowGenerateConfirm] = useState(false);
@@ -749,6 +752,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
   const [redoStack, setRedoStack] = useState<TrainingSession[]>([]);
   const [initialSessionSnapshot, setInitialSessionSnapshot] = useState<TrainingSession | null>(null);
   const [belastungOpen, setBelastungOpen] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
   // Analyse-Engine Training Plan Generator State
   const [kiLoading, setKiLoading] = useState(false);
@@ -861,16 +865,17 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
   const activeMatchDay = matchDayType || detectedMatchDay;
 
   // Belastungsstufen 1-9 – exakt nach Belastungsdiagramm-Vorgabe (nur Zahlen & %)
-  const BELASTUNGS_STUFEN: Record<number, { label: string; intensity: string; hf: string; farbe: string }> = {
-    1: { label: '40–50 %', intensity: '40–50 %', hf: '50–60 %', farbe: '#c8f7c5' },
-    2: { label: '50–60 %', intensity: '50–60 %', hf: '55–65 %', farbe: '#b5eeb0' },
-    3: { label: '60–70 %', intensity: '60–70 %', hf: '60–70 %', farbe: '#a0e499' },
-    4: { label: '70–80 %', intensity: '70–80 %', hf: '65–75 %', farbe: '#8bda83' },
-    5: { label: '80–90 %', intensity: '80–90 %', hf: '70–80 %', farbe: '#7ed957' },
-    6: { label: '90–100 %', intensity: '90–100 %', hf: '75–85 %', farbe: '#6ab94d' },
-    7: { label: '100–110 %', intensity: '100–110 %', hf: '80–90 %', farbe: '#56a143' },
-    8: { label: '110–120 %', intensity: '110–120 %', hf: '85–95 %', farbe: '#439239' },
-    9: { label: '120–130 %', intensity: '120–130 %', hf: '90–100 %', farbe: '#2e7d32' },
+  // 'zeit' ergänzt: wird bei Stufenwahl automatisch in die Dauer der Einheit übernommen.
+  const BELASTUNGS_STUFEN: Record<number, { label: string; intensity: string; hf: string; farbe: string; zeit: string }> = {
+    1: { label: '40–50 %', intensity: '40–50 %', hf: '50–60 %', farbe: '#c8f7c5', zeit: '0–10 min' },
+    2: { label: '50–60 %', intensity: '50–60 %', hf: '55–65 %', farbe: '#b5eeb0', zeit: '0–15 min' },
+    3: { label: '60–70 %', intensity: '60–70 %', hf: '60–70 %', farbe: '#a0e499', zeit: '0–20 min' },
+    4: { label: '70–80 %', intensity: '70–80 %', hf: '65–75 %', farbe: '#8bda83', zeit: '10–25 min' },
+    5: { label: '80–90 %', intensity: '80–90 %', hf: '70–80 %', farbe: '#7ed957', zeit: '10–30 min' },
+    6: { label: '90–100 %', intensity: '90–100 %', hf: '75–85 %', farbe: '#6ab94d', zeit: '10–35 min' },
+    7: { label: '100–110 %', intensity: '100–110 %', hf: '80–90 %', farbe: '#56a143', zeit: '15–45 min' },
+    8: { label: '110–120 %', intensity: '110–120 %', hf: '85–95 %', farbe: '#439239', zeit: '15–55 min' },
+    9: { label: '120–130 %', intensity: '120–130 %', hf: '90–100 %', farbe: '#2e7d32', zeit: '10–110 min' },
   };
 
   // Statisches Belastungsdiagramm – exakt nach Vorgabe: nur Zahlen/Prozent, keine Wörter
@@ -917,47 +922,47 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
     saturday: [
       // Sept 2026 · KW 36 (31.08.–06.09.) · Spiel Samstag (H) Konstanz
       { tage: [
-        { weekday: 'Montag', stufe: 2, dauer: 'Frei', schwerpunkt: 'Frei / Regeneration', inhalt: 'Ziel: Belastung senken, Körper erholen', uhrzeit: '—' },
-        { weekday: 'Dienstag', stufe: 4, dauer: '90 Min', schwerpunkt: 'Spielaufbau & Positionsspiel', inhalt: '18:30 Video (optional) | 18:45 Training', uhrzeit: '18:45' },
-        { weekday: 'Mittwoch', stufe: 2, dauer: 'Frei', schwerpunkt: 'Frei / Regeneration', inhalt: 'Ziel: Muskuläre Erholung', uhrzeit: '—' },
-        { weekday: 'Donnerstag', stufe: 8, dauer: '90 Min', schwerpunkt: 'Umschaltspiel', inhalt: 'Training | Schwerpunkt Umschaltspiel', uhrzeit: '18:45' },
-        { weekday: 'Freitag', stufe: 6, dauer: '90 Min', schwerpunkt: 'Vorbereitung auf Konstanz', inhalt: '18:30 Gegneranalyse | 18:45 Abschlusstraining', uhrzeit: '18:45' },
+        { weekday: 'Montag', stufe: 2, dauer: 'Frei', schwerpunkt: 'Frei / Regeneration', inhalt: 'Frei: Regeneration – lockerer Aktivierungslauf freiwillig | Dehnung & Mobilität | Keine Belastung', uhrzeit: '—' },
+        { weekday: 'Dienstag', stufe: 4, dauer: '90 Min', schwerpunkt: 'Spielaufbau & Positionsspiel', inhalt: 'Aufwärmen 15 Min | Spielaufbau-Kombinationen 6v5 | Positionsspiel 8v8 mit Aufbau von hinten | Abschluss-Drills', uhrzeit: '18:45' },
+        { weekday: 'Mittwoch', stufe: 2, dauer: 'Frei', schwerpunkt: 'Frei / Regeneration', inhalt: 'Frei: Muskuläre Erholung – lockeres Auslaufen optional | Dehnung & Foam Rolling | Keine Belastung', uhrzeit: '—' },
+        { weekday: 'Donnerstag', stufe: 8, dauer: '90 Min', schwerpunkt: 'Umschaltspiel', inhalt: 'Aufwärmen 15 Min | Umschalt-Dreiecke 4v2 | Gegenpressing-Auslöser 6v4 | Spielform 8v8', uhrzeit: '18:45' },
+        { weekday: 'Freitag', stufe: 6, dauer: '90 Min', schwerpunkt: 'Vorbereitung auf Konstanz', inhalt: 'Aktivierung 15 Min | Taktik 11v0 | Standards Ecken & Freistöße | Abschlussspiel 9v7', uhrzeit: '18:45' },
         { weekday: 'Samstag', stufe: 0, dauer: 'SPIELTAG', schwerpunkt: 'Pflichtspiel (H) Konstanz', inhalt: 'SPIELTAG — Heimspiel gegen Konstanz', uhrzeit: '15:30' },
       ]},
       // Sept 2026 · KW 37 (07.09.–13.09.) · Spiel Samstag (A) Salem
       { tage: [
-        { weekday: 'Montag', stufe: 2, dauer: 'Frei', schwerpunkt: 'Frei / Regeneration', inhalt: 'Kein Training', uhrzeit: '—' },
-        { weekday: 'Dienstag', stufe: 8, dauer: '90 Min', schwerpunkt: 'Pressing & Gegenpressing', inhalt: '18:30 Video | 18:45 Training', uhrzeit: '18:45' },
-        { weekday: 'Mittwoch', stufe: 2, dauer: 'Frei', schwerpunkt: 'Frei / Regeneration', inhalt: 'Kein Training', uhrzeit: '—' },
-        { weekday: 'Donnerstag', stufe: 4, dauer: '90 Min', schwerpunkt: 'Abschluss & Flügelspiel', inhalt: 'Training | Schwerpunkt Abschluss, Flügel', uhrzeit: '18:45' },
-        { weekday: 'Freitag', stufe: 6, dauer: '90 Min', schwerpunkt: 'Vorbereitung auf Salem', inhalt: '18:30 Gegneranalyse | 18:45 Abschlusstraining', uhrzeit: '18:45' },
+        { weekday: 'Montag', stufe: 2, dauer: 'Frei', schwerpunkt: 'Frei / Regeneration', inhalt: 'Frei: Kein Training – Regeneration freiwillig (lockeres Auslaufen, Dehnung)', uhrzeit: '—' },
+        { weekday: 'Dienstag', stufe: 8, dauer: '90 Min', schwerpunkt: 'Pressing & Gegenpressing', inhalt: 'Aufwärmen 15 Min | Pressing-Auslöser 6v6 | Gegenpressing-Runden 5v4 | Spielform 8v8', uhrzeit: '18:45' },
+        { weekday: 'Mittwoch', stufe: 2, dauer: 'Frei', schwerpunkt: 'Frei / Regeneration', inhalt: 'Frei: Kein Training – Regeneration freiwillig (Mobilisation, Dehnung)', uhrzeit: '—' },
+        { weekday: 'Donnerstag', stufe: 4, dauer: '90 Min', schwerpunkt: 'Abschluss & Flügelspiel', inhalt: 'Aktivierung 15 Min | Flanken & Abschluss 2 Gruppen | Abschluss-Stationen | Abschlussspiel', uhrzeit: '18:45' },
+        { weekday: 'Freitag', stufe: 6, dauer: '90 Min', schwerpunkt: 'Vorbereitung auf Salem', inhalt: 'Aktivierung 15 Min | Gegneranalyse-Taktik 11v0 | Standard-Formen | Abschlussspiel', uhrzeit: '18:45' },
         { weekday: 'Samstag', stufe: 0, dauer: 'SPIELTAG', schwerpunkt: 'Pflichtspiel (A) Salem', inhalt: 'SPIELTAG — Auswärtsspiel gegen Salem', uhrzeit: '15:30' },
       ]},
       // Sept 2026 · KW 38 (14.09.–20.09.) · Spiel Samstag (H) Wolfenweiler-Schallstadt
       { tage: [
-        { weekday: 'Montag', stufe: 3, dauer: '30 Min', schwerpunkt: 'Regenerationslauf', inhalt: '20–30 Minuten locker', uhrzeit: '10:00' },
-        { weekday: 'Dienstag', stufe: 7, dauer: '90 Min', schwerpunkt: 'Aufbau über 6er & 8er', inhalt: '18:30 Video | 18:45 Training', uhrzeit: '18:45' },
-        { weekday: 'Mittwoch', stufe: 2, dauer: 'Frei', schwerpunkt: 'Frei / Regeneration', inhalt: 'Kein Training', uhrzeit: '—' },
-        { weekday: 'Donnerstag', stufe: 6, dauer: '90 Min', schwerpunkt: 'Vorbereitung Wolfenweiler-Schallstadt', inhalt: '18:30 Gegneranalyse | 18:45 Training', uhrzeit: '18:45' },
-        { weekday: 'Freitag', stufe: 5, dauer: '75 Min', schwerpunkt: 'Abschlusstraining', inhalt: 'Abschlusstraining', uhrzeit: '18:45' },
+        { weekday: 'Montag', stufe: 3, dauer: '30 Min', schwerpunkt: 'Regenerationslauf', inhalt: 'Regenerationslauf 20–30 Min locker | Dehnung & Mobilität | Kein Sprintanteil', uhrzeit: '10:00' },
+        { weekday: 'Dienstag', stufe: 7, dauer: '90 Min', schwerpunkt: 'Aufbau über 6er & 8er', inhalt: 'Aufwärmen 15 Min | Aufbau in Dreiecken 5v5+1 | 6er/8er Positionsspiel | Spielform 8v8', uhrzeit: '18:45' },
+        { weekday: 'Mittwoch', stufe: 2, dauer: 'Frei', schwerpunkt: 'Frei / Regeneration', inhalt: 'Frei: Kein Training – Regeneration freiwillig (Mobilisation, Dehnung)', uhrzeit: '—' },
+        { weekday: 'Donnerstag', stufe: 6, dauer: '90 Min', schwerpunkt: 'Vorbereitung Wolfenweiler-Schallstadt', inhalt: 'Aktivierung 15 Min | Taktik gegen Gegneraufbau 11v0 | Pressing-Situationen | Abschluss', uhrzeit: '18:45' },
+        { weekday: 'Freitag', stufe: 5, dauer: '75 Min', schwerpunkt: 'Abschlusstraining', inhalt: 'Aktivierung 15 Min | Taktik-Spielplan 11v0 | Standards Ecken | Kurze Abschluss-Spiele', uhrzeit: '18:45' },
         { weekday: 'Samstag', stufe: 0, dauer: 'SPIELTAG', schwerpunkt: 'Pflichtspiel (H) Wolfenweiler-Schallstadt', inhalt: 'SPIELTAG — Heimspiel gegen Wolfenweiler-Schallstadt', uhrzeit: '15:30' },
       ]},
       // Sept 2026 · KW 39 (21.09.–27.09.) · Spiel Samstag (A) Bühlertal
       { tage: [
-        { weekday: 'Montag', stufe: 3, dauer: '30 Min', schwerpunkt: 'Sieg: Frei | Niederlage: Regenerationslauf', inhalt: 'Sieg-Regel: Montag frei | Niederlage-Regel: Regenerationslauf', uhrzeit: '—' },
-        { weekday: 'Dienstag', stufe: 8, dauer: '90 Min', schwerpunkt: 'Defensive Stabilität', inhalt: '18:30 Video | 18:45 Training', uhrzeit: '18:45' },
-        { weekday: 'Mittwoch', stufe: 2, dauer: 'Frei', schwerpunkt: 'Frei / Regeneration', inhalt: 'Kein Training', uhrzeit: '—' },
-        { weekday: 'Donnerstag', stufe: 4, dauer: '90 Min', schwerpunkt: 'Standards (Ecken, Freistöße)', inhalt: 'Training | Schwerpunkt Standards', uhrzeit: '18:45' },
-        { weekday: 'Freitag', stufe: 6, dauer: '90 Min', schwerpunkt: 'Vorbereitung auf Bühlertal', inhalt: '18:30 Gegneranalyse | 18:45 Abschlusstraining', uhrzeit: '18:45' },
+        { weekday: 'Montag', stufe: 3, dauer: '30 Min', schwerpunkt: 'Sieg: Frei | Niederlage: Regenerationslauf', inhalt: 'Sieg: Frei | Niederlage: Regenerationslauf 20–30 Min + Dehnung', uhrzeit: '—' },
+        { weekday: 'Dienstag', stufe: 8, dauer: '90 Min', schwerpunkt: 'Defensive Stabilität', inhalt: 'Aufwärmen 15 Min | Defensiv-Kette verschieben | 1v1-Verteidigung | Spielform 8v8', uhrzeit: '18:45' },
+        { weekday: 'Mittwoch', stufe: 2, dauer: 'Frei', schwerpunkt: 'Frei / Regeneration', inhalt: 'Frei: Kein Training – Regeneration freiwillig (Mobilisation, Dehnung)', uhrzeit: '—' },
+        { weekday: 'Donnerstag', stufe: 4, dauer: '90 Min', schwerpunkt: 'Standards (Ecken, Freistöße)', inhalt: 'Aktivierung 15 Min | Eckbälle Offensiv/Defensiv | Freistoß-Formen | Abschlussspiel', uhrzeit: '18:45' },
+        { weekday: 'Freitag', stufe: 6, dauer: '90 Min', schwerpunkt: 'Vorbereitung auf Bühlertal', inhalt: 'Aktivierung 15 Min | Taktik 11v0 | Set Pieces | Abschluss', uhrzeit: '18:45' },
         { weekday: 'Samstag', stufe: 0, dauer: 'SPIELTAG', schwerpunkt: 'Pflichtspiel (A) Bühlertal', inhalt: 'SPIELTAG — Auswärtsspiel gegen Bühlertal', uhrzeit: '15:30' },
       ]},
       // Sept 2026 · KW 40 (28.09.–04.10.) · Spiel Samstag (H) Lahr
       { tage: [
-        { weekday: 'Montag', stufe: 2, dauer: 'Frei', schwerpunkt: 'Frei / Regeneration', inhalt: 'Kein Training', uhrzeit: '—' },
-        { weekday: 'Dienstag', stufe: 7, dauer: '90 Min', schwerpunkt: 'Angriffszonen & Tiefenläufe', inhalt: '18:30 Video | 18:45 Training', uhrzeit: '18:45' },
-        { weekday: 'Mittwoch', stufe: 2, dauer: 'Frei', schwerpunkt: 'Frei / Regeneration', inhalt: 'Kein Training', uhrzeit: '—' },
-        { weekday: 'Donnerstag', stufe: 8, dauer: '90 Min', schwerpunkt: 'Spielformen 11v11', inhalt: 'Training | Schwerpunkt 11v11 Spielformen', uhrzeit: '18:45' },
-        { weekday: 'Freitag', stufe: 6, dauer: '90 Min', schwerpunkt: 'Vorbereitung auf Lahr', inhalt: '18:30 Gegneranalyse | 18:45 Abschlusstraining', uhrzeit: '18:45' },
+        { weekday: 'Montag', stufe: 2, dauer: 'Frei', schwerpunkt: 'Frei / Regeneration', inhalt: 'Frei: Kein Training – Regeneration freiwillig (lockeres Auslaufen, Dehnung)', uhrzeit: '—' },
+        { weekday: 'Dienstag', stufe: 7, dauer: '90 Min', schwerpunkt: 'Angriffszonen & Tiefenläufe', inhalt: 'Aufwärmen 15 Min | Tiefenläufe & Angriffsdreiecke | Flügelspiel 3v2 | Spielform 8v8', uhrzeit: '18:45' },
+        { weekday: 'Mittwoch', stufe: 2, dauer: 'Frei', schwerpunkt: 'Frei / Regeneration', inhalt: 'Frei: Kein Training – Regeneration freiwillig (Mobilisation, Dehnung)', uhrzeit: '—' },
+        { weekday: 'Donnerstag', stufe: 8, dauer: '90 Min', schwerpunkt: 'Spielformen 11v11', inhalt: 'Aufwärmen 15 Min | Verwaltetes Spiel 11v11 | Standards | Abschluss', uhrzeit: '18:45' },
+        { weekday: 'Freitag', stufe: 6, dauer: '90 Min', schwerpunkt: 'Vorbereitung auf Lahr', inhalt: 'Aktivierung 15 Min | Taktik 11v0 | Standards | Abschluss', uhrzeit: '18:45' },
         { weekday: 'Samstag', stufe: 0, dauer: 'SPIELTAG', schwerpunkt: 'Pflichtspiel (H) Lahr', inhalt: 'SPIELTAG — Heimspiel gegen Lahr', uhrzeit: '15:30' },
       ]},
     ],
@@ -1077,6 +1082,33 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
     closing: '', closingDuration: '', closingImages: []
   });
 
+  // Inhalt einer Einheit: '|'-getrennte Teile der Wochenplan-Vorlage (tag.inhalt)
+  // werden auf die Content-Felder verteilt. Falls die Vorlage nur 1–2 Bausteine hat,
+  // werden die restlichen Felder leer gelassen (nichts Erfundenes, nichts Überschriebenes).
+  const contentFromTag = (tag: TagesPlan): TrainingSession['content'] => {
+    const parts = (tag.inhalt || '').split('|').map((p: string) => p.trim());
+    const content = makeEmptyContent();
+    const target = ['warmup', 'main1', 'main2', 'closing'] as const;
+    parts.slice(0, 4).forEach((p, i) => {
+      if (p) (content as any)[target[i]] = p;
+    });
+    if (parts.length > 4) {
+      const extra = parts.slice(4).filter((p: string) => p).join(' | ');
+      if (extra) content.closing = content.closing ? `${content.closing} | ${extra}` : extra;
+    }
+    return content;
+  };
+  // True, wenn die Einheit KEINEN eigenen Trainingsinhalt hat (nur Platzhalter wie
+  // 'Aktivierung'/'Hauptteil'/… oder komplett leer). Nur solche werden nachbefüllt.
+  const PLATZHALTER_INHALTE = ['Aktivierung', 'Hauptteil', 'SP Hauptteil 2', 'Schluss', '—'];
+  const needsContentFill = (s: TrainingSession): boolean => {
+    const c = (s as any).content || {};
+    const texts = [c.warmup, c.main1, c.main2, c.closing].filter((t: any) => typeof t === 'string');
+    const hasOwn = texts.some((t: string) => t.trim().length > 1 && !PLATZHALTER_INHALTE.includes(t.trim()));
+    const hasImages = [c.warmupImages, c.main1Images, c.main2Images, c.closingImages].some((a: any) => Array.isArray(a) && a.length > 0);
+    return !hasOwn && !hasImages;
+  };
+
   // Einheit für ein konkretes Datum anlegen/aktualisieren.
   // WICHTIG: Jede Einheit bekommt eine EIGENE ID (gen_<Datum>) und bestehende Einheiten
   // für dieses Datum werden nur angereichert (Inhalte bleiben erhalten).
@@ -1103,7 +1135,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
           opponent: '',
           location: '',
           players: localSession?.players || null,
-          content: makeEmptyContent() as TrainingSession['content'],
+          content: contentFromTag(tag) as TrainingSession['content'],
           importantInfo: '',
           importantInfoImages: [],
           remarks: '',
@@ -1120,6 +1152,11 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
       intensity: existing ? base.intensity : (stufe?.intensity || ''),
       duration: existing ? base.duration : tag.dauer,
       sessionFocus: existing ? base.sessionFocus : tag.schwerpunkt,
+      // Bestehende leere Einheiten (z. B. früher mit makeEmptyContent angelegt) werden
+      // aus der Wochenplan-Vorlage nachbefüllt – echter Inhalt bleibt unangetastet.
+      content: existing && !needsContentFill(existing)
+        ? base.content
+        : contentFromTag(tag),
     };
     try {
       saveSession(updated);
@@ -1229,6 +1266,96 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
     }
   };
 
+  // ⭐ WIEDERHERSTELLUNG DER 3 FRÜHEREN EINHEITEN (02.09.2026 Mi, 09.09.2026 Mi, 10.09.2026 Do).
+  // Strategie: 1) Falls eine Version mit echtem Inhalt in training_sessions_history existiert, wird diese
+  // übernommen. 2) Sonst wird der letzte bekannte volle Stand des 10.09. (Stand aus dem
+  // FC_Auggen_Backup_2026-09-22.json, ID 1777412459462) als Quelle verwendet – NICHT als inhaltlicher
+  // Kopierfehler, sondern als bestmögliche Wiederherstellung des früheren Zustands.
+  const BACKUP_QUELLE_1009 = {
+    warmup: "\n1.\nkurzes individuelles Warm up was jeder benötigt. Kurze knackige Stabi Übungen\n\n\n2. \n\nGruppenarbeit 4-5 Gruppen jonglieren",
+    main1: "\n\n\tTorabschlusswettbewerb\t\t\t\n\t\t\t\t\n1\tFlügel \t\t\t\n\t\t\t\t\n2 Zentrum \t\t\t\n\nOption 2 gegen 1 Flügel mit alle \n",
+    main2: "Aufbau-Spielform (4-3-3)\t\t\t\nim 9gegen 8 / immer Wechsel \t\t\t\nsauber durchspielen \t\t\t\nPositionsspiel+ Räume suchen und finden \t\t\t\nVariabel im Aufbau \t\t\t\n\t\t\t\n DEF Team  Salem \t\t\t\nAmin gegen zustellen und aus dem Spiel. \t\t\t\n",
+    closing: "Abschlussspiel 2x 10 min mit Pause \n\nTemas siehe Bild \n\nFormation Analog MA-Plan "
+  };
+  const restoreFromHistoryOrBackup = async (iso: string, weekday: string, backupSource: { warmup: string; main1: string; main2: string; closing: string } | null): Promise<string | null> => {
+    try {
+      const existing = sessions.find((s: any) => s.date === iso);
+      // Bestehende Einheit mit eigenem Inhalt NICHT anfassen – nur leere wiederherstellen.
+      if (existing && !needsContentFill(existing)) return 'bereits gefüllt';
+      const targetId = existing ? existing.id : `gen_${iso}`;
+      // 1) Zuerst in der Versions-History nach einer gefüllten Version suchen.
+      let historyRestored: TrainingSession | null = null;
+      try {
+        const q = query(
+          collection(db, 'training_sessions_history'),
+          where('itemId', '==', targetId),
+          orderBy('ts', 'desc')
+        );
+        const snap = await getDocs(q);
+        const entries: any[] = [];
+        snap.forEach(d => entries.push({ ...d.data(), id: d.id }));
+        for (const ent of entries) {
+          const data = ent?.data || ent;
+          const c = data?.content || {};
+          const texts = [c.warmup, c.main1, c.main2, c.closing].filter((t: any) => typeof t === 'string' && t.trim().length > 1);
+          if (texts.length >= 2) {
+            historyRestored = { ...data, id: targetId, date: iso, weekday } as TrainingSession;
+            break;
+          }
+        }
+      } catch (e: any) {
+        console.warn('History-Restore für', iso, 'fehlgeschlagen:', e?.message || e);
+      }
+      const donor = historyRestored || (backupSource ? { content: backupSource } as TrainingSession : null);
+      if (!donor) return null;
+      const donorC = (donor as any).content || {};
+      const restored: TrainingSession = {
+        ...(existing ? { ...existing } : {
+          id: targetId, date: iso, weekday, group: 'FC Auggen',
+          load: 'Hoch', loadLevel: 8, duration: '90 Min',
+          weeklyFocus: '', sessionFocus: (donor as any).sessionFocus || ((existing as any)?.sessionFocus || ''),
+          trainer: 'Amin, marcel', intensity: 'Hoch',
+          status: 'Geplant', opponent: (donor as any).opponent || '', location: 'Rasenplatz Auggen',
+          players: existing?.players || null, content: makeEmptyContent() as TrainingSession['content'],
+          importantInfo: (donor as any).importantInfo || (existing as any)?.importantInfo || '',
+          importantInfoImages: (donor as any).importantInfoImages || (existing as any)?.importantInfoImages || [],
+          remarks: (donor as any).remarks || (existing as any)?.remarks || '',
+          remarksImages: (donor as any).remarksImages || (existing as any)?.remarksImages || []
+        }),
+        date: iso,
+        weekday,
+        content: {
+          warmup: donorC.warmup || (existing as any)?.content?.warmup || '', warmupDuration: donorC.warmupDuration || (existing as any)?.content?.warmupDuration || '', warmupImages: donorC.warmupImages || (existing as any)?.content?.warmupImages || [],
+          main1: donorC.main1 || (existing as any)?.content?.main1 || '', main1Duration: donorC.main1Duration || (existing as any)?.content?.main1Duration || '', main1Images: donorC.main1Images || (existing as any)?.content?.main1Images || [],
+          main2: donorC.main2 || (existing as any)?.content?.main2 || '', main2Duration: donorC.main2Duration || (existing as any)?.content?.main2Duration || '', main2Images: donorC.main2Images || (existing as any)?.content?.main2Images || [],
+          closing: donorC.closing || (existing as any)?.content?.closing || '', closingDuration: donorC.closingDuration || (existing as any)?.content?.closingDuration || '', closingImages: donorC.closingImages || (existing as any)?.content?.closingImages || []
+        }
+      };
+      saveSession(restored);
+      const { id: _id, ...dataToSave } = restored as any;
+      await setDoc(doc(db, 'training_sessions', restored.id), dataToSave, { merge: true });
+      setLocalSession(restored);
+      onSelectSession(restored.id);
+      setIsEditing(false);
+      return historyRestored ? `History-Version` : `Backup-Quelle`;
+    } catch (e: any) {
+      return `Fehler: ${e?.message || e}`;
+    }
+  };
+  const restoreThreeUnits = async (): Promise<void> => {
+    const targets: Array<{ iso: string; weekday: string; src: { warmup: string; main1: string; main2: string; closing: string } | null }> = [
+      { iso: '2026-09-02', weekday: 'Mittwoch', src: BACKUP_QUELLE_1009 },
+      { iso: '2026-09-09', weekday: 'Mittwoch', src: BACKUP_QUELLE_1009 },
+      { iso: '2026-09-10', weekday: 'Donnerstag', src: BACKUP_QUELLE_1009 }
+    ];
+    const results: string[] = [];
+    for (const t of targets) {
+      const r = await restoreFromHistoryOrBackup(t.iso, t.weekday, t.src);
+      results.push(`${t.iso}: ${r}`);
+    }
+    setHealStatus(`Wiederherstellung: ${results.join(' · ')}`);
+  };
+
   // Woche synchronisieren (nur exaktes Datum: bestehende Einheiten anreichern, fehlende neu anlegen)
   const syncFullWeek = (plan: WochenPlan) => {
     const wkBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || KW_START_DATES[0]);
@@ -1241,7 +1368,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
       const targetIso = targetDate.toISOString().split('T')[0];
       const match = sessions.find((s: any) => s.date === targetIso);
       if (match) {
-        saveSession(match);
+        upsertForDate(targetIso, tag).catch((e: any) => setHealStatus(`Fehler beim Anlegen ${targetIso}: ${e?.message || e}`));
       } else {
         upsertForDate(targetIso, tag).catch((e: any) => setHealStatus(`Fehler beim Anlegen ${targetIso}: ${e?.message || e}`));
       }
@@ -1933,6 +2060,14 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
   const loadHistory = async (itemId: string, quiet = false) => {
     if (!itemId) { setHistoryEntries([]); setHistoryCount(0); return; }
     if (!quiet) setHistoryLoading(true);
+    // Watchdog (Anti-Haenger): Wenn die Versions-Historie (getDocs) nicht
+    // innerhalb von 8s antwortet, die Ladeanzeige beenden - der Nutzer bleibt
+    // so IMMER benutzbar, auch wenn Firestore/Regeln gerade blockieren.
+    const watchdog = window.setTimeout(() => {
+      if (!quiet) setHistoryLoading(false);
+      setHistoryEntries([]);
+      setHistoryCount(0);
+    }, 8000);
     try {
       const q = query(
         collection(db, 'training_sessions_history'),
@@ -1941,15 +2076,18 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
         limit(60)
       );
       const snap = await getDocs(q);
+      window.clearTimeout(watchdog);
       const entries: any[] = [];
       snap.forEach(d => entries.push({ id: d.id, ...d.data() as any }));
       setHistoryEntries(entries);
       setHistoryCount(entries.length);
     } catch (e: any) {
+      window.clearTimeout(watchdog);
       console.error('History Fehler:', e);
       setHistoryEntries([]);
       setHistoryCount(0);
     } finally {
+      window.clearTimeout(watchdog);
       if (!quiet) setHistoryLoading(false);
     }
   };
@@ -2035,6 +2173,64 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
     }
     return created;
   };
+  // Leere Einheiten (kein eigener Trainingsinhalt) nachträglich aus den passenden
+  // Wochenplan-Vorlagen befüllen. Nur Einheiten, deren Datum eine Vorlage hat, werden
+  // angefasst – bestehender Inhalt bleibt garantiert erhalten (needsContentFill).
+  // Einheiten ohne eigene Vorlage (z. B. Sonntag nach Spieltag oder Sommertermin) erhalten
+  // einen generischen, domänenlogisch passenden Regenerations-/Trainingsinhalt.
+  const fallbackInhaltForEmpty = (s: TrainingSession, iso: string): string => {
+    const d = new Date((iso || '') + 'T12:00:00');
+    const day = d.getDay(); // 0=So … 6=Sa
+    const dow = d.toLocaleDateString('de-DE', { weekday: 'long' });
+    const loadLevel = Number((s as any).loadLevel) || 0;
+    const regenerativ = dow === 'Sonntag' || loadLevel <= 3;
+    return regenerativ
+      ? 'Lockeres Auslaufen 15–20 Min | Dehnung & Mobilisation | Regeneration – keine Sprint-/Krafteinheiten | Feedback & Vorschau nächste Woche'
+      : 'Aufwärmen 15 Min: Mobilisation + kurzes Passspiel | Technik-Schwerpunkt (Passen, Ballannahme, Dribbling) | Spielform 8v8 | Abschluss: Rondo + Cool-Down';
+  };
+  const fillEmptyUnits = async (): Promise<number> => {
+    let filled = 0;
+    let errors = 0;
+    for (const s of sessions) {
+      if (!needsContentFill(s)) continue;
+      const iso = (s as any).date;
+      if (!iso) continue;
+      const d = new Date((iso || '') + 'T12:00:00');
+      if (isNaN(d.getTime())) continue;
+      const template = currentWeekPlans[templateIndexForWeek(weekIdxForDate(d))] || currentWeekPlans[0];
+      const dayIndex = (d.getDay() + 6) % 7; // Montag = 0
+      const tag = template?.tage?.[dayIndex];
+      if (tag && tag.stufe !== 0) {
+        try {
+          await upsertForDate(iso, tag);
+          filled++;
+          continue;
+        } catch {
+          errors++;
+          continue;
+        }
+      }
+      // Keine passende Vorlage (Sonntag, Sommertermin) → generischer, konservativer Fallback.
+      const fallbackTag: TagesPlan = {
+        weekday: d.toLocaleDateString('de-DE', { weekday: 'long' }),
+        stufe: 3,
+        dauer: (s as any).duration || '30 Min',
+        schwerpunkt: 'Regeneration / Basistraining',
+        inhalt: fallbackInhaltForEmpty(s, iso),
+        uhrzeit: ''
+      };
+      try {
+        await upsertForDate(iso, fallbackTag);
+        filled++;
+      } catch {
+        errors++;
+      }
+    }
+    if (errors > 0) {
+      setHealStatus(`${errors} Einheit(en) konnten NICHT befüllt werden – Berechtigung/Regeln prüfen.`);
+    }
+    return filled;
+  };
   useEffect(() => {
     if (sessions.length === 0) return;
     if (healCurrentWeekRef.current) return;
@@ -2054,6 +2250,8 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
       } else if (created === 0) {
         setHealStatus('Aktuelle Woche vollständig – nichts anzulegen.');
       }
+      // Die 3 früheren Einheiten (02.09 Mi, 09.09 Mi, 10.09 Do) automatisch wiederherstellen
+      restoreThreeUnits();
     });
   }, [sessions]);
 
@@ -2065,7 +2263,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
         ...session,
         players: cleanPlayers
       };
-      if (!localSession || localSession.id !== session.id || !isEditing) {
+      if (!localSession || localSession.id !== session.id) {
         setLocalSession(cleanSession);
         setInitialSessionSnapshot(JSON.parse(JSON.stringify(cleanSession)));
         setUndoStack([]);
@@ -2078,6 +2276,49 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
       setRedoStack([]);
     }
   }, [selectedSessionId, sessions, isEditing, players]);
+
+  // Lazy-Load: Bilder einer geöffneten Einheit aus training_session_images holen
+  // und in localSession einmischen (Original-Doc bleibt unangetastet).
+  useEffect(() => {
+    if (!selectedSessionId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const imgSnap = await getDocs(query(collection(db, 'training_session_images'), where('sessionId', '==', selectedSessionId)));
+        if (cancelled) return;
+        const byField: Record<string, string[]> = {};
+        imgSnap.forEach((d) => {
+          const dt = d.data();
+          const f = String(dt.field || '');
+          if (!f || typeof dt.image !== 'string' || !dt.image) return;
+          const idx = Number(dt.index ?? 0);
+          (byField[f] = byField[f] || []).push({ idx, img: dt.image } as any);
+        });
+        const merged: Record<string, string[]> = {};
+        Object.entries(byField).forEach(([f, arr]) => {
+          merged[f] = (arr as any[]).sort((a, b) => a.idx - b.idx).map((x) => x.img);
+        });
+        setLocalSession((prev) => {
+          if (!prev || prev.id !== selectedSessionId) return prev;
+          const content: TrainingSession['content'] = {
+            ...(prev.content || {}),
+            warmup: prev.content?.warmup ?? '',
+            main1: prev.content?.main1 ?? '',
+            main2: prev.content?.main2 ?? '',
+            closing: prev.content?.closing ?? ''
+          };
+          if (merged.warmupImages) content.warmupImages = merged.warmupImages;
+          if (merged.main1Images) content.main1Images = merged.main1Images;
+          if (merged.main2Images) content.main2Images = merged.main2Images;
+          if (merged.closingImages) content.closingImages = merged.closingImages;
+          return { ...prev, content };
+        });
+      } catch (e) {
+        console.error('Lazy image load failed', e);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [selectedSessionId, sessions]);
 
   // Keyboard shortcuts for Undo (Ctrl+Z) and Redo (Ctrl+Y / Shift+Ctrl+Z)
   useEffect(() => {
@@ -2164,13 +2405,16 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
 
   // Autosave local session changes
   useEffect(() => {
-    if (localSession && isEditing) {
-      const timer = setTimeout(() => {
-        saveSession(localSession);
-      }, 1000); // 1s debounce
-      return () => clearTimeout(timer);
-    }
-  }, [localSession, isEditing, saveSession]);
+    if (!localSession) return;
+    const snapshotJson = initialSessionSnapshot ? JSON.stringify(initialSessionSnapshot) : '';
+    const currentJson = JSON.stringify(localSession);
+    if (snapshotJson && currentJson === snapshotJson) return;
+    const timer = setTimeout(() => {
+      saveSession(localSession);
+      setInitialSessionSnapshot(JSON.parse(JSON.stringify(localSession)));
+    }, 1000); // 1s debounce
+    return () => clearTimeout(timer);
+  }, [localSession, initialSessionSnapshot, saveSession]);
 
   // Synchronisiere Kader-Anpassungen ins lastSavedSquad, wenn im Bearbeitungsmodus
   useEffect(() => {
@@ -2437,12 +2681,14 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
     const startDate = new Date('2026-07-06');
     const endDate = new Date('2026-08-15');
     const current = new Date(startDate);
+    if (isNaN(current.getTime()) || isNaN(endDate.getTime())) return;
+    let guard = 0;
     
     // Get initial base players from the current latest session
     const inheritedPlayers = getPlayersFromLastSession();
 
     const newSessions: TrainingSession[] = [];
-    while (current <= endDate) {
+    while (current <= endDate && guard < 1200) { guard++;
       const dateStr = current.toISOString().split('T')[0];
       const weekday = current.toLocaleDateString('de-DE', { weekday: 'long' });
       
@@ -2717,43 +2963,69 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
     }
   };
 
+  const preparePrintDom = () => {
+    ensurePrintHardening();
+    flushSync(() => setNotification(null));
+    hidePrintOverlays();
+  };
+
+  const printDocument = () => {
+    preparePrintDom();
+    try {
+      window.print();
+    } catch (e) {
+      console.error("Print failed:", e);
+    }
+  };
+
   const handlePrint = () => {
-    if (!localSession) return;
+    if (!localSession) {
+      setNotification("Keine Trainingseinheit ausgewählt. Bitte links eine Einheit anklicken.");
+      setTimeout(() => setNotification(null), 4000);
+      return;
+    }
+
     const isIframe = window.self !== window.top;
-    
+
     if (isIframe) {
       setNotification("Öffne Druckansicht im neuen Tab für zuverlässigen PDF-Druck...");
+      let opened = false;
       try {
         const printUrl = `${window.location.origin}${window.location.pathname}?tab=training_planning&session_id=${localSession.id}&print=true`;
-        window.open(printUrl, '_blank');
+        opened = Boolean(window.open(printUrl, '_blank'));
       } catch (e) {
-        console.error("Popup window.open failed, trying iframe print", e);
-        try {
-          window.focus();
-          window.print();
-        } catch (printErr) {
-          console.error("Iframe print also failed", printErr);
-          setNotification("Drucken blockiert. Bitte klicken Sie ganz oben rechts auf das Tab-Symbol mit Pfeil, um die App im Vollbild zu öffnen.");
-          setTimeout(() => setNotification(null), 8000);
-          return;
-        }
+        console.error("Popup window.open failed, falling back to direct print", e);
       }
-      setTimeout(() => setNotification(null), 4000);
-    } else {
-      setNotification("Druckdialog wird vorbereitet...");
-      setTimeout(() => {
-        try {
-          window.focus();
-          window.print();
-          console.log("Print triggered from Training Plan");
-        } catch (e) {
-          console.error("Print failed:", e);
-          setNotification("Drucken fehlgeschlagen. Bitte nutzen Sie Google Chrome oder laden Sie die Seite neu.");
-          setTimeout(() => setNotification(null), 6000);
-          return;
-        }
-        setTimeout(() => setNotification(null), 3000);
-      }, 500);
+      if (opened) {
+        setTimeout(() => setNotification(null), 4000);
+        return;
+      }
+      // Popup blockiert -> direkt aus der App heraus drucken
+      preparePrintDom();
+      try {
+        window.focus();
+        window.print();
+        setNotification(null);
+      } catch (printErr) {
+        console.error("Print failed", printErr);
+        setNotification("Drucken blockiert. Bitte öffnen Sie die App in einem eigenen Tab (Pfeil oben rechts) und drucken Sie erneut.");
+        setTimeout(() => setNotification(null), 8000);
+      }
+      return;
+    }
+
+    // DOM vorbereiten und SYNCHRON im User-Gesture drucken.
+    // Ein setTimeout() verwirft die User-Aktivation -> Chrome öffnet die
+    // Druckvorschau dann nicht bzw. hängt auf "wird vorbereitet".
+    preparePrintDom();
+    try {
+      window.focus();
+      window.print();
+      setNotification(null);
+    } catch (e) {
+      console.error("Print failed:", e);
+      setNotification("Drucken fehlgeschlagen. Bitte aktualisieren Sie die Seite (Strg+Shift+R) und versuchen Sie es erneut.");
+      setTimeout(() => setNotification(null), 8000);
     }
   };
 
@@ -2820,7 +3092,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
           new DocxTableRow({
             children: [
               createMetaCell("Ort", localSession.location || "-"),
-              createMetaCell("Intensität", localSession.intensity || "-"),
+              createMetaCell("Intensität", BELASTUNGS_STUFEN[localSession.loadLevel || 5]?.intensity || localSession.intensity || "-"),
             ],
           }),
           new DocxTableRow({
@@ -2846,7 +3118,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
         new DocxTextRun({ text: "Wochenschwerpunkt: ", bold: true, size: 20 }),
         new DocxTextRun({ text: (localSession.weeklyFocus || "-") + "\n", size: 20 }),
         new DocxTextRun({ text: "Schwerpunkt: ", bold: true, size: 20 }),
-        new DocxTextRun({ text: (localSession.sessionFocus || "-") + "\n", size: 20 }),
+          new DocxTextRun({ text: (localSession.sessionFocus || "-") + "\n", size: 20 }),
         new DocxTextRun({ text: "Trainer: ", bold: true, size: 20 }),
         new DocxTextRun({ text: (localSession.trainer || "-"), size: 20 }),
       ];
@@ -3078,6 +3350,35 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
       setLocalSession(prev => prev ? { ...prev, ...updates } : prev);
     }
   };
+
+  // Mehrere Felder in EINEM Schritt setzen (nur ein Undo-Eintrag pro Aktion)
+  const updateFields = (updates: Partial<TrainingSession>) => {
+    if (!localSession) return;
+    pushUndoState();
+    setLocalSession(prev => (prev ? { ...prev, ...updates } : prev));
+  };
+
+  // ── BELASTUNGSSTUFE ───────────────────────────────────────────────────────
+  // Quelle: grüner Balken "Belastungsdiagramm" (Stufe 1–9).
+  // Der gewählte Stufenwert wird an Intensität, Dauer und Belastungslabel
+  // weitergegeben. "Schwerpunkt Einheit" (sessionFocus) bleibt MANUELL und
+  // wird hier bewusst NICHT überschrieben.
+  const applyBelastungsStufe = (stufe: number) => {
+    const s = BELASTUNGS_STUFEN[stufe];
+    if (!s) return;
+    updateFields({
+      loadLevel: stufe,
+      load: s.label,
+      intensity: s.intensity,
+      duration: s.zeit,
+    } as Partial<TrainingSession>);
+  };
+
+  // Aktuell gültiger Stufenwert der geöffneten Einheit (Fallback 5 = Standard)
+  const activeStufe = (localSession?.loadLevel || 5);
+  // Abgeleiteter Wert – immer konsistent zur gewählten Belastungsstufe
+  const derivedIntensity = BELASTUNGS_STUFEN[activeStufe]?.intensity || localSession?.intensity || '80–90 %';
+
 
   const calculateTotalDuration = () => {
     if (!localSession) return 0;
@@ -3497,7 +3798,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
                 ))}
               </select>
             )}
-            <button onClick={() => window.print()} className="flex items-center gap-1 bg-emerald-600 text-white px-4 py-2 font-black text-xs uppercase rounded hover:bg-emerald-700 cursor-pointer">
+            <button onClick={printDocument} className="flex items-center gap-1 bg-emerald-600 text-white px-4 py-2 font-black text-xs uppercase rounded hover:bg-emerald-700 cursor-pointer">
               <Printer size={14} /> Als PDF drucken
             </button>
           </div>
@@ -3518,7 +3819,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
               { label: 'Ort', value: localSession.location || '—' },
               { label: 'Dauer', value: localSession.duration || '—' },
               { label: 'Belastung', value: `${localSession.loadLevel || 5}/9 ${localSession.load || '—'}` },
-              { label: 'Intensität', value: localSession.intensity || '—' },
+              { label: 'Intensität', value: derivedIntensity },
               { label: 'Trainer', value: localSession.trainer || '—' },
               { label: 'Wochenschwerpunkt', value: localSession.weeklyFocus || '—' },
               { label: 'Einheitsschwerpunkt', value: localSession.sessionFocus || '—' },
@@ -3579,7 +3880,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
               {(localSession.content.warmupImages || []).length > 0 && (
                 <div className="flex gap-2 mt-3 flex-wrap">
                   {(localSession.content.warmupImages || []).map((img: string, idx: number) => (
-                    <img key={idx} src={img} alt={`Aufwärmen ${idx + 1}`} className="h-32 rounded-lg border border-slate-200 object-cover" />
+                    <img key={idx} src={img} alt={`Aufwärmen ${idx + 1}`} className="h-32 rounded-lg border border-slate-200 object-cover cursor-pointer" onClick={() => setLightboxImage(img)} />
                   ))}
                 </div>
               )}
@@ -3587,7 +3888,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
           </div>
 
           {/* HAUPTTEIL 1 */}
-          <div className="mb-6 border-2 border-[#F59E0B] rounded-xl overflow-hidden print:avoid-break">
+          <div className="mb-6 border-2 border-[#F59E0B] rounded-xl overflow-hidden print:avoid-break print:break-before-page">
             <div className="bg-[#F59E0B] text-white px-4 py-2 flex items-center justify-between print:bg-[#F59E0B]">
               <h2 className="text-sm font-black uppercase tracking-wider flex items-center gap-2">🏃 Hauptteil 1 — Technik / Taktik</h2>
               <span className="text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded">{localSession.content.main1Duration || '—'}</span>
@@ -3597,7 +3898,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
               {(localSession.content.main1Images || []).length > 0 && (
                 <div className="flex gap-2 mt-3 flex-wrap">
                   {(localSession.content.main1Images || []).map((img: string, idx: number) => (
-                    <img key={idx} src={img} alt={`Hauptteil 1 ${idx + 1}`} className="h-32 rounded-lg border border-slate-200 object-cover" />
+                    <img key={idx} src={img} alt={`Hauptteil 1 ${idx + 1}`} className="h-32 rounded-lg border border-slate-200 object-cover cursor-pointer" onClick={() => setLightboxImage(img)} />
                   ))}
                 </div>
               )}
@@ -3605,7 +3906,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
           </div>
 
           {/* HAUPTTEIL 2 */}
-          <div className="mb-6 border-2 border-[#EF4444] rounded-xl overflow-hidden print:avoid-break">
+          <div className="mb-6 border-2 border-[#EF4444] rounded-xl overflow-hidden print:avoid-break print:break-before-page">
             <div className="bg-[#EF4444] text-white px-4 py-2 flex items-center justify-between print:bg-[#EF4444]">
               <h2 className="text-sm font-black uppercase tracking-wider flex items-center gap-2">⚡ Hauptteil 2 — Intensität / Spiel</h2>
               <span className="text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded">{localSession.content.main2Duration || '—'}</span>
@@ -3615,7 +3916,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
               {(localSession.content.main2Images || []).length > 0 && (
                 <div className="flex gap-2 mt-3 flex-wrap">
                   {(localSession.content.main2Images || []).map((img: string, idx: number) => (
-                    <img key={idx} src={img} alt={`Hauptteil 2 ${idx + 1}`} className="h-32 rounded-lg border border-slate-200 object-cover" />
+                    <img key={idx} src={img} alt={`Hauptteil 2 ${idx + 1}`} className="h-32 rounded-lg border border-slate-200 object-cover cursor-pointer" onClick={() => setLightboxImage(img)} />
                   ))}
                 </div>
               )}
@@ -3623,7 +3924,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
           </div>
 
           {/* SCHLUSS */}
-          <div className="mb-6 border-2 border-[#10B981] rounded-xl overflow-hidden print:avoid-break">
+          <div className="mb-6 border-2 border-[#10B981] rounded-xl overflow-hidden print:avoid-break print:break-before-page">
             <div className="bg-[#10B981] text-white px-4 py-2 flex items-center justify-between print:bg-[#10B981]">
               <h2 className="text-sm font-black uppercase tracking-wider flex items-center gap-2">🧘 Schluss / Cool-Down</h2>
               <span className="text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded">{localSession.content.closingDuration || '—'}</span>
@@ -3633,7 +3934,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
               {(localSession.content.closingImages || []).length > 0 && (
                 <div className="flex gap-2 mt-3 flex-wrap">
                   {(localSession.content.closingImages || []).map((img: string, idx: number) => (
-                    <img key={idx} src={img} alt={`Schluss ${idx + 1}`} className="h-32 rounded-lg border border-slate-200 object-cover" />
+                    <img key={idx} src={img} alt={`Schluss ${idx + 1}`} className="h-32 rounded-lg border border-slate-200 object-cover cursor-pointer" onClick={() => setLightboxImage(img)} />
                   ))}
                 </div>
               )}
@@ -3833,66 +4134,22 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
                 Einheiten erzeugen (KW37)
               </button>
               <button
-                onClick={() => { setShowHistory(!showHistory); if (localSession?.id) loadHistory(localSession.id); }}
-                className={`px-2 py-0.5 rounded text-[7px] font-black uppercase border cursor-pointer ${showHistory ? 'bg-indigo-600 text-white border-indigo-400' : 'bg-indigo-900/40 text-indigo-200 border-indigo-600 hover:bg-indigo-800'}`}
-                title="Speicherverlauf der geöffneten Einheit – jede Änderung wird automatisch mit Datum & Uhrzeit gesichert"
+                onClick={() => {
+                  fillEmptyUnits().then((filled) => {
+                    setHealStatus(filled > 0 ? `${filled} leere Einheit(en) mit Wochenplan-Inhalten befüllt.` : 'Keine leere Einheit mit passender Vorlage gefunden.');
+                    setNotification(filled > 0 ? `${filled} Einheit(en) befüllt.` : 'Nichts zu befüllen.');
+                    setTimeout(() => setNotification(null), 3000);
+                  });
+                }}
+                className="px-2 py-0.5 rounded text-[7px] font-black uppercase border bg-amber-500 text-black border-amber-300 hover:bg-amber-400 cursor-pointer"
+                title="Alle Einheiten ohne eigenen Trainingsinhalt (z. B. aus makeEmptyContent) aus den passenden Wochenplan-Vorlagen (1.9–18.9) nachbefüllen – gefüllte Einheiten werden nicht angetastet"
               >
-                🕘 Versionen{historyCount > 0 ? ` (${historyCount})` : ''}
+                Leere befüllen ({sessions.filter(needsContentFill).length})
               </button>
               {healStatus && (
                 <span className="text-[7px] font-bold uppercase text-slate-400 max-w-[300px] truncate" title={healStatus}>{healStatus}</span>
               )}
             </div>
-            {showHistory && (
-              <div className="px-2.5 pb-2 bg-[#0F172A] border-t border-slate-800">
-                <div className="text-[8px] font-black uppercase text-indigo-300 mb-1 mt-1.5">
-                  Speicherverlauf der geöffneten Einheit {localSession?.id ? `(${localSession.id})` : ''} – jede Änderung automatisch gesichert:
-                </div>
-                {historyLoading ? (
-                  <div className="text-[8px] text-slate-400">Lade Versionen…</div>
-                ) : historyEntries.length === 0 ? (
-                  <div className="flex flex-col gap-1.5">
-                    <div className="text-[8px] text-slate-500">Noch keine Versionen. Ab jetzt wird jede Änderung (auch von Kollegen) automatisch hier gesichert – mit Datum & Uhrzeit.</div>
-                    <button
-                      onClick={async () => {
-                        const n = await seedBaselineVersions();
-                        setNotification(`${n} Einheiten: heutiger Stand als Version gesichert.`);
-                        setTimeout(() => setNotification(null), 3000);
-                        if (localSession?.id) loadHistory(localSession.id);
-                      }}
-                      className="self-start px-2 py-1 rounded text-[8px] font-black uppercase bg-emerald-600 text-white hover:bg-emerald-500 cursor-pointer"
-                    >
-                      ▶ Stand aller Einheiten einmalig sichern
-                    </button>
-                  </div>
-                ) : (
-                  <div className="max-h-[180px] overflow-auto flex flex-col gap-1">
-                    {historyEntries.map((h, i) => {
-                      const c = h.data?.content || {};
-                      const preview = [c.warmup, c.main1, c.main2, c.closing, h.data?.importantInfo, h.data?.remarks].filter(x => x && String(x).trim()).join(' | ').trim().slice(0, 90);
-                      return (
-                        <div key={h.id} className="flex items-center gap-2 bg-slate-800/60 rounded px-1.5 py-1">
-                          <span className={`text-[7px] font-black uppercase px-1 py-0.5 rounded ${h.action === 'delete' ? 'bg-red-900 text-red-200' : 'bg-emerald-900 text-emerald-200'}`}>
-                            {h.action === 'delete' ? 'gelöscht' : i === 0 ? 'aktuell' : 'Version'}
-                          </span>
-                          <span className="text-[8px] font-bold text-slate-200 whitespace-nowrap">{h.readable}</span>
-                          {preview && <span className="text-[7px] text-slate-400 truncate max-w-[160px]">{preview}</span>}
-                          {h.action !== 'delete' && (
-                            <button
-                              onClick={() => restoreHistoryVersion(h)}
-                              disabled={historyLoading}
-                              className="ml-auto text-[7px] font-black uppercase bg-indigo-600 text-white rounded px-2 py-0.5 hover:bg-indigo-500 cursor-pointer disabled:opacity-40"
-                            >
-                              Wiederherstellen
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
             <span className="text-[7px] font-black uppercase text-slate-400">
               Spieltag: {activeMatchDay === 'friday' ? 'Freitag' : activeMatchDay === 'saturday' ? 'Samstag' : activeMatchDay === 'sunday' ? 'Sonntag' : 'Auto'}
             </span>
@@ -4277,12 +4534,9 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                               key={row[0]}
                               onClick={() => {
                                 if (!isEditing) { setIsEditing(true); }
-                                updateField('loadLevel', rowNum);
-                                updateField('load', row[1]);
-                                updateField('intensity', row[1]);
-                                updateField('duration', row[2]);
+                                applyBelastungsStufe(rowNum);
                                 setBelastungOpen(false);
-                                setNotification(`Belastung Stufe ${row[0]} gewählt · ${row[1]} · ${row[2]}`);
+                                setNotification(`Belastung Stufe ${row[0]} gewählt → Intensität & Dauer automatisch übernommen`);
                                 setTimeout(() => setNotification(null), 3000);
                               }}
                               className="cursor-pointer transition-colors hover:bg-slate-100"
@@ -4309,46 +4563,38 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
               <div className="grid grid-cols-2 border-b-2 border-black bg-white text-[10px] font-black uppercase text-slate-900">
                 <div className="p-2 border-r-2 border-black">
                   <span className="text-slate-600 font-bold block mb-0.5">Wochenschwerpunkt:</span>
-                  {isEditing ? (
-                    <input 
-                      type="text" 
-                      value={localSession.weeklyFocus}
-                      onChange={(e) => updateField('weeklyFocus', e.target.value)}
-                      className="w-full bg-white text-slate-900 border border-slate-300 rounded px-1 font-bold text-xs outline-none focus:border-black"
-                    />
-                  ) : (
-                    <div className="font-bold text-xs text-slate-900">{localSession.weeklyFocus || '-'}</div>
-                  )}
+                  <input 
+                    type="text" 
+                    value={localSession.weeklyFocus}
+                    onChange={(e) => updateField('weeklyFocus', e.target.value)}
+                    className="w-full bg-white text-slate-900 border border-slate-300 rounded px-1 font-bold text-xs outline-none focus:border-black"
+                  />
                 </div>
                 <div className="p-2">
-                  <span className="text-slate-600 font-bold block mb-0.5">Schwerpunkt Einheit:</span>
-                  {isEditing ? (
-                    <input 
-                      type="text" 
-                      value={localSession.sessionFocus}
-                      onChange={(e) => updateField('sessionFocus', e.target.value)}
-                      className="w-full bg-white text-slate-900 border border-slate-300 rounded px-1 font-bold text-xs outline-none focus:border-black"
-                    />
-                  ) : (
-                    <div className="font-bold text-xs text-slate-900">{localSession.sessionFocus || '-'}</div>
-                  )}
+                  <span className="text-slate-600 font-bold block mb-0.5">
+                    Schwerpunkt Einheit:
+                  </span>
+                  <input
+                    type="text"
+                    value={localSession.sessionFocus || ''}
+                    onChange={(e) => updateField('sessionFocus', e.target.value)}
+                    title="Manuell eingeben – wird nicht mehr automatisch überschrieben."
+                    placeholder="selbst eingeben"
+                    className="w-full bg-white text-slate-900 border border-slate-300 rounded px-1 font-bold text-xs outline-none focus:border-black"
+                  />
                 </div>
               </div>
 
               {/* Trainer Row */}
               <div className="flex justify-end border-b-2 border-black bg-slate-50 text-[10px] font-black uppercase p-2 text-slate-900">
                 <span className="text-slate-600 font-bold mr-2">Trainer:</span>
-                {isEditing ? (
-                  <input 
-                    type="text" 
-                    value={localSession.trainer}
-                    onChange={(e) => updateField('trainer', e.target.value)}
-                    className="bg-white text-slate-900 border border-slate-300 rounded px-1 font-bold text-xs outline-none text-right"
-                    placeholder="Amin, marcel"
-                  />
-                ) : (
-                  <div className="font-bold text-xs text-slate-900">{localSession.trainer || 'Amin, marcel'}</div>
-                )}
+                <input 
+                  type="text" 
+                  value={localSession.trainer}
+                  onChange={(e) => updateField('trainer', e.target.value)}
+                  className="bg-white text-slate-900 border border-slate-300 rounded px-1 font-bold text-xs outline-none text-right"
+                  placeholder="Amin, marcel"
+                />
               </div>
 
               {/* Intensitäts-Farbleiste: unter Trainer, über der Aktivität – Farben = Belastungsdiagramm */}
@@ -4362,10 +4608,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                         key={s}
                         onClick={() => {
                           if (!isEditing) { setIsEditing(true); }
-                          updateField('loadLevel', s);
-                          updateField('load', stufe.label);
-                          updateField('intensity', stufe.intensity);
-                          updateField('duration', s <= 3 ? ['0–10 min','0–15 min','0–20 min'][s-1] : s <= 6 ? ['10–25 min','10–30 min','10–35 min'][s-4] : ['15–45 min','15–55 min','10–110 min'][s-7]);
+                          applyBelastungsStufe(s);
                         }}
                         className="flex flex-col items-center rounded-md transition-transform cursor-pointer hover:scale-105"
                         style={{ backgroundColor: stufe.farbe, boxShadow: active ? '0 0 0 2px #000 inset' : 'none' }}
@@ -4382,7 +4625,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                     {localSession.loadLevel || 5} · {localSession.load || BELASTUNGS_STUFEN[localSession.loadLevel || 5].label}
                   </span>
                   <span className="text-[10px] font-black px-2 py-0.5 rounded" style={{ backgroundColor: (BELASTUNGS_STUFEN[localSession.loadLevel || 5] || BELASTUNGS_STUFEN[5]).farbe, color: (localSession.loadLevel || 5) >= 6 ? '#fff' : '#111' }}>
-                    {localSession.intensity || BELASTUNGS_STUFEN[localSession.loadLevel || 5].intensity}
+                    {derivedIntensity}
                   </span>
                   <span className="text-[8px] font-black uppercase text-slate-600">{localSession.duration || 'Dauer'}</span>
                 </div>
@@ -4415,13 +4658,13 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
               )}
 
               {/* Main Content Area - Split Layout */}
-              <div className="flex flex-col lg:flex-row flex-1 min-h-[600px] print:h-auto print:min-h-0 print:overflow-visible">
+              <div className="flex flex-col lg:flex-row flex-1 min-h-[600px] print:h-auto print:min-h-0 print:overflow-visible print:flex-col">
                 {/* Leftest Column: Alle Einheiten (vergangene + kommende) */}
                 <div className="w-full lg:w-32 xl:w-36 shrink-0 border-b-2 lg:border-b-0 lg:border-r-2 border-black flex flex-col bg-white print:hidden">
                   {renderAllSessionsColumn()}
                 </div>
                 {/* Left Column: Player List */}
-                <div className="w-full lg:w-1/4 border-b-2 lg:border-b-0 lg:border-r-2 border-black flex flex-col bg-slate-50 print:bg-white print:overflow-visible print:h-auto">
+                <div className="w-full lg:w-1/4 border-b-2 lg:border-b-0 lg:border-r-2 border-black flex flex-col bg-slate-50 print:bg-white print:overflow-visible print:h-auto print:w-full">
                   <div className="bg-black text-white p-2 shrink-0 flex justify-between items-center">
                     <div className="flex items-center gap-2">
                       <h3 className="font-black uppercase tracking-widest text-[10px]">Anwesenheit</h3>
@@ -4607,21 +4850,16 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                 </div>
 
                 {/* Right Column: Content Sections */}
-                <div className="flex-1 flex flex-col print:overflow-visible print:h-auto">
-                  {/* Intensity Bar */}
+                <div className="flex-1 flex flex-col print:overflow-visible print:h-auto print:w-full print:break-before-page">
+                  {/* Intensity Bar — Wert kommt automatisch aus der Belastungsstufe */}
                   <div className="bg-yellow-400 text-slate-900 border-b-2 border-black p-2 flex justify-center items-center gap-4 text-[10px] font-black uppercase">
-                    <span className="text-slate-900 font-black">Intensität:</span>
-                    {isEditing ? (
-                      <input 
-                        type="text" 
-                        value={localSession.intensity}
-                        onChange={(e) => updateField('intensity', e.target.value)}
-                        className="bg-white text-slate-900 border border-black font-black text-xs outline-none text-center px-2 py-0.5"
-                        placeholder="Mittel-Hoch"
-                      />
-                    ) : (
-                      <span className="font-black text-xs text-slate-900">{localSession.intensity || 'Mittel-Hoch'}</span>
-                    )}
+                    <span className="text-slate-900 font-black" title="Automatisch aus der Belastungsstufe (grünes Belastungsdiagramm).">Intensität:</span>
+                    <span
+                      title="Automatisch aus der Belastungsstufe (grünes Belastungsdiagramm) – bitte dort ändern."
+                      className="bg-white border border-black font-black text-xs text-center px-2 py-0.5 cursor-not-allowed select-none"
+                    >
+                      {derivedIntensity}
+                    </span>
                   </div>
 
                   {/* Content Sections */}
@@ -4690,7 +4928,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                       </div>
                     </div>
 
-                    <div className="flex-1 border-b-2 border-black flex flex-col min-h-[150px] print:min-h-0 print:h-auto print:overflow-visible print:avoid-break">
+                    <div className="flex-1 border-b-2 border-black flex flex-col min-h-[150px] print:min-h-0 print:h-auto print:overflow-visible print:avoid-break print:break-before-page">
                       <div className="bg-[#F59E0B] text-white p-2 border-b border-black text-[10px] font-black uppercase flex justify-between items-center">
                         <span className="flex items-center gap-1.5"><span className="text-sm">🏃</span> Hauptteil 1 — Technik / Taktik</span>
                         <div className="flex items-center gap-1">
@@ -4753,7 +4991,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                       </div>
                     </div>
 
-                    <div className="flex-1 border-b-2 border-black flex flex-col min-h-[150px] print:min-h-0 print:h-auto print:overflow-visible print:avoid-break">
+                    <div className="flex-1 border-b-2 border-black flex flex-col min-h-[150px] print:min-h-0 print:h-auto print:overflow-visible print:avoid-break print:break-before-page">
                       <div className="bg-[#EF4444] text-white p-2 border-b border-black text-[10px] font-black uppercase flex justify-between items-center">
                         <span className="flex items-center gap-1.5"><span className="text-sm">⚡</span> Hauptteil 2 — Intensität / Spiel</span>
                         <div className="flex items-center gap-1">
@@ -4816,7 +5054,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                       </div>
                     </div>
 
-                    <div className="flex-1 flex flex-col min-h-[150px] print:min-h-0 print:h-auto print:overflow-visible print:avoid-break">
+                    <div className="flex-1 flex flex-col min-h-[150px] print:min-h-0 print:h-auto print:overflow-visible print:avoid-break print:break-before-page">
                       <div className="bg-[#10B981] text-white p-2 border-b border-black text-[10px] font-black uppercase flex justify-between items-center">
                         <span className="flex items-center gap-1.5"><span className="text-sm">🧘</span> Schluss / Cool-Down</span>
                         <div className="flex items-center gap-1">
@@ -5088,7 +5326,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
       )}
 
       {notification && (
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] animate-bounce">
+        <div data-fca-print-overlay className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] animate-bounce print:hidden">
           <div className="bg-black text-white border-2 border-white px-6 py-3 font-black uppercase text-xs shadow-[4px_4px_0px_0px_rgba(0,0,0,0.3)]">
             {notification}
           </div>
@@ -5659,7 +5897,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
               <button onClick={() => setShowDocumentPreview(false)} className="flex items-center gap-1 bg-black text-white px-4 py-2 font-black text-xs uppercase rounded hover:bg-gray-800 cursor-pointer">
                 <X size={14} /> Schließen
               </button>
-              <button onClick={() => { window.print(); }} className="flex items-center gap-1 bg-emerald-600 text-white px-4 py-2 font-black text-xs uppercase rounded hover:bg-emerald-700 cursor-pointer">
+              <button onClick={printDocument} className="flex items-center gap-1 bg-emerald-600 text-white px-4 py-2 font-black text-xs uppercase rounded hover:bg-emerald-700 cursor-pointer">
                 <Printer size={14} /> Als PDF drucken
               </button>
             </div>
@@ -5679,10 +5917,10 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                 { label: 'Ort', value: localSession.location || '—' },
                 { label: 'Dauer', value: localSession.duration || '—' },
                 { label: 'Belastung', value: `${localSession.loadLevel || 5}/9 ${localSession.load || '—'}` },
-                { label: 'Intensität', value: localSession.intensity || '—' },
+                { label: 'Intensität', value: derivedIntensity },
                 { label: 'Trainer', value: localSession.trainer || '—' },
                 { label: 'Wochenschwerpunkt', value: localSession.weeklyFocus || '—' },
-                { label: 'Einheitsschwerpunkt', value: localSession.sessionFocus || '—' },
+              { label: 'Einheitsschwerpunkt', value: localSession.sessionFocus || '—' },
               ].map((item, i) => (
                 <div key={i} className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
                   <div className="text-[8px] font-black uppercase text-slate-400 tracking-wider">{item.label}</div>
@@ -5733,7 +5971,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                 {(localSession.content.warmupImages || []).length > 0 && (
                   <div className="flex gap-2 mt-3 flex-wrap">
                     {(localSession.content.warmupImages || []).map((img: string, idx: number) => (
-                      <img key={idx} src={img} alt={`Aufwärmen ${idx + 1}`} className="h-32 rounded-lg border border-slate-200 object-cover" />
+                      <img key={idx} src={img} alt={`Aufwärmen ${idx + 1}`} className="h-32 rounded-lg border border-slate-200 object-cover cursor-pointer" onClick={() => setLightboxImage(img)} />
                     ))}
                   </div>
                 )}
@@ -5751,7 +5989,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                 {(localSession.content.main1Images || []).length > 0 && (
                   <div className="flex gap-2 mt-3 flex-wrap">
                     {(localSession.content.main1Images || []).map((img: string, idx: number) => (
-                      <img key={idx} src={img} alt={`Hauptteil 1 ${idx + 1}`} className="h-32 rounded-lg border border-slate-200 object-cover" />
+                      <img key={idx} src={img} alt={`Hauptteil 1 ${idx + 1}`} className="h-32 rounded-lg border border-slate-200 object-cover cursor-pointer" onClick={() => setLightboxImage(img)} />
                     ))}
                   </div>
                 )}
@@ -5769,7 +6007,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                 {(localSession.content.main2Images || []).length > 0 && (
                   <div className="flex gap-2 mt-3 flex-wrap">
                     {(localSession.content.main2Images || []).map((img: string, idx: number) => (
-                      <img key={idx} src={img} alt={`Hauptteil 2 ${idx + 1}`} className="h-32 rounded-lg border border-slate-200 object-cover" />
+                      <img key={idx} src={img} alt={`Hauptteil 2 ${idx + 1}`} className="h-32 rounded-lg border border-slate-200 object-cover cursor-pointer" onClick={() => setLightboxImage(img)} />
                     ))}
                   </div>
                 )}
@@ -5787,7 +6025,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                 {(localSession.content.closingImages || []).length > 0 && (
                   <div className="flex gap-2 mt-3 flex-wrap">
                     {(localSession.content.closingImages || []).map((img: string, idx: number) => (
-                      <img key={idx} src={img} alt={`Schluss ${idx + 1}`} className="h-32 rounded-lg border border-slate-200 object-cover" />
+                      <img key={idx} src={img} alt={`Schluss ${idx + 1}`} className="h-32 rounded-lg border border-slate-200 object-cover cursor-pointer" onClick={() => setLightboxImage(img)} />
                     ))}
                   </div>
                 )}
@@ -5809,6 +6047,10 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
             </div>
           </div>
         </div>
+      )}
+
+      {lightboxImage && (
+        <ImageLightbox image={lightboxImage} onClose={() => setLightboxImage(null)} />
       )}
     </div>
   );

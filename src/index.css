@@ -326,6 +326,21 @@ html.light, body.light {
   .player-list-print-grid .bg-yellow-400 { background-color: #facc15 !important; color: black !important; }
   .player-list-print-grid .bg-red-600 { background-color: #dc2626 !important; color: white !important; }
   .print\:avoid-break { break-inside: avoid !important; page-break-inside: avoid !important; }
+  /* Animations/Transitions stoppen -> Druckvorschau hängt sonst auf "wird vorbereitet" */
+  *, *::before, *::after {
+    animation: none !important;
+    animation-play-state: paused !important;
+    transition: none !important;
+    transition-duration: 0s !important;
+    will-change: auto !important;
+  }
+  /* Scroll-Container im Druck entfalten, sonst werden Übungsseiten abgeschnitten */
+  [class*="overflow-hidden"], [class*="overflow-auto"],
+  [class*="overflow-y"], [class*="overflow-x"] {
+    overflow: visible !important;
+    max-height: none !important;
+  }
+  img, svg, canvas, video { max-width: 100% !important; height: auto !important; }
   body { background-color: white !important; color: black !important; }
   #runs-pdf-report { display: block !important; width: 100% !important; }
 }
