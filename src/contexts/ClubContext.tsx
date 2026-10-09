@@ -16,17 +16,6 @@ const FC_AUGGEN_DEMO: Club = {
   status: 'active',
 };
 
-const SC_SAND_DEFAULT: Club = {
-  id: 'sc-sand-1946',
-  name: 'SC Sand 1946',
-  shortName: 'SCS',
-  league: '2. Frauen-Bundesliga',
-  region: 'Baden-Württemberg',
-  isDemo: false,
-  createdAt: Date.now(),
-  status: 'active',
-};
-
 const CLUBS_STORAGE_KEY = 'cocoach_clubs';
 const ACTIVE_CLUB_KEY = 'cocoach_active_club';
 
@@ -35,14 +24,13 @@ function loadClubs(): Club[] {
     const raw = localStorage.getItem(CLUBS_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as Club[];
-      const hasAuggen = parsed.some(c => c.id === 'fc-auggen');
-      if (!hasAuggen) parsed.unshift(FC_AUGGEN_DEMO);
-      const hasSCSand = parsed.some(c => c.id === 'sc-sand-1946');
-      if (!hasSCSand) parsed.push(SC_SAND_DEFAULT);
-      return parsed;
+      const filtered = parsed.filter(c => c.id !== 'sc-sand-1946');
+      const hasAuggen = filtered.some(c => c.id === 'fc-auggen');
+      if (!hasAuggen) filtered.unshift(FC_AUGGEN_DEMO);
+      return filtered;
     }
   } catch {}
-  return [FC_AUGGEN_DEMO, SC_SAND_DEFAULT];
+  return [FC_AUGGEN_DEMO];
 }
 
 function loadActiveClubId(): string {

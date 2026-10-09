@@ -1,7 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { User, Plus, Trash2, Pencil, X, BarChart2, Calendar, Shield, Activity, Info, TrendingUp, Users } from 'lucide-react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { User, Plus, Trash2, Pencil, X, BarChart2, Calendar, Shield, Activity, Info, TrendingUp, Users, ListChecks, Save } from 'lucide-react';
 import { Spieler, Player, AttendanceRecord } from '../../types';
-import { sortPlayers, isPlayer } from '../../utils/playerSorting';
+import { sortPlayers } from '../../utils/playerSorting';
+import { useCollectionSync } from '../../hooks/useCollectionSync';
+import { AttendanceMonthsView } from './AttendanceMonthsView';
 import { 
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell 
 } from 'recharts';
@@ -48,12 +50,82 @@ export const TrainingAttendanceView: React.FC<TrainingAttendanceViewProps> = ({
   const [activePopover, setActivePopover] = useState<{ playerId: string, sessionNum: number } | null>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
 
-  const [viewMode, setViewMode] = useState<'table' | 'chart'>('table');
+  const [viewMode, setViewMode] = useState<'table' | 'month' | 'chart' | 'months'>('table');
   const [rangePreset, setRangePreset] = useState<string>('all');
   const [startSession, setStartSession] = useState<number>(6);
   const [endSession, setEndSession] = useState<number>(120);
   const [posFilter, setPosFilter] = useState<string>('all');
   const [chartType, setChartType] = useState<'vertical' | 'horizontal'>('vertical');
+  const [monthKey, setMonthKey] = useState<string>('');
+
+  // Einheiten-Register (Session-Nummer → Datum/Thema/Trainer/Belastung)
+  const { data: unitMetaList, addOrUpdateItem: saveUnitMeta, removeItem: removeUnitMeta } = useCollectionSync<any>('attendance_unit_meta', 'id', undefined, 'asc', true);
+
+  const unitMetaMap = useMemo(() => {
+    const map = new Map<number, any>();
+    (unitMetaList || []).forEach((u: any) => {
+      const num = Number(u.sessionNum || u.id);
+      if (!isNaN(num) && num > 0) map.set(num, u);
+    });
+    return map;
+  }, [unitMetaList]);
+
+  // Bearbeiten-Modal für eine Einheit
+  const [editUnitNum, setEditUnitNum] = useState<number | null>(null);
+  const [unitForm, setUnitForm] = useState({ sessionNum: '', date: '', time: '', duration: '', trainer: '', loadLevel: 'Mittel', focus: '' });
+  const openUnitEditor = (num: number) => {
+    const m = unitMetaMap.get(num) || {};
+    setUnitForm({
+      sessionNum: String(num),
+      date: m.date || '',
+      time: m.time || '',
+      duration: m.duration || '',
+      trainer: m.trainer || '',
+      loadLevel: m.loadLevel || 'Mittel',
+      focus: m.focus || '',
+    });
+    setEditUnitNum(num);
+  };
+  const saveUnitMetaForm = async () => {
+    if (editUnitNum === null) return;
+    const oldNum = editUnitNum;
+    const newNum = parseInt(unitForm.sessionNum.trim(), 10);
+    const safeNew = !isNaN(newNum) && newNum > 0 ? newNum : oldNum;
+    const patch = {
+      date: unitForm.date,
+      time: unitForm.time,
+      duration: unitForm.duration,
+      trainer: unitForm.trainer,
+      loadLevel: unitForm.loadLevel,
+      focus: unitForm.focus,
+    };
+    if (safeNew !== oldNum) {
+      // Anwesenheiten der alten Nummer auf die neue Nummer verschieben
+      const moves = players.map(async p => {
+        const rec = attendance.find(a => a.playerId === p.id);
+        const status = rec?.sessions?.[oldNum] || '';
+        if (status) {
+          await onUpdateAttendance(p.id, safeNew, status);
+          await onUpdateAttendance(p.id, oldNum, '');
+        }
+      });
+      await Promise.all(moves);
+      await saveUnitMeta({ id: String(safeNew), sessionNum: safeNew, ...patch });
+      await removeUnitMeta(String(oldNum));
+    } else {
+      await saveUnitMeta({ id: String(oldNum), sessionNum: oldNum, ...patch });
+    }
+    setEditUnitNum(null);
+  };
+  const deleteEditUnit = async () => {
+    if (editUnitNum === null) return;
+    const num = editUnitNum;
+    setEditUnitNum(null);
+    await Promise.all(
+      players.map(p => onUpdateAttendance(p.id, num, ''))
+    );
+    await removeUnitMeta(String(num));
+  };
 
   // Find latest session with any attendance data
   const latestSessionWithData = React.useMemo(() => {
@@ -111,6 +183,68 @@ export const TrainingAttendanceView: React.FC<TrainingAttendanceViewProps> = ({
   }, []);
 
   const sessions = Array.from({ length: 115 }, (_, i) => i + 6);
+
+  // ── Monats-Ansicht: Einheiten nach Monat (Datum aus Trainingsplan) ──
+  const toMonthKey = (d: any) => (d ? String(d).slice(0, 7) : '');
+
+  const unitMonths = useMemo(() => {
+    const set = new Set<string>();
+    unitMetaMap.forEach((m: any) => { const k = toMonthKey(m?.date); if (k) set.add(k); });
+    return Array.from(set).sort();
+  }, [unitMetaMap]);
+
+  const seasonMonths = useMemo(() => {
+    if (unitMonths.length === 0) return [] as string[];
+    const out: string[] = [];
+    let [y, m] = unitMonths[0].split('-').map(Number);
+    const ey = 2027, em = 5;
+    while (y < ey || (y === ey && m <= em)) {
+      out.push(`${y}-${String(m).padStart(2, '0')}`);
+      m++; if (m > 12) { m = 1; y++; }
+    }
+    return out;
+  }, [unitMonths]);
+
+  useEffect(() => {
+    if (monthKey) return;
+    const now = new Date();
+    const cur = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    if (seasonMonths.includes(cur)) setMonthKey(cur);
+    else if (seasonMonths.length) setMonthKey(seasonMonths[seasonMonths.length - 1]);
+  }, [seasonMonths, monthKey]);
+
+  const monthUnitNums = useMemo(() => {
+    if (!monthKey) return [] as number[];
+    const list: number[] = [];
+    unitMetaMap.forEach((m: any, num: number) => {
+      if (toMonthKey(m?.date) === monthKey) list.push(num);
+    });
+    return list.sort((a, b) => String(unitMetaMap.get(a)?.date || '').localeCompare(String(unitMetaMap.get(b)?.date || '')) || a - b);
+  }, [unitMetaMap, monthKey]);
+
+  const monthLabel = (key: string) => {
+    const names = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+    const [y, m] = key.split('-').map(Number);
+    if (!y || !m) return key;
+    return `${names[m - 1]} ${y}`;
+  };
+
+  const monthIdx = seasonMonths.indexOf(monthKey);
+  const prevMonth = monthIdx > 0 ? seasonMonths[monthIdx - 1] : '';
+  const nextMonth = monthIdx >= 0 && monthIdx < seasonMonths.length - 1 ? seasonMonths[monthIdx + 1] : '';
+
+  const handleAddUnit = () => {
+    if (!monthKey) return;
+    let maxDated = 5;
+    unitMetaMap.forEach((m: any, num: number) => {
+      if (String(m?.date || '').length >= 10 && num > maxDated) maxDated = num;
+    });
+    const next = maxDated + 1;
+    const now = new Date();
+    const curKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const day = monthKey === curKey ? String(now.getDate()).padStart(2, '0') : '01';
+    saveUnitMeta({ id: String(next), sessionNum: next, date: `${monthKey}-${day}`, focus: '', time: '', duration: '', trainer: '', loadLevel: 'Mittel' });
+  };
 
   const getStatusColor = (status: string) => {
     const option = ATTENDANCE_OPTIONS.find(o => o.key === status);
@@ -171,7 +305,10 @@ export const TrainingAttendanceView: React.FC<TrainingAttendanceViewProps> = ({
 
   const renderTableSection = (title: string, category: string) => {
     const filteredPlayers = sortPlayers(players.filter(p => {
-      if (category === 'player') return isPlayer(p);
+      if (category === 'player') {
+        const cat = (p.category || 'player').toLowerCase();
+        return cat === 'player' || cat === 'spieler';
+      }
       const cat = (p.category || 'player').toLowerCase();
       if (category === 'coach') return cat === 'coach' || cat === 'trainer';
       if (category === 'staff') return cat === 'staff' || cat === 'funktionär' || cat === 'betreuer' || cat === 'teammanager';
@@ -297,6 +434,68 @@ export const TrainingAttendanceView: React.FC<TrainingAttendanceViewProps> = ({
     );
   };
 
+  const renderMonthSection = (title: string, category: string) => {
+    const filteredPlayers = sortPlayers(players.filter(p => {
+      if (category === 'player') {
+        const cat = (p.category || 'player').toLowerCase();
+        return cat === 'player' || cat === 'spieler';
+      }
+      const cat = (p.category || 'player').toLowerCase();
+      if (category === 'coach') return cat === 'coach' || cat === 'trainer';
+      if (category === 'staff') return cat === 'staff' || cat === 'funktionär' || cat === 'betreuer' || cat === 'teammanager';
+      if (category === 'medical') return cat === 'medical' || cat === 'medizinisch' || cat === 'arzt' || cat === 'ärztlich' || cat === 'physio';
+      return false;
+    }));
+
+    return (
+      <>
+        <tr className="bg-slate-100 text-[#0D9488] font-black">
+          <td colSpan={monthUnitNums.length + 6} className="p-2.5 font-black uppercase text-xs tracking-wider border-y border-slate-300 bg-slate-100 text-[#0D9488]">
+            {title}
+          </td>
+        </tr>
+        {filteredPlayers.map((player, idx) => {
+          const record = attendance.find(a => a.playerId === player.id);
+          const sessionsData = record?.sessions || {};
+          let attended = 0;
+          let relevant = 0;
+          monthUnitNums.forEach(num => {
+            const st = sessionsData[num];
+            if (st) {
+              relevant++;
+              if (st === 'x') attended++;
+            }
+          });
+          const quote = relevant > 0 ? ((attended / relevant) * 100).toFixed(1) + ' %' : '0.0 %';
+
+          return (
+            <tr key={player.id} className="hover:bg-slate-50 transition-colors border-b border-slate-200 bg-white text-[#0F172A]">
+              <td className="p-2 border-r border-slate-200 text-center text-[#64748B] font-bold">{idx + 1}</td>
+              <td className="p-2 border-r border-slate-200 font-bold text-[#0F172A]">{player.lastName}</td>
+              <td className="p-2 border-r border-slate-200 text-center uppercase text-[#0D9488] font-black">{player.position}</td>
+              <td className="p-2 border-r border-slate-200 text-center text-[#64748B] font-bold">{player.number || player.nummer}</td>
+              <td className="p-2 border-r border-slate-200 text-center font-black text-[#10B981]">{attended}</td>
+              <td className="p-2 border-r border-slate-200 text-center font-bold text-[#0F172A]">{quote}</td>
+              {monthUnitNums.map(num => {
+                const status = sessionsData[num] || '';
+                return (
+                  <td key={num} className="p-0.5 border-r border-slate-200 text-center min-w-[32px] hover:bg-slate-100 transition-colors">
+                    <div
+                      className={`w-full h-full min-h-[26px] flex items-center justify-center cursor-pointer rounded text-[11px] font-black select-none transition-all ${getStatusColor(status)}`}
+                      onClick={() => handleCellClick(player.id, num, status)}
+                    >
+                      {status}
+                    </div>
+                  </td>
+                );
+              })}
+            </tr>
+          );
+        })}
+      </>
+    );
+  };
+
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
@@ -320,7 +519,10 @@ export const TrainingAttendanceView: React.FC<TrainingAttendanceViewProps> = ({
 
   // Compute chart data
   const chartData = React.useMemo(() => {
-    const squadPlayers = players.filter(isPlayer);
+    const squadPlayers = players.filter(p => {
+      const cat = (p.category || 'player').toLowerCase();
+      return cat === 'player' || cat === 'spieler';
+    });
     const filteredByPos = squadPlayers.filter(p => {
       if (posFilter === 'all') return true;
       return getPositionCategory(p.position) === posFilter;
@@ -441,6 +643,18 @@ export const TrainingAttendanceView: React.FC<TrainingAttendanceViewProps> = ({
               >
                 <BarChart2 size={12} /> Belastungsanalyse
               </button>
+              <button
+                onClick={() => setViewMode('months')}
+                className={`px-3.5 py-1.5 text-[10px] uppercase font-black tracking-wider rounded-lg transition-all flex items-center gap-1.5 ${viewMode === 'months' ? 'bg-[#10B981] text-white font-black shadow-md border border-[#10B981]' : 'text-[#94A3B8] hover:text-[#F8FAFC] hover:bg-[#334155]'}`}
+              >
+                <ListChecks size={12} /> Monatsauswertung
+              </button>
+              <button
+                onClick={() => setViewMode('month')}
+                className={`px-3.5 py-1.5 text-[10px] uppercase font-black tracking-wider rounded-lg transition-all flex items-center gap-1.5 ${viewMode === 'month' ? 'bg-[#10B981] text-white font-black shadow-md border border-[#10B981]' : 'text-[#94A3B8] hover:text-[#F8FAFC] hover:bg-[#334155]'}`}
+              >
+                <Calendar size={12} /> Monat
+              </button>
             </div>
           </div>
 
@@ -560,22 +774,40 @@ export const TrainingAttendanceView: React.FC<TrainingAttendanceViewProps> = ({
                 <th className="p-2.5 border-r border-b border-slate-200 text-center w-12 text-[#64748B] font-medium">Rück.</th>
                 <th className="p-2.5 border-r border-b border-slate-200 text-center w-16 text-[#10B981] font-black">Quote</th>
                 {isEditing && <th className="p-2.5 border-r border-b border-slate-200 text-center w-20 text-rose-600 font-black">Aktion</th>}
-                {sessions.map(num => (
-                  <th key={num} className="p-1 border-r border-b border-slate-200 text-center w-8 min-w-[32px] text-[#0F172A]">
-                    <div className="flex flex-col items-center gap-1">
-                      <span>{num}</span>
-                      {isEditing && (
-                        <button 
-                          onClick={() => onClearSession(num)}
-                          className="text-rose-500 hover:text-rose-700 transition-colors"
-                          title="Spalte leeren"
+                {sessions.map(num => {
+                  const meta = unitMetaMap.get(num);
+                  return (
+                    <th key={num} className="p-1 border-r border-b border-slate-200 text-center w-8 min-w-[32px] text-[#0F172A] align-bottom">
+                      <div className="flex flex-col items-center gap-1">
+                        <button
+                          onClick={() => openUnitEditor(num)}
+                          disabled={!isEditing}
+                          title={meta
+                            ? `EH ${num} · ${meta.date ? meta.date.split('T')[0] : 'kein Datum'} · ${meta.focus || 'kein Thema'} – bearbeiten`
+                            : `EH ${num} bearbeiten (Datum/Thema/Trainer/Belastung)`}
+                          className={`flex items-center justify-center gap-0.5 font-black ${isEditing ? 'hover:text-[#0D9488] cursor-pointer' : 'cursor-default'} transition-colors`}
                         >
-                          <Trash2 size={10} />
+                          <span>{num}</span>
+                          {isEditing && <Pencil size={9} className="text-[#0D9488]" />}
                         </button>
-                      )}
-                    </div>
-                  </th>
-                ))}
+                        {meta?.date && (
+                          <span className="text-[7px] font-bold text-[#64748B] leading-tight">
+                            {meta.date.split('T')[0].slice(5).split('-').reverse().join('.')}
+                          </span>
+                        )}
+                        {isEditing && (
+                          <button
+                            onClick={() => onClearSession(num)}
+                            className="text-rose-500 hover:text-rose-700 transition-colors"
+                            title="Spalte leeren"
+                          >
+                            <Trash2 size={10} />
+                          </button>
+                        )}
+                      </div>
+                    </th>
+                  );
+                })}
               </tr>
             </thead>
             <tbody>
@@ -586,7 +818,91 @@ export const TrainingAttendanceView: React.FC<TrainingAttendanceViewProps> = ({
             </tbody>
           </table>
         </div>
-      ) : (
+      ) : viewMode === 'month' ? (
+        <div className="flex-1 overflow-auto custom-scrollbar bg-white border border-slate-200 rounded-xl shadow-md">
+          <div className="px-3 py-2 bg-[#F1F5F9] border-b border-slate-200 text-[10px] font-bold text-[#64748B] flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => prevMonth && setMonthKey(prevMonth)}
+              disabled={!prevMonth}
+              className={`px-2 py-1 rounded border border-slate-300 transition-colors ${prevMonth ? 'hover:bg-slate-200 text-[#0F172A]' : 'text-slate-300 cursor-not-allowed'}`}
+            >◀</button>
+            <span className="font-black uppercase text-[#0D9488] text-xs min-w-[120px] text-center">{monthLabel(monthKey)}</span>
+            <button
+              onClick={() => nextMonth && setMonthKey(nextMonth)}
+              disabled={!nextMonth}
+              className={`px-2 py-1 rounded border border-slate-300 transition-colors ${nextMonth ? 'hover:bg-slate-200 text-[#0F172A]' : 'text-slate-300 cursor-not-allowed'}`}
+            >▶</button>
+            <select
+              value={monthKey}
+              onChange={e => setMonthKey(e.target.value)}
+              className="border border-slate-300 rounded px-2 py-1 bg-white text-[#0F172A] font-bold"
+            >
+              {seasonMonths.map(k => <option key={k} value={k}>{monthLabel(k)}</option>)}
+            </select>
+            <span>Team im Monat: <span className="font-black text-[#0F172A]">{monthUnitNums.length} Einheiten</span></span>
+            {monthKey === '2026-12' && <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-700 font-black">bis 15.12. – dann Winterpause</span>}
+            {monthKey === '2027-01' && <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-700 font-black">Winterpause</span>}
+            {isEditing && (
+              <button
+                onClick={handleAddUnit}
+                className="ml-auto bg-[#0D9488] hover:bg-[#0F766E] text-white px-3 py-1.5 rounded-lg font-black uppercase tracking-wider flex items-center gap-1 shadow-sm"
+              >
+                <Plus size={12} /> Einheit
+              </button>
+            )}
+          </div>
+          <table className="w-full border-collapse text-[10px] font-bold bg-white">
+            <thead className="sticky top-0 bg-[#F1F5F9] text-[#0F172A] z-20 border-b-2 border-slate-300">
+              <tr>
+                <th className="p-2.5 border-r border-b border-slate-200 text-left w-10 text-[#64748B] font-bold">Nr</th>
+                <th className="p-2.5 border-r border-b border-slate-200 text-left w-48 text-[#0F172A] font-black">Spieler (Nachname)</th>
+                <th className="p-2.5 border-r border-b border-slate-200 text-center w-12 text-[#0D9488] font-black">Pos</th>
+                <th className="p-2.5 border-r border-b border-slate-200 text-center w-12 text-[#64748B] font-bold">Rück.Nr</th>
+                <th className="p-2.5 border-r border-b border-slate-200 text-center w-16 text-[#10B981] font-black">Anwesend</th>
+                <th className="p-2.5 border-r border-b border-slate-200 text-center w-16 text-[#0F172A] font-black">Quote</th>
+                {monthUnitNums.map(num => {
+                  const meta = unitMetaMap.get(num);
+                  return (
+                    <th key={num} className="p-1 border-r border-b border-slate-200 text-center w-8 min-w-[32px] text-[#0F172A] align-bottom">
+                      <div className="flex flex-col items-center gap-1">
+                        <button
+                          onClick={() => openUnitEditor(num)}
+                          disabled={!isEditing}
+                          title={meta
+                            ? `EH ${num} · ${meta.date ? meta.date.split('T')[0] : 'kein Datum'} · ${meta.focus || 'kein Thema'}`
+                            : `EH ${num}`}
+                          className={`font-black ${isEditing ? 'hover:text-[#0D9488] cursor-pointer' : 'cursor-default'} transition-colors`}
+                        >{num}</button>
+                        {meta?.date && (
+                          <span className="text-[7px] font-bold text-[#64748B] leading-tight">
+                            {meta.date.split('T')[0].slice(5).split('-').reverse().join('.')}
+                          </span>
+                        )}
+                      </div>
+                    </th>
+                  );
+                })}
+              </tr>
+            </thead>
+            <tbody>
+              {monthUnitNums.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="p-4 text-center text-[#64748B] italic">
+                    Keine Einheiten in {monthLabel(monthKey)}{monthKey === '2027-01' || monthKey === '2026-12' ? ' (Winterpause)' : ''}.
+                  </td>
+                </tr>
+              ) : (
+                <>
+                  {renderMonthSection('Spielerkader', 'player')}
+                  {renderMonthSection('Trainerteam', 'coach')}
+                  {renderMonthSection('Funktionsteam (Leitung / Betreuung)', 'staff')}
+                  {renderMonthSection('Medizinische Abteilung (Physio / Arzt)', 'medical')}
+                </>
+              )}
+            </tbody>
+          </table>
+        </div>
+      ) : viewMode === 'chart' ? (
         <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 bg-[#0F0F0F] custom-scrollbar text-[#F5F5F5]">
           {/* Controls Box */}
           <div className="bg-[#1A1A1A] border border-[#2A2A2A] p-4 rounded-xl shadow-md grid grid-cols-1 md:grid-cols-4 gap-4 items-end text-xs">
@@ -759,7 +1075,8 @@ export const TrainingAttendanceView: React.FC<TrainingAttendanceViewProps> = ({
                       <YAxis 
                         dataKey="name" 
                         type="category" 
-                        width={140} 
+                        width={140}
+                        interval={0}
                         tick={{ fontSize: 9, fontWeight: 'black', fill: '#F5F5F5' }}
                       />
                       <Tooltip content={<CustomTooltip />} />
@@ -837,6 +1154,118 @@ export const TrainingAttendanceView: React.FC<TrainingAttendanceViewProps> = ({
             <p className="text-[10px] text-[#C7C7C7]/70 italic mt-1 font-bold">
               * Entschuldigte Fehltage (e), Unentschuldigt (u), Krank (k) und Privat (P) werden mit 0 Load Units verbucht, da keine physische Belastung im Mannschaftstraining stattfindet.
             </p>
+          </div>
+        </div>
+      ) : (
+        <AttendanceMonthsView
+          players={players}
+          attendance={attendance}
+          onUpdateAttendance={onUpdateAttendance}
+          isEditing={isEditing}
+        />
+      )}
+
+      {/* EINHEIT BEARBEITEN MODAL */}
+      {editUnitNum !== null && (
+        <div className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-4">
+          <div className="bg-[#121824] border border-[#334155] rounded-2xl p-5 shadow-2xl w-full max-w-md">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="font-black uppercase text-sm flex items-center gap-2 text-[#F8FAFC]">
+                <Pencil size={16} className="text-[#FFD54F]" /> Einheit EH #{editUnitNum} bearbeiten
+              </h4>
+              <button onClick={() => setEditUnitNum(null)} className="text-[#94A3B8] hover:text-[#F8FAFC] transition-colors">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[9px] font-black uppercase text-[#7E9BB5] mb-1">Einheit Nummer (EH #)</label>
+                <input
+                  type="number"
+                  min={1}
+                  className="w-full bg-[#0A0E17] border border-[#334155] rounded px-2 py-2 text-[11px] text-[#F8FAFC] focus:border-[#FFD54F] focus:outline-none"
+                  value={unitForm.sessionNum}
+                  onChange={e => setUnitForm(prev => ({ ...prev, sessionNum: e.target.value }))}
+                  title="Nummer ändern verschiebt auch alle Anwesenheiten auf die neue EH"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[9px] font-black uppercase text-[#7E9BB5] mb-1">Datum</label>
+                  <input
+                    type="date"
+                    className="w-full bg-[#0A0E17] border border-[#334155] rounded px-2 py-2 text-[11px] text-[#F8FAFC] focus:border-[#FFD54F] focus:outline-none"
+                    value={unitForm.date ? unitForm.date.split('T')[0] : ''}
+                    onChange={e => setUnitForm(prev => ({ ...prev, date: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[9px] font-black uppercase text-[#7E9BB5] mb-1">Uhrzeit</label>
+                  <input
+                    type="time"
+                    className="w-full bg-[#0A0E17] border border-[#334155] rounded px-2 py-2 text-[11px] text-[#F8FAFC] focus:border-[#FFD54F] focus:outline-none"
+                    value={unitForm.time}
+                    onChange={e => setUnitForm(prev => ({ ...prev, time: e.target.value }))}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[9px] font-black uppercase text-[#7E9BB5] mb-1">Dauer (Min)</label>
+                  <input
+                    type="text"
+                    placeholder="z.B. 90"
+                    className="w-full bg-[#0A0E17] border border-[#334155] rounded px-2 py-2 text-[11px] text-[#F8FAFC] focus:border-[#FFD54F] focus:outline-none"
+                    value={unitForm.duration}
+                    onChange={e => setUnitForm(prev => ({ ...prev, duration: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[9px] font-black uppercase text-[#7E9BB5] mb-1">Trainer</label>
+                  <input
+                    type="text"
+                    placeholder="Trainername"
+                    className="w-full bg-[#0A0E17] border border-[#334155] rounded px-2 py-2 text-[11px] text-[#F8FAFC] focus:border-[#FFD54F] focus:outline-none"
+                    value={unitForm.trainer}
+                    onChange={e => setUnitForm(prev => ({ ...prev, trainer: e.target.value }))}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[9px] font-black uppercase text-[#7E9BB5] mb-1">Belastungsstufe</label>
+                <select
+                  className="w-full bg-[#0A0E17] border border-[#334155] rounded px-2 py-2 text-[11px] text-[#F8FAFC] focus:border-[#FFD54F] focus:outline-none"
+                  value={unitForm.loadLevel}
+                  onChange={e => setUnitForm(prev => ({ ...prev, loadLevel: e.target.value }))}
+                >
+                  {['Niedrig', 'Mittel', 'Hoch', 'Sehr Hoch'].map(l => <option key={l} value={l}>{l}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[9px] font-black uppercase text-[#7E9BB5] mb-1">Thema / Schwerpunkt</label>
+                <input
+                  type="text"
+                  placeholder="z.B. Ballbesitz, Umschalten, Standards"
+                  className="w-full bg-[#0A0E17] border border-[#334155] rounded px-2 py-2 text-[11px] text-[#F8FAFC] focus:border-[#FFD54F] focus:outline-none"
+                  value={unitForm.focus}
+                  onChange={e => setUnitForm(prev => ({ ...prev, focus: e.target.value }))}
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={saveUnitMetaForm}
+                  className="flex-1 bg-[#10B981] hover:bg-[#059669] text-white font-black uppercase text-xs py-3 rounded-xl transition-all flex items-center justify-center gap-2"
+                >
+                  <Save size={14} /> Speichern
+                </button>
+                <button
+                  onClick={deleteEditUnit}
+                  className="flex-1 bg-[#DC2626] hover:bg-[#B91C1C] text-white font-black uppercase text-xs py-3 rounded-xl transition-all flex items-center justify-center gap-2"
+                >
+                  <Trash2 size={14} /> Löschen
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

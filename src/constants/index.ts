@@ -26,9 +26,10 @@ export const TABS: { id: TabId; label: string }[] = [
   { id: 'training_planning', label: 'Trainingsplanung' },
   { id: 'video_analysis', label: 'Videoanalyse (Beta) 📹' },
   { id: 'match_analysis_pro', label: '📊 Spielanalyse+ (xG)' },
+  { id: 'standards_registry', label: '📐 Standards' },
   { id: 'analytics_charts', label: '📈 Analytics Charts' },
   { id: 'player_report_pro', label: '⚽ Pro-Bericht' },
-  { id: 'live_commentary', label: '🎙️ Live-Kommentar' },
+  
   { id: 'developer_tasks', label: 'Dev-Roadmap' },
   { id: 'license_admin', label: '🔑 Lizenzverwaltung' },
 ];

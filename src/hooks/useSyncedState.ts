@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, ensureAnonymousSession, isRetryableSnapshotError } from '../firebase';
 
 // Club-aware document prefix - set by ClubProvider on mount
 let CLUB_DOC_PREFIX = '';
@@ -51,32 +51,58 @@ export function useSyncedState<T>(
     isInitialized.current = false;
     const docRef = doc(db, collectionName, docId);
 
-    const unsubscribe = onSnapshot(docRef, (docSnap) => {
-      if (docSnap.exists()) {
-        try {
-          const rawData = docSnap.data().data ?? docSnap.data();
-          const strVal = typeof rawData === 'string' ? rawData : JSON.stringify(rawData);
-          if (lastDataRef.current === strVal) {
+    // Selbstheilung: Nach einmaligem "permission-denied" erholt sich der SDK nie
+    // wieder -> bei Fehlern neuen Listener erstellen + Anmeldung erneuern.
+    let stopped = false;
+    let currentUnsubscribe: (() => void) | null = null;
+    let retryTimer: number | null = null;
+    let retries = 0;
+
+    const startListener = () => {
+      if (stopped) return;
+      currentUnsubscribe = onSnapshot(docRef, (docSnap) => {
+        if (docSnap.exists()) {
+          try {
+            const rawData = docSnap.data().data ?? docSnap.data();
+            const strVal = typeof rawData === 'string' ? rawData : JSON.stringify(rawData);
+            if (lastDataRef.current === strVal) {
+              isInitialized.current = true;
+              return;
+            }
+            lastDataRef.current = strVal;
+            const parsed = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
+            setState(parsed);
             isInitialized.current = true;
-            return;
+          } catch (e) {
+            console.error(`Error parsing Firestore state for ${collectionName}/${docId}`, e);
+            isInitialized.current = true;
           }
-          lastDataRef.current = strVal;
-          const parsed = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
-          setState(parsed);
-          isInitialized.current = true;
-        } catch (e) {
-          console.error(`Error parsing Firestore state for ${collectionName}/${docId}`, e);
+        } else {
           isInitialized.current = true;
         }
-      } else {
+      }, (error) => {
+        if (stopped) return;
+        console.error(`Firestore state snapshot error for ${collectionName}/${docId}:`, error);
         isInitialized.current = true;
-      }
-    }, (error) => {
-      console.error(`Firestore state snapshot error for ${collectionName}/${docId}:`, error);
-      isInitialized.current = true;
-    });
+        if (isRetryableSnapshotError(error) && retries < 4) {
+          retries += 1;
+          const delay = 1500 * Math.pow(2, retries - 1);
+          retryTimer = window.setTimeout(() => {
+            if (stopped) return;
+            void ensureAnonymousSession();
+            startListener();
+          }, delay);
+        }
+      });
+    };
 
-    return () => unsubscribe();
+    startListener();
+
+    return () => {
+      stopped = true;
+      if (currentUnsubscribe) currentUnsubscribe();
+      if (retryTimer !== null) window.clearTimeout(retryTimer);
+    };
   }, [collectionName, docId, enabled]);
 
   const setSyncedState = useCallback((value: T | ((val: T) => T)) => {

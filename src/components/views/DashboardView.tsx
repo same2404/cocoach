@@ -340,7 +340,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   // Next upcoming match calculation (dynamically picks the earliest unplayed match from testMatches & competitiveMatches)
   const nextMatch = useMemo(() => {
-    const unplayedMatches = allMatchesSorted.filter(m => !isMatchFinished(m));
+    const todayIso = new Date().toISOString().split('T')[0];
+    const unplayedMatches = allMatchesSorted.filter(m => {
+      if (isMatchFinished(m)) return false;
+      const iso = toIsoDate(m.date);
+      if (!iso) return false;
+      return iso >= todayIso;
+    });
     const upcomingMatch = unplayedMatches.length > 0 ? unplayedMatches[0] : null;
 
     let base = {

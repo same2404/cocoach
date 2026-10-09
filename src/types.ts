@@ -1,5 +1,5 @@
 export type TabId = 'dashboard' | 'personnel' | 'attendance' | 'trainer_view' | 'yearly' | 'cards' | 
-                   'scouting' | 'budget_finance' | 'meetings_calendar' | 'tacticboard' | 'profi_3d_taktiktafel' | 'individual_control' | 'runs_sw' | 'physio_plan' | 'summer_prep' | 'winter_prep' | 'team_list' | 'developer_tasks' | 'training_planning' | 'competitive_planning' | 'test_planning' | 'u23_planning' | 'match_report' | 'access_control' | 'player_portal' | 'academy_analysis' | 'champions_cup' | 'video_analysis' | 'tracker_academy_report' | 'license_admin' | 'match_analysis_pro' | 'analytics_charts' | 'player_report_pro' | 'live_commentary';
+                   'scouting' | 'budget_finance' | 'meetings_calendar' | 'tacticboard' | 'profi_3d_taktiktafel' | 'individual_control' | 'runs_sw' | 'physio_plan' | 'summer_prep' | 'winter_prep' | 'team_list' | 'developer_tasks' | 'training_planning' | 'competitive_planning' | 'test_planning' | 'u23_planning' | 'match_report' | 'access_control' | 'player_portal' | 'academy_analysis' | 'champions_cup' | 'video_analysis' | 'tracker_academy_report' | 'license_admin' | 'match_analysis_pro' | 'standards_registry' | 'analytics_charts' | 'player_report_pro';
 
 export interface Club {
   id: string;
@@ -532,6 +532,8 @@ export interface Player {
   einsatzzeitenGesamt?: number;
   testEinsatzzeitenGesamt?: number;
   loadAmpel?: 'Grün' | 'Gelb' | 'Rot';
+  physioDurationOverrideDays?: number;
+  physioMissingOverrideDays?: number;
   physical?: {
     height?: number;
     weight?: number;

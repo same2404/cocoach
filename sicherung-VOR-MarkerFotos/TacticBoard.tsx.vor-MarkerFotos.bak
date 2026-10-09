@@ -1,0 +1,1664 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { Stage, Layer, Rect, Circle, Line, Text, Group, Arrow, Image as KonvaImage } from 'react-konva';
+import useImage from 'use-image';
+import { Player } from '../types';
+import { 
+  Trash2, MousePointer2, Pencil, ArrowUpRight, Square, Circle as CircleIcon, 
+  Type, Eraser, Plus, Download, Save as SaveIcon, FolderOpen, Maximize2, 
+  Minimize2, Layout, Copy, Palette, Sliders, ChevronDown, Check, RefreshCw, FileImage, Sparkles, Layers, Activity, Compass
+} from 'lucide-react';
+import { useCollectionSync } from '../hooks/useCollectionSync';
+import { useClub } from '../contexts/ClubContext';
+import { useSyncedState } from '../hooks/useSyncedState';
+import { isPlayer } from '../utils/playerSorting';
+import { Pro3DTacticBoardModal } from './Pro3DTacticBoardModal';
+
+const URLImage = ({ imageUrl, x, y, width, height, onDragEnd, onClick, onDblClick, draggable }: any) => {
+  const [img] = useImage(imageUrl);
+  return (
+    <KonvaImage
+      image={img}
+      x={x}
+      y={y}
+      width={width || 60}
+      height={height || 80}
+      draggable={draggable}
+      onDragEnd={onDragEnd}
+      onClick={onClick}
+      onDblClick={onDblClick}
+      stroke="white"
+      strokeWidth={2}
+      cornerRadius={4}
+      shadowBlur={5}
+    />
+  );
+};
+
+export interface TacticElement {
+  id: string;
+  type: 'player' | 'shape' | 'text' | 'line' | 'material' | 'photo';
+  x: number;
+  y: number;
+  color?: string;
+  strokeWidth?: number;
+  dash?: number[];
+  text?: string;
+  points?: number[];
+  shapeType?: 'rect' | 'circle' | 'arrow';
+  playerData?: Player;
+  materialType?: string;
+  imageUrl?: string;
+  radius?: number;
+  width?: number;
+  height?: number;
+}
+
+export interface TacticSetup {
+  id: string;
+  name: string;
+  elements: TacticElement[];
+  instructions: string;
+  fieldMode?: 'full' | 'half';
+  systemMode?: 'offensive' | 'defensive';
+  createdAt: string;
+  updatedAt?: string;
+}
+
+interface TacticBoardProps {
+  players: Player[];
+  isEditing?: boolean;
+  instructions: string;
+  onInstructionsChange: (val: string) => void;
+}
+
+export const TacticBoard: React.FC<TacticBoardProps> = ({ 
+  players, 
+  isEditing = false,
+  instructions,
+  onInstructionsChange
+}) => {
+  const { activeClub } = useClub();
+  const { data: setups, addOrUpdateItem: saveSetup, removeItem: deleteSetup } = useCollectionSync<TacticSetup>('tactic_setups', 'id', 'createdAt', 'desc');
+  
+  const [elements, setElements] = useSyncedState<TacticElement[]>('tactic_active_elements', []);
+  const [selectedSetupId, setSelectedSetupId] = useState<string | null>(null);
+  const [setupName, setSetupName] = useState('');
+  const [setupFilter, setSetupFilter] = useState('');
+  
+  const [tool, setTool] = useState<'select' | 'pen' | 'arrow' | 'rect' | 'circle' | 'text'>('select');
+  const [selectedColor, setSelectedColor] = useState('#C00000');
+  const [strokeWidth, setStrokeWidth] = useState<number>(3);
+  const [isDashedLine, setIsDashedLine] = useState<boolean>(false);
+  const [symbolSize, setSymbolSize] = useState<number>(16);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [show3DProfiBoard, setShow3DProfiBoard] = useState(false);
+
+  const [systemMode, setSystemMode] = useState<'offensive' | 'defensive'>('offensive');
+  const [fieldMode, setFieldMode] = useState<'full' | 'half'>('full');
+  const stageRef = useRef<any>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [stageSize, setStageSize] = useState({ width: 800, height: 600 });
+  const [activeSidebarTab, setActiveSidebarTab] = useState<'players' | 'setups' | 'tactics'>('players');
+  const [notification, setNotification] = useState<string | null>(null);
+
+  const colorPresets = [
+    '#C00000', // Rot
+    '#0D4433', // Auggen Grün
+    '#2d5a27', // Spielfeld Grün
+    '#0055FF', // Blau
+    '#FFD700', // Gelb
+    '#FF6600', // Orange
+    '#9333EA', // Violett
+    '#000000', // Schwarz
+    '#FFFFFF', // Weiß
+  ];
+
+  const positions = ['TW', 'IV', 'RV', 'LV', 'DM', 'ZM', 'RM/RW', 'LM/LW', 'OM', 'ST'];
+
+  useEffect(() => {
+    const updateSize = () => {
+      if (containerRef.current) {
+        setStageSize({
+          width: containerRef.current.offsetWidth,
+          height: containerRef.current.offsetHeight,
+        });
+      }
+    };
+    updateSize();
+    window.addEventListener('resize', updateSize);
+    return () => window.removeEventListener('resize', updateSize);
+  }, []);
+
+  const allPlayers = players.filter(isPlayer);
+  const selectedElement = elements.find(el => el.id === selectedId);
+
+  // Helper to trigger toast notification
+  const notify = (msg: string) => {
+    setNotification(msg);
+    setTimeout(() => setNotification(null), 3000);
+  };
+
+  // Color change handler: sets global draw color AND updates selected element if applicable
+  const handleColorChange = (newColor: string) => {
+    setSelectedColor(newColor);
+    if (selectedId) {
+      setElements(prev => prev.map(el => 
+        el.id === selectedId ? { ...el, color: newColor } : el
+      ));
+    }
+  };
+
+  // Stroke width change handler
+  const handleStrokeWidthChange = (width: number) => {
+    setStrokeWidth(width);
+    if (selectedId) {
+      setElements(prev => prev.map(el => 
+        el.id === selectedId ? { ...el, strokeWidth: width } : el
+      ));
+    }
+  };
+
+  // Line style (dashed / solid) toggle
+  const handleDashToggle = (dashed: boolean) => {
+    setIsDashedLine(dashed);
+    const dashValue = dashed ? [8, 4] : undefined;
+    if (selectedId) {
+      setElements(prev => prev.map(el => 
+        el.id === selectedId ? { ...el, dash: dashValue } : el
+      ));
+    }
+  };
+
+  // Global symbol size handler (updates all players or sets global default)
+  const handleSymbolSizeChange = (newSize: number) => {
+    setSymbolSize(newSize);
+  };
+
+  // Individual player symbol size handler
+  const handlePlayerRadiusChange = (id: string, radius: number) => {
+    setElements(prev => prev.map(el => 
+      el.id === id ? { ...el, radius: Math.max(8, radius) } : el
+    ));
+  };
+
+  // Apply radius to all player tokens
+  const handleApplyRadiusToAllPlayers = (radius: number) => {
+    setSymbolSize(radius);
+    setElements(prev => prev.map(el => 
+      el.type === 'player' ? { ...el, radius } : el
+    ));
+    notify(`Größe ${radius}px auf alle Spieler angewendet.`);
+  };
+
+  const handleAddPlayer = (player: Player, customPos?: { x: number, y: number }) => {
+    if (!isEditing) return;
+    const newElement: TacticElement = {
+      id: `p-${player.id}-${Date.now()}`,
+      type: 'player',
+      x: customPos?.x || stageSize.width / 2,
+      y: customPos?.y || stageSize.height / 2,
+      playerData: player,
+      radius: symbolSize,
+      color: selectedColor
+    };
+    setElements(prev => [...prev, newElement]);
+  };
+
+  const handleAddAllPlayers = () => {
+    if (!isEditing) return;
+    const newElements: TacticElement[] = allPlayers.map((p, i) => ({
+      id: `p-${p.id}-${Date.now()}-${i}`,
+      type: 'player',
+      x: 50 + (i % 5) * 60,
+      y: 50 + Math.floor(i / 5) * 60,
+      playerData: p,
+      radius: symbolSize,
+      color: selectedColor
+    }));
+    setElements(prev => [...prev, ...newElements]);
+    notify(`${allPlayers.length} Spieler zum Taktikboard hinzugefügt.`);
+  };
+
+  const handleAddMaterial = (type: string) => {
+    if (!isEditing) return;
+    const newElement: TacticElement = {
+      id: `m-${type}-${Date.now()}`,
+      type: 'material',
+      x: stageSize.width / 2,
+      y: stageSize.height / 2,
+      materialType: type,
+      color: type.includes('Rot') ? '#C00000' : type.includes('Gelb') ? '#FFD700' : '#000000'
+    };
+    setElements(prev => [...prev, newElement]);
+  };
+
+  const FORMATIONS: Record<string, { offensive: { pos: string, x: number, y: number }[], defensive: { pos: string, x: number, y: number }[] }> = {
+    '4-4-2': {
+      offensive: [
+        { pos: 'TW', x: 0.5, y: 0.9 },
+        { pos: 'LV', x: 0.15, y: 0.75 },
+        { pos: 'IV', x: 0.4, y: 0.78 },
+        { pos: 'IV', x: 0.6, y: 0.78 },
+        { pos: 'RV', x: 0.85, y: 0.75 },
+        { pos: 'LM/LW', x: 0.15, y: 0.5 },
+        { pos: 'ZM', x: 0.4, y: 0.55 },
+        { pos: 'ZM', x: 0.6, y: 0.55 },
+        { pos: 'RM/RW', x: 0.85, y: 0.5 },
+        { pos: 'ST', x: 0.4, y: 0.2 },
+        { pos: 'ST', x: 0.6, y: 0.2 },
+      ],
+      defensive: [
+        { pos: 'TW', x: 0.5, y: 0.9 },
+        { pos: 'LV', x: 0.25, y: 0.8 },
+        { pos: 'IV', x: 0.42, y: 0.82 },
+        { pos: 'IV', x: 0.58, y: 0.82 },
+        { pos: 'RV', x: 0.75, y: 0.8 },
+        { pos: 'LM/LW', x: 0.25, y: 0.65 },
+        { pos: 'ZM', x: 0.42, y: 0.68 },
+        { pos: 'ZM', x: 0.58, y: 0.68 },
+        { pos: 'RM/RW', x: 0.75, y: 0.65 },
+        { pos: 'ST', x: 0.42, y: 0.5 },
+        { pos: 'ST', x: 0.58, y: 0.5 },
+      ]
+    },
+    '4-3-3': {
+      offensive: [
+        { pos: 'TW', x: 0.5, y: 0.9 },
+        { pos: 'LV', x: 0.15, y: 0.75 },
+        { pos: 'IV', x: 0.4, y: 0.78 },
+        { pos: 'IV', x: 0.6, y: 0.78 },
+        { pos: 'RV', x: 0.85, y: 0.75 },
+        { pos: 'ZM', x: 0.3, y: 0.5 },
+        { pos: 'DM', x: 0.5, y: 0.6 },
+        { pos: 'ZM', x: 0.7, y: 0.5 },
+        { pos: 'LM/LW', x: 0.15, y: 0.2 },
+        { pos: 'ST', x: 0.5, y: 0.15 },
+        { pos: 'RM/RW', x: 0.85, y: 0.2 },
+      ],
+      defensive: [
+        { pos: 'TW', x: 0.5, y: 0.9 },
+        { pos: 'LV', x: 0.25, y: 0.8 },
+        { pos: 'IV', x: 0.42, y: 0.82 },
+        { pos: 'IV', x: 0.58, y: 0.82 },
+        { pos: 'RV', x: 0.75, y: 0.8 },
+        { pos: 'ZM', x: 0.35, y: 0.65 },
+        { pos: 'DM', x: 0.5, y: 0.7 },
+        { pos: 'ZM', x: 0.65, y: 0.65 },
+        { pos: 'LM/LW', x: 0.25, y: 0.55 },
+        { pos: 'ST', x: 0.5, y: 0.45 },
+        { pos: 'RM/RW', x: 0.75, y: 0.55 },
+      ]
+    },
+    '3-5-2': {
+      offensive: [
+        { pos: 'TW', x: 0.5, y: 0.9 },
+        { pos: 'IV', x: 0.25, y: 0.78 },
+        { pos: 'IV', x: 0.5, y: 0.8 },
+        { pos: 'IV', x: 0.75, y: 0.78 },
+        { pos: 'LM/LW', x: 0.1, y: 0.55 },
+        { pos: 'ZM', x: 0.35, y: 0.5 },
+        { pos: 'DM', x: 0.5, y: 0.6 },
+        { pos: 'ZM', x: 0.65, y: 0.5 },
+        { pos: 'RM/RW', x: 0.9, y: 0.55 },
+        { pos: 'ST', x: 0.4, y: 0.2 },
+        { pos: 'ST', x: 0.6, y: 0.2 },
+      ],
+      defensive: [
+        { pos: 'TW', x: 0.5, y: 0.9 },
+        { pos: 'IV', x: 0.3, y: 0.82 },
+        { pos: 'IV', x: 0.5, y: 0.82 },
+        { pos: 'IV', x: 0.7, y: 0.82 },
+        { pos: 'LM/LW', x: 0.2, y: 0.75 },
+        { pos: 'ZM', x: 0.4, y: 0.68 },
+        { pos: 'DM', x: 0.5, y: 0.72 },
+        { pos: 'ZM', x: 0.6, y: 0.68 },
+        { pos: 'RM/RW', x: 0.8, y: 0.75 },
+        { pos: 'ST', x: 0.42, y: 0.5 },
+        { pos: 'ST', x: 0.58, y: 0.5 },
+      ]
+    },
+    '4-2-3-1': {
+      offensive: [
+        { pos: 'TW', x: 0.5, y: 0.9 },
+        { pos: 'LV', x: 0.15, y: 0.75 },
+        { pos: 'IV', x: 0.4, y: 0.78 },
+        { pos: 'IV', x: 0.6, y: 0.78 },
+        { pos: 'RV', x: 0.85, y: 0.75 },
+        { pos: 'DM', x: 0.35, y: 0.55 },
+        { pos: 'DM', x: 0.65, y: 0.55 },
+        { pos: 'LM/LW', x: 0.15, y: 0.3 },
+        { pos: 'OM', x: 0.5, y: 0.3 },
+        { pos: 'RM/RW', x: 0.85, y: 0.3 },
+        { pos: 'ST', x: 0.5, y: 0.1 },
+      ],
+      defensive: [
+        { pos: 'TW', x: 0.5, y: 0.9 },
+        { pos: 'LV', x: 0.25, y: 0.8 },
+        { pos: 'IV', x: 0.42, y: 0.82 },
+        { pos: 'IV', x: 0.58, y: 0.82 },
+        { pos: 'RV', x: 0.75, y: 0.8 },
+        { pos: 'DM', x: 0.4, y: 0.68 },
+        { pos: 'DM', x: 0.6, y: 0.68 },
+        { pos: 'LM/LW', x: 0.25, y: 0.55 },
+        { pos: 'OM', x: 0.5, y: 0.55 },
+        { pos: 'RM/RW', x: 0.75, y: 0.55 },
+        { pos: 'ST', x: 0.5, y: 0.4 },
+      ]
+    },
+    '3-4-3': {
+      offensive: [
+        { pos: 'TW', x: 0.5, y: 0.9 },
+        { pos: 'IV', x: 0.25, y: 0.78 },
+        { pos: 'IV', x: 0.5, y: 0.8 },
+        { pos: 'IV', x: 0.75, y: 0.78 },
+        { pos: 'LM/LW', x: 0.1, y: 0.5 },
+        { pos: 'ZM', x: 0.4, y: 0.55 },
+        { pos: 'ZM', x: 0.6, y: 0.55 },
+        { pos: 'RM/RW', x: 0.9, y: 0.5 },
+        { pos: 'ST', x: 0.25, y: 0.2 },
+        { pos: 'ST', x: 0.5, y: 0.15 },
+        { pos: 'ST', x: 0.75, y: 0.2 },
+      ],
+      defensive: [
+        { pos: 'TW', x: 0.5, y: 0.9 },
+        { pos: 'IV', x: 0.3, y: 0.82 },
+        { pos: 'IV', x: 0.5, y: 0.82 },
+        { pos: 'IV', x: 0.7, y: 0.82 },
+        { pos: 'LM/LW', x: 0.2, y: 0.7 },
+        { pos: 'ZM', x: 0.4, y: 0.68 },
+        { pos: 'ZM', x: 0.6, y: 0.68 },
+        { pos: 'RM/RW', x: 0.8, y: 0.7 },
+        { pos: 'ST', x: 0.3, y: 0.5 },
+        { pos: 'ST', x: 0.5, y: 0.45 },
+        { pos: 'ST', x: 0.7, y: 0.5 },
+      ]
+    }
+  };
+
+  const STANDARDS: Record<string, { 
+    players: { pos: string, x: number, y: number }[],
+    lines?: { points: number[], color: string, shapeType?: 'arrow' }[]
+  }> = {
+    'Schweden (Ecke)': {
+      players: [
+        { pos: 'ST', x: 0.02, y: 0.02 },
+        { pos: 'ZM', x: 0.45, y: 0.12 },
+        { pos: 'ZM', x: 0.5, y: 0.1 },
+        { pos: 'OM', x: 0.55, y: 0.15 },
+        { pos: 'IV', x: 0.45, y: 0.2 },
+        { pos: 'IV', x: 0.55, y: 0.2 },
+        { pos: 'DM', x: 0.5, y: 0.25 },
+        { pos: 'LV', x: 0.5, y: 0.3 },
+        { pos: 'RV', x: 0.5, y: 0.4 },
+        { pos: 'TW', x: 0.5, y: 0.45 },
+      ],
+      lines: [
+        { points: [0.02, 0.02, 0.45, 0.1], color: '#C00000', shapeType: 'arrow' },
+        { points: [0.45, 0.12, 0.48, 0.08], color: '#0000FF', shapeType: 'arrow' },
+      ]
+    },
+    'Schweden+ (Ecke)': {
+      players: [
+        { pos: 'ST', x: 0.02, y: 0.02 },
+        { pos: 'ZM', x: 0.4, y: 0.1 },
+        { pos: 'ZM', x: 0.45, y: 0.08 },
+        { pos: 'OM', x: 0.5, y: 0.1 },
+        { pos: 'ST', x: 0.55, y: 0.08 },
+        { pos: 'IV', x: 0.45, y: 0.15 },
+        { pos: 'IV', x: 0.55, y: 0.15 },
+        { pos: 'DM', x: 0.5, y: 0.2 },
+        { pos: 'LV', x: 0.5, y: 0.25 },
+        { pos: 'TW', x: 0.5, y: 0.45 },
+      ],
+      lines: [
+        { points: [0.02, 0.02, 0.45, 0.08], color: '#C00000', shapeType: 'arrow' },
+      ]
+    },
+    'Apache (Ecke)': {
+      players: [
+        { pos: 'ST', x: 0.02, y: 0.02 },
+        { pos: 'ST', x: 0.3, y: 0.2 },
+        { pos: 'ZM', x: 0.4, y: 0.18 },
+        { pos: 'ZM', x: 0.5, y: 0.2 },
+        { pos: 'OM', x: 0.6, y: 0.18 },
+        { pos: 'IV', x: 0.7, y: 0.2 },
+        { pos: 'IV', x: 0.5, y: 0.3 },
+        { pos: 'DM', x: 0.5, y: 0.4 },
+        { pos: 'LV', x: 0.5, y: 0.45 },
+        { pos: 'TW', x: 0.5, y: 0.48 },
+      ],
+      lines: [
+        { points: [0.02, 0.02, 0.3, 0.2], color: '#C00000', shapeType: 'arrow' },
+      ]
+    },
+    'Amin (Freistoß)': {
+      players: [
+        { pos: 'ST', x: 0.5, y: 0.25 },
+        { pos: 'OM', x: 0.45, y: 0.3 },
+        { pos: 'ZM', x: 0.55, y: 0.3 },
+        { pos: 'ZM', x: 0.4, y: 0.35 },
+        { pos: 'ST', x: 0.6, y: 0.35 },
+        { pos: 'IV', x: 0.5, y: 0.4 },
+        { pos: 'IV', x: 0.5, y: 0.45 },
+        { pos: 'DM', x: 0.5, y: 0.48 },
+        { pos: 'TW', x: 0.5, y: 0.5 },
+      ],
+      lines: [
+        { points: [0.5, 0.25, 0.5, 0.1], color: '#C00000', shapeType: 'arrow' },
+        { points: [0.45, 0.3, 0.4, 0.15], color: '#0000FF', shapeType: 'arrow' },
+      ]
+    },
+    'Eckball Defensiv': {
+      players: [
+        { pos: 'TW', x: 0.5, y: 0.05 },
+        { pos: 'IV', x: 0.4, y: 0.1 },
+        { pos: 'IV', x: 0.6, y: 0.1 },
+        { pos: 'LV', x: 0.3, y: 0.08 },
+        { pos: 'RV', x: 0.7, y: 0.08 },
+        { pos: 'DM', x: 0.5, y: 0.15 },
+        { pos: 'ZM', x: 0.35, y: 0.2 },
+        { pos: 'ZM', x: 0.65, y: 0.2 },
+        { pos: 'OM', x: 0.5, y: 0.3 },
+        { pos: 'ST', x: 0.3, y: 0.4 },
+        { pos: 'ST', x: 0.7, y: 0.4 },
+      ]
+    }
+  };
+
+  const handleApplySystem = (systemName: string, isStandard = false) => {
+    if (!isEditing) return;
+    
+    const setup = isStandard ? STANDARDS[systemName] : { players: FORMATIONS[systemName][systemMode] };
+    if (!setup) return;
+
+    const w = stageSize.width;
+    const h = stageSize.height;
+    const p = 20;
+
+    setFieldMode(isStandard ? 'half' : 'full');
+
+    const newElements: TacticElement[] = [];
+
+    setup.players.forEach((f, i) => {
+      const player = players.find(p => p.position === f.pos);
+      let stageX, stageY;
+      
+      if (isStandard) {
+        stageX = p + f.x * (w - 2 * p);
+        stageY = p + f.y * (h - 2 * p);
+      } else {
+        stageX = f.x * w;
+        stageY = f.y * h;
+      }
+
+      newElements.push({
+        id: `f-${i}-${Date.now()}`,
+        type: 'player',
+        x: stageX,
+        y: stageY,
+        radius: symbolSize,
+        color: selectedColor,
+        playerData: player || { id: `temp-${i}`, firstName: 'Pos', lastName: f.pos, number: 0, position: f.pos } as Player
+      });
+    });
+
+    if (isStandard && setup.lines) {
+      setup.lines.forEach((l, i) => {
+        const points = l.points.map((val, idx) => {
+          if (idx % 2 === 0) {
+             return p + val * (w - 2 * p);
+          } else {
+             return p + val * (h - 2 * p);
+          }
+        });
+        newElements.push({
+          id: `l-${i}-${Date.now()}`,
+          type: 'line',
+          x: 0,
+          y: 0,
+          points: points,
+          color: l.color,
+          strokeWidth: strokeWidth,
+          shapeType: l.shapeType
+        });
+      });
+    }
+
+    setElements(newElements);
+    notify(`${isStandard ? 'Standard' : 'System'} "${systemName}" angewendet.`);
+  };
+
+  const handleMouseDown = (e: any) => {
+    if (!isEditing || tool === 'select') return;
+
+    setIsDrawing(true);
+    const pos = e.target.getStage().getPointerPosition();
+    const dashValue = isDashedLine ? [8, 4] : undefined;
+    
+    if (tool === 'pen' || tool === 'arrow') {
+      const newElement: TacticElement = {
+        id: `draw-${Date.now()}`,
+        type: 'line',
+        x: 0,
+        y: 0,
+        points: [pos.x, pos.y, pos.x, pos.y],
+        color: selectedColor,
+        strokeWidth: strokeWidth,
+        dash: dashValue,
+        shapeType: tool === 'arrow' ? 'arrow' : undefined,
+      };
+      setElements(prev => [...prev, newElement]);
+    } else if (tool === 'rect' || tool === 'circle') {
+      const newElement: TacticElement = {
+        id: `shape-${Date.now()}`,
+        type: 'shape',
+        x: pos.x,
+        y: pos.y,
+        color: selectedColor,
+        strokeWidth: strokeWidth,
+        dash: dashValue,
+        shapeType: tool,
+        points: [0, 0],
+      };
+      setElements(prev => [...prev, newElement]);
+    } else if (tool === 'text') {
+      const textVal = prompt('Textnotiz eingeben:');
+      if (textVal && textVal.trim()) {
+        const newElement: TacticElement = {
+          id: `text-${Date.now()}`,
+          type: 'text',
+          x: pos.x,
+          y: pos.y,
+          text: textVal.trim(),
+          color: selectedColor,
+        };
+        setElements(prev => [...prev, newElement]);
+        setTool('select');
+      }
+      setIsDrawing(false);
+    }
+  };
+
+  const handleMouseMove = (e: any) => {
+    if (!isDrawing || tool === 'select') return;
+
+    const stage = e.target.getStage();
+    const point = stage.getPointerPosition();
+    const lastElement = elements[elements.length - 1];
+    if (!lastElement) return;
+
+    if (tool === 'pen' || tool === 'arrow') {
+      const newPoints = lastElement.points!.slice(0, 2).concat([point.x, point.y]);
+      const updated = { ...lastElement, points: newPoints };
+      setElements(elements.slice(0, -1).concat([updated]));
+    } else if (tool === 'rect' || tool === 'circle') {
+      const updated = {
+        ...lastElement,
+        points: [point.x - lastElement.x, point.y - lastElement.y],
+      };
+      setElements(elements.slice(0, -1).concat([updated]));
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDrawing(false);
+  };
+
+  const removeElement = (id: string) => {
+    if (!isEditing) return;
+    setElements(elements.filter(el => el.id !== id));
+    if (selectedId === id) setSelectedId(null);
+  };
+
+  const duplicateElement = (id: string) => {
+    const el = elements.find(item => item.id === id);
+    if (!el) return;
+    const duplicated: TacticElement = {
+      ...el,
+      id: `${el.id}-dup-${Date.now()}`,
+      x: el.x + 20,
+      y: el.y + 20,
+      points: el.points ? [...el.points] : undefined,
+    };
+    setElements(prev => [...prev, duplicated]);
+    setSelectedId(duplicated.id);
+    notify('Element dupliziert.');
+  };
+
+  const clearBoard = () => {
+    if (!isEditing) return;
+    if (elements.length === 0) return;
+    setElements([]);
+    setSelectedId(null);
+    notify('Taktikboard geleert.');
+  };
+
+  const handleNewSetup = () => {
+    setSetupName('');
+    setSelectedSetupId(null);
+    setElements([]);
+    onInstructionsChange('');
+    setSelectedId(null);
+    notify('Neues Taktik-Setup gestartet.');
+  };
+
+  // Speichern in der Firestore-Datenbank
+  const handleSaveSetup = async () => {
+    if (!setupName.trim()) {
+      alert('Bitte geben Sie einen Namen für das Taktik-Setup ein.');
+      return;
+    }
+    const setupId = selectedSetupId || `setup-${Date.now()}`;
+    const newSetup: TacticSetup = {
+      id: setupId,
+      name: setupName.trim(),
+      elements,
+      instructions,
+      fieldMode,
+      systemMode,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    try {
+      await saveSetup(newSetup);
+      setSelectedSetupId(setupId);
+      notify(`Setup "${newSetup.name}" in der Datenbank gespeichert!`);
+    } catch (err) {
+      console.error('Error saving tactic setup:', err);
+      alert('Fehler beim Speichern des Taktik-Setups in der Datenbank.');
+    }
+  };
+
+  const handleSaveAsNew = async () => {
+    const newName = prompt('Name für das neue Taktik-Setup:', `${setupName || 'Taktik'} (Kopie)`);
+    if (!newName || !newName.trim()) return;
+
+    const newSetupId = `setup-${Date.now()}`;
+    const newSetup: TacticSetup = {
+      id: newSetupId,
+      name: newName.trim(),
+      elements,
+      instructions,
+      fieldMode,
+      systemMode,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    try {
+      await saveSetup(newSetup);
+      setSelectedSetupId(newSetupId);
+      setSetupName(newSetup.name);
+      notify(`Neues Setup "${newSetup.name}" in Datenbank gespeichert!`);
+    } catch (err) {
+      console.error('Error saving tactic setup copy:', err);
+      alert('Fehler beim Speichern der Kopie.');
+    }
+  };
+
+  const handleLoadSetup = (setup: TacticSetup) => {
+    setElements(setup.elements || []);
+    onInstructionsChange(setup.instructions || '');
+    setSetupName(setup.name || '');
+    setSelectedSetupId(setup.id);
+    if (setup.fieldMode) setFieldMode(setup.fieldMode);
+    if (setup.systemMode) setSystemMode(setup.systemMode);
+    setSelectedId(null);
+    notify(`Setup "${setup.name}" geladen.`);
+  };
+
+  // Export functions (PNG / JPG / Composite)
+  const handleExportPNG = () => {
+    if (!stageRef.current) return;
+    const dataURL = stageRef.current.toDataURL({ pixelRatio: 3, mimeType: 'image/png' });
+    const link = document.createElement('a');
+    link.download = `FC_Auggen_Taktik_${(setupName || 'export').replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.png`;
+    link.href = dataURL;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setShowExportMenu(false);
+    notify('Taktikboard als PNG exportiert.');
+  };
+
+  const handleExportJPG = () => {
+    if (!stageRef.current) return;
+    const dataURL = stageRef.current.toDataURL({ pixelRatio: 3, mimeType: 'image/jpeg', quality: 0.95 });
+    const link = document.createElement('a');
+    link.download = `FC_Auggen_Taktik_${(setupName || 'export').replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.jpg`;
+    link.href = dataURL;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setShowExportMenu(false);
+    notify('Taktikboard als JPG exportiert.');
+  };
+
+  const handleExportComposite = (format: 'png' | 'jpg' = 'png') => {
+    if (!stageRef.current) return;
+    
+    const stageDataUrl = stageRef.current.toDataURL({ pixelRatio: 2 });
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const headerHeight = 90;
+      const footerHeight = instructions ? 140 : 50;
+      
+      canvas.width = img.width;
+      canvas.height = img.height + headerHeight + footerHeight;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      
+      // Pitch background / frame
+      ctx.fillStyle = '#0D4433';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Header Banner
+      ctx.fillStyle = '#08281E';
+      ctx.fillRect(0, 0, canvas.width, headerHeight);
+      
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 22px sans-serif';
+        ctx.fillText(`${activeClub.shortName || 'FC AUGGEN'} - TAKTIKBOARD`, 30, 40);
+      
+      ctx.fillStyle = '#FFD700';
+      ctx.font = 'bold 16px sans-serif';
+      ctx.fillText(setupName || 'Taktische Aufstellung & Anweisungen', 30, 68);
+      
+      const dateStr = new Date().toLocaleDateString('de-DE');
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = '13px sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText(`Datum: ${dateStr}`, canvas.width - 30, 40);
+      ctx.fillText(`System: ${fieldMode === 'full' ? 'Ganzfeld' : 'Halbfeld'}`, canvas.width - 30, 65);
+      ctx.textAlign = 'left';
+      
+      // Stage image
+      ctx.drawImage(img, 0, headerHeight);
+      
+      // Footer / Instructions Box
+      const footerY = headerHeight + img.height;
+      ctx.fillStyle = '#111827';
+      ctx.fillRect(0, footerY, canvas.width, footerHeight);
+      
+      ctx.fillStyle = '#FFD700';
+      ctx.font = 'bold 14px sans-serif';
+      ctx.fillText('TAKTISCHE ANWEISUNGEN:', 30, footerY + 30);
+      
+      if (instructions) {
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = '13px sans-serif';
+        const lines = instructions.split('\n');
+        let lineY = footerY + 55;
+        lines.slice(0, 4).forEach((line) => {
+          ctx.fillText(line, 30, lineY);
+          lineY += 20;
+        });
+      } else {
+        ctx.fillStyle = '#9CA3AF';
+        ctx.font = 'italic 13px sans-serif';
+        ctx.fillText('Keine besonderen Anweisungen hinterlegt.', 30, footerY + 55);
+      }
+      
+      const mime = format === 'jpg' ? 'image/jpeg' : 'image/png';
+      const link = document.createElement('a');
+      link.download = `FC_Auggen_Taktikreport_${(setupName || 'export').replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.${format}`;
+      link.href = canvas.toDataURL(mime, 0.95);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setShowExportMenu(false);
+      notify(`Taktik-Report als ${format.toUpperCase()} exportiert.`);
+    };
+    img.src = stageDataUrl;
+  };
+
+  const filteredSetups = setups.filter(s => 
+    s.name.toLowerCase().includes(setupFilter.toLowerCase())
+  );
+
+  const FieldBackground = () => {
+    const w = stageSize.width;
+    const h = stageSize.height;
+    const p = 20;
+
+    if (fieldMode === 'half') {
+      return (
+        <Group>
+          <Rect x={0} y={0} width={w} height={h} fill="#2d5a27" />
+          <Line points={[p, p, w - p, p]} stroke="white" strokeWidth={2} />
+          <Line points={[p, h - p, w - p, h - p]} stroke="white" strokeWidth={2} />
+          <Line points={[p, p, p, h - p]} stroke="white" strokeWidth={2} />
+          <Line points={[w - p, p, w - p, h - p]} stroke="white" strokeWidth={2} />
+          <Rect x={w / 2 - 120} y={p} width={240} height={100} stroke="white" strokeWidth={2} />
+          <Rect x={w / 2 - 50} y={p} width={100} height={40} stroke="white" strokeWidth={2} />
+          <Group clipFunc={(ctx) => {
+            ctx.rect(p, p, w - 2 * p, 100);
+          }}>
+            <Circle x={w / 2} y={p} radius={60} stroke="white" strokeWidth={2} />
+          </Group>
+        </Group>
+      );
+    }
+
+    return (
+      <Group>
+        <Rect x={0} y={0} width={w} height={h} fill="#2d5a27" />
+        <Rect x={p} y={p} width={w - 2 * p} height={h - 2 * p} stroke="white" strokeWidth={2} />
+        <Line points={[p, h / 2, w - p, h / 2]} stroke="white" strokeWidth={2} />
+        <Circle x={w / 2} y={h / 2} radius={60} stroke="white" strokeWidth={2} />
+        <Circle x={w / 2} y={h / 2} radius={2} fill="white" />
+        <Rect x={w / 2 - 120} y={p} width={240} height={100} stroke="white" strokeWidth={2} />
+        <Rect x={w / 2 - 50} y={p} width={100} height={40} stroke="white" strokeWidth={2} />
+        <Rect x={w / 2 - 120} y={h - p - 100} width={240} height={100} stroke="white" strokeWidth={2} />
+        <Rect x={w / 2 - 50} y={h - p - 40} width={100} height={40} stroke="white" strokeWidth={2} />
+        <Group clipFunc={(ctx) => { ctx.rect(p - 10, p - 10, 50, 50); }}>
+          <Circle x={p} y={p} radius={20} stroke="white" strokeWidth={2} />
+        </Group>
+        <Group clipFunc={(ctx) => { ctx.rect(w - p - 40, p - 10, 50, 50); }}>
+          <Circle x={w - p} y={p} radius={20} stroke="white" strokeWidth={2} />
+        </Group>
+        <Group clipFunc={(ctx) => { ctx.rect(p - 10, h - p - 40, 50, 50); }}>
+          <Circle x={p} y={h - p} radius={20} stroke="white" strokeWidth={2} />
+        </Group>
+        <Group clipFunc={(ctx) => { ctx.rect(w - p - 40, h - p - 40, 50, 50); }}>
+          <Circle x={w - p} y={h - p} radius={20} stroke="white" strokeWidth={2} />
+        </Group>
+      </Group>
+    );
+  };
+
+  return (
+    <div className="flex h-full bg-[#1E293B] border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] overflow-hidden watermark-bg">
+      {/* Left Sidebar: Players, Photos, Setups */}
+      {isEditing && (
+        <div className="w-64 border-r-2 border-black flex flex-col bg-[#121824]">
+          <div className="flex border-b-2 border-black">
+            <button 
+              onClick={() => setActiveSidebarTab('players')}
+              className={`flex-1 p-3 text-[10px] font-black uppercase tracking-widest transition-all ${activeSidebarTab === 'players' ? 'bg-black text-white' : 'bg-[#1E293B] text-black hover:bg-[#1E293B]'}`}
+            >
+              Kader
+            </button>
+            <button 
+              onClick={() => setActiveSidebarTab('setups')}
+              className={`flex-1 p-3 text-[10px] font-black uppercase tracking-widest transition-all ${activeSidebarTab === 'setups' ? 'bg-black text-white' : 'bg-[#1E293B] text-black hover:bg-[#1E293B]'}`}
+            >
+              Setups ({setups.length})
+            </button>
+            <button 
+              onClick={() => setActiveSidebarTab('tactics')}
+              className={`flex-1 p-3 text-[10px] font-black uppercase tracking-widest transition-all ${activeSidebarTab === 'tactics' ? 'bg-black text-white' : 'bg-[#1E293B] text-black hover:bg-[#1E293B]'}`}
+            >
+              Taktik
+            </button>
+          </div>
+
+        {activeSidebarTab === 'players' && (
+          <>
+            <div className="p-4 border-b-2 border-black bg-[#1E293B] flex flex-col gap-2">
+              <div className="flex justify-between items-center">
+                <h3 className="font-black uppercase text-[10px] tracking-widest">{activeClub.name}</h3>
+                <span className="text-[9px] font-bold text-[#94A3B8]">{allPlayers.length} Spieler</span>
+              </div>
+              <button 
+                onClick={handleAddAllPlayers}
+                className="w-full bg-black text-white py-1.5 text-[8px] font-black uppercase border border-black hover:bg-gray-800 transition-all flex items-center justify-center gap-1 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+              >
+                <Plus size={10} /> Gesamten Kader hinzufügen
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto custom-scrollbar p-2 space-y-4">
+              {positions.map(pos => {
+                const posPlayers = allPlayers.filter(p => p.position === pos);
+                if (posPlayers.length === 0) return null;
+                return (
+                  <div key={pos} className="space-y-1">
+                    <p className="text-[7px] font-black uppercase opacity-40 px-1">{pos}</p>
+                    {posPlayers.map(p => (
+                      <button
+                        key={p.id}
+                        onClick={() => handleAddPlayer(p)}
+                        className="w-full p-2 text-left border border-black/10 hover:border-black hover:bg-[#1E293B] transition-all group flex items-center justify-between"
+                      >
+                        <div className="flex flex-col">
+                          <span className="text-[9px] font-black uppercase">{p.lastName}</span>
+                          <span className="text-[7px] opacity-40 font-bold uppercase">{p.position} #{p.number}</span>
+                        </div>
+                        <Plus size={10} className="opacity-0 group-hover:opacity-100" />
+                      </button>
+                    ))}
+                  </div>
+                );
+              })}
+              {(() => {
+                const otherPlayers = allPlayers.filter(p => !positions.includes(p.position));
+                if (otherPlayers.length === 0) return null;
+                return (
+                  <div className="space-y-1">
+                    <p className="text-[7px] font-black uppercase opacity-40 px-1">Sonstige</p>
+                    {otherPlayers.map(p => (
+                      <button
+                        key={p.id}
+                        onClick={() => handleAddPlayer(p)}
+                        className="w-full p-2 text-left border border-black/10 hover:border-black hover:bg-[#1E293B] transition-all group flex items-center justify-between"
+                      >
+                        <div className="flex flex-col">
+                          <span className="text-[9px] font-black uppercase">{p.lastName}</span>
+                          <span className="text-[7px] opacity-40 font-bold uppercase">{p.position} #{p.number}</span>
+                        </div>
+                        <Plus size={10} className="opacity-0 group-hover:opacity-100" />
+                      </button>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+          </>
+        )}
+
+        {activeSidebarTab === 'tactics' && (
+          <div className="flex-1 overflow-auto custom-scrollbar p-4 space-y-6">
+            <div className="space-y-4">
+              <p className="text-[8px] font-black uppercase opacity-40 tracking-widest">Systeme</p>
+              <div className="flex flex-col gap-2">
+                <p className="text-[7px] font-black uppercase opacity-60 tracking-widest">Variante</p>
+                <div className="flex border-2 border-black">
+                  <button 
+                    onClick={() => setSystemMode('offensive')}
+                    className={`flex-1 py-1 text-[7px] font-black uppercase tracking-widest transition-all ${systemMode === 'offensive' ? 'bg-black text-white' : 'bg-[#1E293B] text-black hover:bg-[#1E293B]'}`}
+                  >
+                    Mit Ball
+                  </button>
+                  <button 
+                    onClick={() => setSystemMode('defensive')}
+                    className={`flex-1 py-1 text-[7px] font-black uppercase tracking-widest transition-all ${systemMode === 'defensive' ? 'bg-black text-white' : 'bg-[#1E293B] text-black hover:bg-[#1E293B]'}`}
+                  >
+                    Gegen Ball
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-2">
+                {Object.keys(FORMATIONS).map(name => (
+                  <button
+                    key={name}
+                    onClick={() => handleApplySystem(name)}
+                    className="w-full p-2 border-2 border-black bg-[#1E293B] text-[9px] font-black uppercase hover:bg-black hover:text-white transition-all flex items-center justify-between group"
+                  >
+                    <span>{name}</span>
+                    <Layout size={10} className="opacity-0 group-hover:opacity-100" />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="p-3 bg-[#1E293B] border-2 border-black text-[9px] font-bold">
+              Wählen Sie ein System aus, um die Spieler automatisch auf dem Feld zu platzieren.
+            </div>
+          </div>
+        )}
+
+        {activeSidebarTab === 'setups' && (
+          <div className="flex-1 flex flex-col p-2 gap-2 overflow-hidden">
+            <button
+              onClick={handleNewSetup}
+              className="w-full bg-[#0D4433] text-white py-2 text-[9px] font-black uppercase border-2 border-black hover:bg-emerald-900 transition-all flex items-center justify-center gap-1 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] shrink-0"
+            >
+              <Plus size={12} /> Neues Setup erstellen
+            </button>
+
+            <input
+              type="text"
+              placeholder="Setups suchen..."
+              value={setupFilter}
+              onChange={(e) => setSetupFilter(e.target.value)}
+              className="w-full p-1.5 text-[9px] font-bold border-2 border-black bg-[#1E293B] outline-none shrink-0"
+            />
+
+            <div className="flex-1 overflow-auto custom-scrollbar space-y-2">
+              {filteredSetups.map(setup => {
+                const playerCount = setup.elements?.filter(e => e.type === 'player').length || 0;
+                const isCurrent = selectedSetupId === setup.id;
+
+                return (
+                  <div key={setup.id} className="group relative">
+                    <button
+                      onClick={() => handleLoadSetup(setup)}
+                      className={`w-full p-2.5 text-left border-2 border-black transition-all hover:bg-[#1E293B] ${isCurrent ? 'bg-amber-50 border-amber-600 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]' : 'bg-[#1E293B]'}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <p className="text-[10px] font-black uppercase truncate pr-6">{setup.name}</p>
+                        {isCurrent && <Check size={12} className="text-amber-600 shrink-0" />}
+                      </div>
+                      <div className="flex items-center justify-between mt-1 text-[7px] font-bold text-[#94A3B8]">
+                        <span>{new Date(setup.createdAt).toLocaleDateString('de-DE')}</span>
+                        <span className="bg-black/5 px-1 rounded">{playerCount} Spieler</span>
+                      </div>
+                    </button>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); deleteSetup(setup.id); if (selectedSetupId === setup.id) setSelectedSetupId(null); notify('Setup gelöscht.'); }}
+                      className="absolute top-2 right-2 p-1 text-red-600 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 rounded"
+                      title="Löschen"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                );
+              })}
+              {filteredSetups.length === 0 && (
+                <div className="p-8 text-center opacity-40 flex flex-col items-center gap-2">
+                  <FolderOpen size={28} />
+                  <p className="text-[8px] font-black uppercase">Keine Setups gefunden</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+      )}
+
+      {/* Main Board Stage Container */}
+      <div className="flex-1 relative flex flex-col" ref={containerRef}>
+        {/* Top Control Bar: Drawing Tools & Colors & Sizes */}
+        {isEditing && (
+          <div className="absolute top-3 left-3 z-10 flex flex-col gap-2 max-w-[calc(100%-220px)]">
+            <div className="flex flex-wrap items-center gap-1.5 bg-[#1E293B]/95 backdrop-blur border-2 border-black p-1.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+              {/* Werkzeuge */}
+              {[
+                { id: 'select', icon: MousePointer2, label: 'Auswählen & Verschieben' },
+                { id: 'pen', icon: Pencil, label: 'Freihand zeichnen' },
+                { id: 'arrow', icon: ArrowUpRight, label: 'Pfeil zeichnen' },
+                { id: 'rect', icon: Square, label: 'Rechteck' },
+                { id: 'circle', icon: CircleIcon, label: 'Kreis' },
+                { id: 'text', icon: Type, label: 'Textnotiz' },
+              ].map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => setTool(t.id as any)}
+                  className={`p-1.5 border-2 transition-all ${tool === t.id ? 'bg-black text-white border-black' : 'border-transparent hover:border-black/30'}`}
+                  title={t.label}
+                >
+                  <t.icon size={15} />
+                </button>
+              ))}
+
+              <div className="w-px h-5 bg-black/20 mx-0.5" />
+
+              {/* Farbauswahl Palette */}
+              <div className="flex items-center gap-1">
+                {colorPresets.map(c => (
+                  <button
+                    key={c}
+                    onClick={() => handleColorChange(c)}
+                    className={`w-5 h-5 border-2 transition-all ${selectedColor === c ? 'border-black scale-110 shadow-sm' : 'border-black/20 hover:border-black/60'}`}
+                    style={{ backgroundColor: c }}
+                    title={`Farbe ${c}`}
+                  />
+                ))}
+                <input 
+                  type="color" 
+                  value={selectedColor} 
+                  onChange={(e) => handleColorChange(e.target.value)} 
+                  className="w-5 h-5 border border-black cursor-pointer bg-transparent shrink-0" 
+                  title="Eigene Farbe wählen"
+                />
+              </div>
+
+              <div className="w-px h-5 bg-black/20 mx-0.5" />
+
+              {/* Linienstärke (Stroke Width) */}
+              <div className="flex items-center gap-1 text-[9px] font-black uppercase" title="Linienstärke">
+                {[2, 4, 6].map(w => (
+                  <button
+                    key={w}
+                    onClick={() => handleStrokeWidthChange(w)}
+                    className={`px-1.5 py-0.5 border text-[8px] font-bold ${strokeWidth === w ? 'bg-black text-white border-black' : 'bg-[#1E293B] border-[#334155] hover:border-black'}`}
+                  >
+                    {w}px
+                  </button>
+                ))}
+              </div>
+
+              {/* Gestrichelte Linien Toggle */}
+              <button
+                onClick={() => handleDashToggle(!isDashedLine)}
+                className={`px-1.5 py-0.5 border text-[8px] font-bold ${isDashedLine ? 'bg-black text-white border-black' : 'bg-[#1E293B] border-[#334155] hover:border-black'}`}
+                title="Linienstil: Gestrichelt / Durchgezogen"
+              >
+                {isDashedLine ? 'Gestrichelt' : 'Durchgezogen'}
+              </button>
+
+              <div className="w-px h-5 bg-black/20 mx-0.5" />
+
+              {/* Feldmodus Toggle */}
+              <button
+                onClick={() => setFieldMode(fieldMode === 'full' ? 'half' : 'full')}
+                className={`p-1.5 border-2 transition-all ${fieldMode === 'half' ? 'bg-black text-white border-black' : 'border-transparent hover:border-black/30'}`}
+                title="Spielfeld-Modus (Ganzfeld / Halbfeld)"
+              >
+                {fieldMode === 'full' ? <Maximize2 size={15} /> : <Minimize2 size={15} />}
+              </button>
+
+              {/* Board leeren */}
+              <button
+                onClick={clearBoard}
+                className="p-1.5 hover:bg-red-50 text-[#C00000] transition-all ml-auto"
+                title="Board leeren"
+              >
+                <Eraser size={15} />
+              </button>
+            </div>
+
+            {/* Selected Element Toolbar Inspector */}
+            {selectedElement && (
+              <div className="flex items-center gap-2 bg-amber-50 border-2 border-amber-600 p-1.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-[9px] font-black uppercase animate-fadeIn">
+                <span className="text-amber-800 flex items-center gap-1">
+                  <Sliders size={12} /> 
+                  {selectedElement.type === 'player' ? `Spieler: ${selectedElement.playerData?.lastName || 'Token'}` : 'Ausgewähltes Element'}
+                </span>
+
+                {/* Resizing controls for Player Token */}
+                {selectedElement.type === 'player' && (
+                  <div className="flex items-center gap-1 ml-2">
+                    <span>Größe:</span>
+                    <input 
+                      type="range" 
+                      min="10" 
+                      max="40" 
+                      value={selectedElement.radius || symbolSize || 16} 
+                      onChange={(e) => handlePlayerRadiusChange(selectedElement.id, Number(e.target.value))}
+                      className="w-16 cursor-pointer accent-black h-1 bg-amber-200 rounded-lg appearance-none" 
+                    />
+                    <span className="w-6 text-right font-bold">{selectedElement.radius || symbolSize || 16}px</span>
+
+                    {/* Preset sizes for selected player */}
+                    <div className="flex gap-0.5 ml-1">
+                      {[12, 18, 24, 32].map(r => (
+                        <button
+                          key={r}
+                          onClick={() => handlePlayerRadiusChange(selectedElement.id, r)}
+                          className={`px-1 py-0.5 text-[7px] font-bold border ${selectedElement.radius === r ? 'bg-amber-600 text-white border-amber-700' : 'bg-[#1E293B] border-amber-300 hover:border-amber-600'}`}
+                        >
+                          {r}
+                        </button>
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={() => handleApplyRadiusToAllPlayers(selectedElement.radius || 16)}
+                      className="ml-2 bg-amber-600 text-white px-1.5 py-0.5 text-[7px] font-bold hover:bg-amber-700 transition-colors"
+                      title="Diese Größe auf alle Spieler anwenden"
+                    >
+                      Alle anpassen
+                    </button>
+                  </div>
+                )}
+
+                {/* Duplizieren & Löschen */}
+                <div className="flex items-center gap-1 ml-auto">
+                  <button
+                    onClick={() => duplicateElement(selectedElement.id)}
+                    className="p-1 hover:bg-amber-200 text-amber-900 rounded"
+                    title="Element duplizieren"
+                  >
+                    <Copy size={13} />
+                  </button>
+                  <button
+                    onClick={() => removeElement(selectedElement.id)}
+                    className="p-1 hover:bg-red-100 text-red-600 rounded"
+                    title="Element löschen"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Top Right Save & Export Bar */}
+        <div className="absolute top-3 right-3 z-20 flex gap-2">
+          {isEditing && (
+            <div className="flex items-center gap-1 bg-[#1E293B]/95 backdrop-blur border-2 border-black p-1 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+              <input 
+                type="text" 
+                placeholder="Setup Name..." 
+                value={setupName}
+                onChange={(e) => setSetupName(e.target.value)}
+                className="text-[10px] font-black uppercase p-1 outline-none w-32 border-b border-transparent focus:border-black"
+              />
+              <button
+                onClick={handleSaveSetup}
+                className="p-1.5 bg-green-700 text-white hover:bg-green-800 transition-all flex items-center gap-1 text-[9px] font-black uppercase px-2 shadow-sm"
+                title="In Datenbank speichern"
+              >
+                <SaveIcon size={14} /> Speichern
+              </button>
+              {selectedSetupId && (
+                <button
+                  onClick={handleSaveAsNew}
+                  className="p-1.5 bg-[#1E293B] text-black hover:bg-gray-200 transition-all flex items-center gap-1 text-[9px] font-black uppercase px-2 border border-black/20"
+                  title="Als neues Setup kopieren"
+                >
+                  <Copy size={12} /> Kopie
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Export Button & Dropdown Menu */}
+          <div className="relative">
+            <button
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              className="flex items-center gap-1.5 bg-black text-white px-3 py-2 text-[10px] font-black uppercase tracking-widest hover:bg-gray-800 transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+            >
+              <Download size={14} /> Export <ChevronDown size={12} />
+            </button>
+
+            {showExportMenu && (
+              <div className="absolute right-0 mt-1 w-52 bg-[#1E293B] border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] z-50 flex flex-col p-1 text-[9px] font-black uppercase">
+                <button
+                  onClick={handleExportPNG}
+                  className="p-2 text-left hover:bg-[#1E293B] flex items-center gap-2"
+                >
+                  <FileImage size={13} className="text-emerald-700" /> Als PNG-Bild (HD)
+                </button>
+                <button
+                  onClick={handleExportJPG}
+                  className="p-2 text-left hover:bg-[#1E293B] flex items-center gap-2"
+                >
+                  <FileImage size={13} className="text-blue-700" /> Als JPG-Bild (HD)
+                </button>
+                <div className="w-full h-px bg-black/10 my-1" />
+                <button
+                  onClick={() => handleExportComposite('png')}
+                  className="p-2 text-left hover:bg-emerald-50 text-emerald-900 flex items-center gap-2"
+                >
+                  <Sparkles size={13} className="text-amber-600" /> Taktik-Report (PNG + Anweisungen)
+                </button>
+                <button
+                  onClick={() => handleExportComposite('jpg')}
+                  className="p-2 text-left hover:bg-emerald-50 text-emerald-900 flex items-center gap-2"
+                >
+                  <Sparkles size={13} className="text-amber-600" /> Taktik-Report (JPG + Anweisungen)
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Konva Stage Canvas */}
+        <Stage
+          width={stageSize.width}
+          height={stageSize.height}
+          onMouseDown={isEditing ? handleMouseDown : undefined}
+          onMouseMove={isEditing ? handleMouseMove : undefined}
+          onMouseUp={isEditing ? handleMouseUp : undefined}
+          onClick={(e) => {
+            if (e.target === e.target.getStage()) {
+              setSelectedId(null);
+            }
+          }}
+          ref={stageRef}
+        >
+          <Layer>
+            <FieldBackground />
+          </Layer>
+          <Layer>
+            {elements.map((el) => {
+              const isSelected = selectedId === el.id;
+
+              if (el.type === 'photo') {
+                return (
+                  <URLImage
+                    key={el.id}
+                    imageUrl={el.imageUrl}
+                    x={el.x}
+                    y={el.y}
+                    width={el.width || 60}
+                    height={el.height || 80}
+                    onDragEnd={(e: any) => {
+                      if (!isEditing) return;
+                      const updated = elements.map(item => 
+                        item.id === el.id ? { ...item, x: e.target.x(), y: e.target.y() } : item
+                      );
+                      setElements(updated);
+                    }}
+                    onClick={() => isEditing && setSelectedId(el.id)}
+                    onDblClick={() => isEditing && removeElement(el.id)}
+                    draggable={isEditing}
+                  />
+                );
+              }
+
+              if (el.type === 'player') {
+                const radius = el.radius || symbolSize || 16;
+
+                return (
+                  <Group
+                    key={el.id}
+                    x={el.x}
+                    y={el.y}
+                    draggable={isEditing}
+                    onClick={() => isEditing && setSelectedId(el.id)}
+                    onDragEnd={(e) => {
+                      if (!isEditing) return;
+                      const updated = elements.map(item => 
+                        item.id === el.id ? { ...item, x: e.target.x(), y: e.target.y() } : item
+                      );
+                      setElements(updated);
+                    }}
+                    onDblClick={() => isEditing && removeElement(el.id)}
+                  >
+                    {/* Selected Halo Ring */}
+                    {isSelected && (
+                      <Circle 
+                        radius={radius + 4} 
+                        stroke="#FFD700" 
+                        strokeWidth={2} 
+                        dash={[4, 4]} 
+                      />
+                    )}
+
+                    <Circle 
+                      radius={radius} 
+                      fill={el.color || "#C00000"} 
+                      stroke="white" 
+                      strokeWidth={2} 
+                      shadowBlur={5} 
+                      shadowOpacity={0.3} 
+                    />
+                    <Text
+                      text={el.playerData?.number ? String(el.playerData.number) : ''}
+                      fontSize={radius * 0.85}
+                      fontStyle="bold"
+                      fill="white"
+                      align="center"
+                      width={radius * 2}
+                      x={-radius}
+                      y={-radius * 0.55}
+                    />
+                    <Text
+                      text={`${el.playerData?.lastName || ''}`.toUpperCase()}
+                      fontSize={radius * 0.34}
+                      fontStyle="bold"
+                      fill="white"
+                      align="center"
+                      width={radius * 2.1}
+                      x={-radius * 1.05}
+                      y={radius * 0.15}
+                    />
+                    <Text
+                      text={el.playerData?.firstName ? `, ${el.playerData.firstName}` : ''}
+                      fontSize={radius * 0.26}
+                      fill="white"
+                      opacity={0.85}
+                      align="center"
+                      width={radius * 2.1}
+                      x={-radius * 1.05}
+                      y={radius * 0.55}
+                    />
+                  </Group>
+                );
+              }
+
+              if (el.type === 'text') {
+                return (
+                  <Group
+                    key={el.id}
+                    x={el.x}
+                    y={el.y}
+                    draggable={isEditing}
+                    onClick={() => isEditing && setSelectedId(el.id)}
+                    onDragEnd={(e) => {
+                      if (!isEditing) return;
+                      const updated = elements.map(item => 
+                        item.id === el.id ? { ...item, x: e.target.x(), y: e.target.y() } : item
+                      );
+                      setElements(updated);
+                    }}
+                    onDblClick={() => isEditing && removeElement(el.id)}
+                  >
+                    {isSelected && (
+                      <Rect
+                        x={-4}
+                        y={-4}
+                        width={(el.text?.length || 5) * 8 + 8}
+                        height={24}
+                        stroke="#FFD700"
+                        strokeWidth={1.5}
+                        dash={[3, 3]}
+                      />
+                    )}
+                    <Text
+                      text={el.text || ''}
+                      fontSize={14}
+                      fontStyle="bold"
+                      fill={el.color || '#000000'}
+                      padding={2}
+                    />
+                  </Group>
+                );
+              }
+
+              if (el.type === 'material') {
+                return (
+                  <Group
+                    key={el.id}
+                    x={el.x}
+                    y={el.y}
+                    draggable={isEditing}
+                    onClick={() => isEditing && setSelectedId(el.id)}
+                    onDragEnd={(e) => {
+                      if (!isEditing) return;
+                      const updated = elements.map(item => 
+                        item.id === el.id ? { ...item, x: e.target.x(), y: e.target.y() } : item
+                      );
+                      setElements(updated);
+                    }}
+                    onDblClick={() => isEditing && removeElement(el.id)}
+                  >
+                    {isSelected && (
+                      <Circle radius={18} stroke="#FFD700" strokeWidth={1.5} dash={[3, 3]} />
+                    )}
+
+                    {el.materialType?.includes('Hütchen') ? (
+                      <Line
+                        points={[-10, 10, 0, -10, 10, 10]}
+                        closed
+                        fill={el.color}
+                        stroke="black"
+                        strokeWidth={1}
+                      />
+                    ) : el.materialType === 'Stangen' ? (
+                      <Rect
+                        x={-2}
+                        y={-15}
+                        width={4}
+                        height={30}
+                        fill="white"
+                        stroke="black"
+                        strokeWidth={1}
+                      />
+                    ) : (
+                      <Rect
+                        x={-15}
+                        y={-10}
+                        width={30}
+                        height={20}
+                        fill="white"
+                        stroke="black"
+                        strokeWidth={1}
+                      />
+                    )}
+                  </Group>
+                );
+              }
+
+              if (el.type === 'line') {
+                if (el.shapeType === 'arrow') {
+                  return (
+                    <Arrow
+                      key={el.id}
+                      points={el.points || []}
+                      stroke={el.color || '#C00000'}
+                      strokeWidth={el.strokeWidth || 3}
+                      dash={el.dash}
+                      pointerLength={10}
+                      pointerWidth={10}
+                      fill={el.color || '#C00000'}
+                      onClick={() => isEditing && setSelectedId(el.id)}
+                      onDblClick={() => isEditing && removeElement(el.id)}
+                    />
+                  );
+                }
+                return (
+                  <Line
+                    key={el.id}
+                    points={el.points || []}
+                    stroke={el.color || '#C00000'}
+                    strokeWidth={el.strokeWidth || 3}
+                    dash={el.dash}
+                    tension={0.5}
+                    lineCap="round"
+                    onClick={() => isEditing && setSelectedId(el.id)}
+                    onDblClick={() => isEditing && removeElement(el.id)}
+                  />
+                );
+              }
+
+              if (el.type === 'shape') {
+                if (el.shapeType === 'rect') {
+                  return (
+                    <Rect
+                      key={el.id}
+                      x={el.x}
+                      y={el.y}
+                      width={el.points ? el.points[0] : 40}
+                      height={el.points ? el.points[1] : 40}
+                      stroke={el.color || '#C00000'}
+                      strokeWidth={el.strokeWidth || 2}
+                      dash={el.dash}
+                      onClick={() => isEditing && setSelectedId(el.id)}
+                      onDblClick={() => isEditing && removeElement(el.id)}
+                    />
+                  );
+                }
+                if (el.shapeType === 'circle') {
+                  const radius = el.points ? Math.sqrt(Math.pow(el.points[0], 2) + Math.pow(el.points[1], 2)) : 30;
+                  return (
+                    <Circle
+                      key={el.id}
+                      x={el.x}
+                      y={el.y}
+                      radius={radius}
+                      stroke={el.color || '#C00000'}
+                      strokeWidth={el.strokeWidth || 2}
+                      dash={el.dash}
+                      onClick={() => isEditing && setSelectedId(el.id)}
+                      onDblClick={() => isEditing && removeElement(el.id)}
+                    />
+                  );
+                }
+              }
+              return null;
+            })}
+          </Layer>
+        </Stage>
+
+        {/* Toast Notification */}
+        {notification && (
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black text-white px-4 py-2 text-[10px] font-black uppercase tracking-widest shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] z-50 animate-bounce flex items-center gap-2 border border-white">
+            <Check size={12} className="text-emerald-400" />
+            {notification}
+          </div>
+        )}
+      </div>
+
+      {/* Right Sidebar: Materials / Instructions */}
+      {isEditing && (
+        <div className="w-72 border-l-2 border-black flex flex-col bg-[#121824]">
+          <div className="p-4 border-b-2 border-black bg-black text-white flex items-center justify-between">
+            <h3 className="font-black uppercase text-xs tracking-widest">Taktische Anweisungen</h3>
+          </div>
+        <div className="flex-1 overflow-auto custom-scrollbar p-4 space-y-6">
+          <section className="space-y-2">
+            <p className="text-[8px] font-black uppercase opacity-40 tracking-widest">Spielphase</p>
+            <div className="grid grid-cols-2 gap-1.5">
+              {['Offensiv', 'Defensiv', 'Umschalten Def.', 'Umschalten Off.'].map(phase => (
+                <button 
+                  key={phase} 
+                  onClick={() => {
+                    const current = instructions ? `${instructions}\n` : '';
+                    onInstructionsChange(`${current}[${phase}]: `);
+                  }}
+                  className="w-full min-h-[36px] px-2 py-1.5 border border-slate-700 bg-slate-900/80 text-[10px] font-black uppercase hover:bg-amber-400 hover:text-slate-950 transition-all rounded-lg flex items-center justify-center text-center leading-tight cursor-pointer"
+                >
+                  + {phase}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="space-y-2">
+            <p className="text-[8px] font-black uppercase opacity-40 tracking-widest">Anweisungen & Vorgaben</p>
+            <textarea 
+              className="w-full h-36 p-3 border-2 border-black text-xs font-bold focus:outline-none bg-[#1E293B] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+              placeholder="Taktische Vorgaben und Anweisungen hier eingeben..."
+              value={instructions}
+              onChange={(e) => isEditing && onInstructionsChange(e.target.value)}
+              disabled={!isEditing}
+            />
+          </section>
+
+          <section className="space-y-2">
+            <p className="text-[8px] font-black uppercase opacity-40 tracking-widest">Materialien auf Board</p>
+            <div className="space-y-2">
+              {[
+                { name: 'Hütchen (Rot)', icon: '▲' },
+                { name: 'Hütchen (Gelb)', icon: '▲' },
+                { name: 'Stangen', icon: '┃' },
+                { name: 'Minitore', icon: '⊓' },
+              ].map(item => (
+                <button 
+                  key={item.name} 
+                  onClick={() => handleAddMaterial(item.name)}
+                  className="w-full flex items-center gap-3 p-2 border border-black/10 bg-[#1E293B] hover:border-black transition-all group"
+                >
+                  <span className="text-base">{item.icon}</span>
+                  <span className="text-[10px] font-black uppercase">{item.name}</span>
+                  <Plus size={10} className="ml-auto opacity-0 group-hover:opacity-100" />
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <div className="p-3 bg-[#0D4433] text-white border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-[9px] space-y-1">
+            <p className="font-black uppercase opacity-80 flex items-center gap-1">
+              <Sparkles size={11} className="text-amber-300" /> Bediener-Hinweise
+            </p>
+            <p className="font-bold leading-tight text-emerald-100">
+              • Klicken Sie ein Element an, um dessen Farbe & Größe im Inspektionsfeld oben anzupassen.
+            </p>
+            <p className="font-bold leading-tight text-emerald-100">
+              • Doppelklick auf ein Element zum schnellen Löschen.
+            </p>
+          </div>
+        </div>
+      </div>
+      )}
+
+      {/* 3D PROFI TAKTIKTAFEL MODAL */}
+      {show3DProfiBoard && (
+        <Pro3DTacticBoardModal
+          players={players}
+          onClose={() => setShow3DProfiBoard(false)}
+        />
+      )}
+    </div>
+  );
+};

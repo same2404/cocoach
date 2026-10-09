@@ -1723,7 +1723,7 @@ resultText = response.text ?? null;
         : "Keine Kaderliste vorhanden.";
 
       const systemInstruction = `
-Du bist ein professionelles Fußball-Analyse-System wie Once Football, Hudl Sportscode oder Wyscout Telestration (Funktion: ULTRA-OVERLAY-GENERATOR).
+Du bist ein professionelles Fußball-Analyse-Tool auf Champions-League-Niveau wie Once Football, Hudl Sportscode oder Wyscout Telestration (Funktion: ULTRA-OVERLAY-GENERATOR). Du erzeugst taktische Grafiken, die sich dynamisch an Spielerbewegungen anpassen. Jede Szene enthält klar definierte grafische Elemente, die exakt den Standards moderner Pro-Tagger entsprechen.
 Deine Aufgabe: Erzeuge aus den übergebenen Einzelbildern (Frames) automatisch stabil verankerte ANALYSIERBARE KEYFRAME-OVERLAYS – Spieler-Marker, Linien, Räume, Zonen, Pfeile, Laufwege, optimale Positionen – die sich am Spieler und mit der Bildbewegung MITBEWEGEN. Die Ausgabe wird live über ein laufendes Video gelegt und der Browser interpoliert zwischen den Keyframes.
 
 WICHTIG – EINORDNUNG DER LIMITATIONEN (Ehrlichkeitsregeln, NIEMALS auslassen):
@@ -1749,12 +1749,13 @@ DEINE ULTRA-AUFGABEN:
    - Räume/Linien perspektivisch passend zeichnen (Strafraum liegt "zusammengeschoben", wenn die Kamera eng steht; Laufwege eher horizontal bei TV-Kameraperspektive). Ausrichtung über attackDirection ("UP" = ${teamName} greift nach oben zum Tor an, "DOWN" = nach unten) – konsistent pro Szene, spiegel die Koordinaten passend.
 
 4. GRAFIKEN & OVERLAYS (Once-Style), erzeuge automatisch passende:
-   - passes: Passweg-Pfeile von → nach mit action (Direktpass, Steilpass, Flanke, Doppelpass, Verlagerung, Torschuss) und Farbe (Blau #3B82F6 offensiv, Rot #EF4444 defensiv, Gelb #F59E0B Umschalten).
-   - runs: Laufweg-Polylines beteiligter Spieler (Tiefenlauf, Diagonallauf, Hinterlaufen, Einrücken…).
-   - ballPath: Ballweg mit Punkten.
-   - zones: Pressingzonen/Freiräume als Rechteck (x/y/w/h %) mit Label.
-   - formations/chains: Abwehrketten-Linien (Formationsflächen).
-   - optimalPositions: für 1-3 ${teamName}-Spieler die IDEALE Position mit kurzer deutscher Begründung (note) + Pfeil von aktuell nach ideal.
+   - players: Spieler-Marker. Jeder Marker ist rund, eindeutig (Team + Nummer) und liegt auf dem Spieler, nie daneben. IDs über alle Keyframes stabil.
+   - chains: Spieler-KETTEN – dünne Linien zwischen Spielern, die taktische Linien bilden (Abwehrkette, Mittelfeldkette, Angriffskette). Nicht nur eine Linie: pro Kette eine dünne, klare Verbindung mit eigenem Label (z. B. "Abwehrkette").
+   - passes: Passweg als DÜNNE Linie, Richtung und Länge exakt (von → nach), mit action (Direktpass, Steilpass, Flanke, Doppelpass, Verlagerung, Torschuss). "optional": true NUR für nicht gespielte, mögliche Passoptionen – diese werden gestrichelt gezeichnet. Farbe: Blau #3B82F6 offensiv, Rot #EF4444 defensiv, Gelb #F59E0B Umschalten.
+   - runs: Laufwege als LAUFWEG-PFEILE (points = Pfeillinie). "sprint": true, wenn der Spieler sprintet – dann ist der Pfeil länger, dicker und erhält eine stärkere Spitze. Beschreibe den Lauf (Tiefenlauf, Diagonallauf, Hinterlaufen, Einrücken…).
+   - ballPath: Ballweg als dünne, leicht hervorgehobene Linie mit Punkten (Flugbahn oder Rollbahn).
+   - zones: Räume IMMER als Rechteck/Quadrat (x/y/w/h %) – niemals Freiform. Transparente Füllung + klare Kanten + Label (z. B. "Freiraum", "Pressingfalle", "Überzahl").
+   - optimalPositions: für 1-3 ${teamName}-Spieler die IDEALE Position als Punkt/kleines Rechteck, basierend auf taktischer Logik (Überzahl, Raumkontrolle, Pressingwinkel). Kurze deutsche Begründung (note) + Pfeil von aktuell nach ideal.
    - Alle Overlays als Keyframes, damit sie am Spieler und an der Bildbewegung mitlaufen.
 
 5. KEYFRAMING:
@@ -1768,6 +1769,16 @@ DEINE ULTRA-AUFGABEN:
 
 7. SZENE & BILD SPEICHERN:
    - Beim Speichern werden die Overlays frame-genau auf das Video gelegt. Leere Erfolgs-Confirmation ist Teil der Antwort.
+
+8. AUTO-TAGGING KATEGORIE (regelbasiert, konsistent – exakt EINER dieser 7 Werte):
+   - "Tore"
+   - "Gegentore"
+   - "Spielaufbau"
+   - "Pressing MIT Ball"
+   - "Pressing GEGEN den Ball"
+   - "Standards" (Ecke, Freistoß, Einwurf, Elfmeter)
+   - "Ballverlust"
+   Diese Kategorie muss in "category" stehen. Standardsituationen immer als "Standards" taggen, auch wenn dabei ein Tor oder ein Ballverlust entsteht – die Situation entscheidet, nicht das Ergebnis.
 
 Kaderliste:
 ${squadStr}
@@ -1802,6 +1813,15 @@ Extrahiere aus diesen Frames die ULTRA-OVERLAY-KEYFRAMES: stabil verankerte Spie
               type: Type.OBJECT,
               properties: {
                 summary: { type: Type.STRING, description: "Kurzzusammenfassung der Ultra-Overlay-Erkennung" },
+                category: {
+                  type: Type.STRING,
+                  description: "Auto-Tagging Kategorie: exakt EINER dieser 7 Werte. Standardsituationen (Ecke, Freistoß, Einwurf, Elfmeter) IMMER als 'Standards', auch wenn dabei ein Tor oder Ballverlust entsteht.",
+                  enum: ["Tore", "Gegentore", "Spielaufbau", "Pressing MIT Ball", "Pressing GEGEN den Ball", "Standards", "Ballverlust"]
+                },
+                sceneType: { type: Type.STRING, description: "Szenentyp, z.B. Offensiver Abschluss, Doppelpassing, Aufbau aus der Abwehr, Verteidiger-Pressing" },
+                phase: { type: Type.STRING, description: "Phase: Aufbauphase | Umschaltphase | Abschlussphase | Standardsituation" },
+                action: { type: Type.STRING, description: "Knappe Beschreibung der Aktion dieser Szene" },
+                zone: { type: Type.STRING, description: "Zone auf dem Spielfeld, z.B. rechter Halbraum, Strafraum, Mittelfeldzentrum" },
                 attackDirection: { type: Type.STRING, description: "UP = Team greift zum oberen Tor an, DOWN = unteres Tor" },
                 cameraMotion: {
                   type: Type.OBJECT,
@@ -1836,24 +1856,28 @@ Extrahiere aus diesen Frames die ULTRA-OVERLAY-KEYFRAMES: stabil verankerte Spie
                       },
                       passes: {
                         type: Type.ARRAY,
+                        description: "Passwege als dünne Linien. optional=true nur für NICHT gespielte Passoptionen (gestrichelt).",
                         items: {
                           type: Type.OBJECT,
                           properties: {
                             fromX: { type: Type.NUMBER }, fromY: { type: Type.NUMBER },
                             toX: { type: Type.NUMBER }, toY: { type: Type.NUMBER },
                             color: { type: Type.STRING },
-                            action: { type: Type.STRING }
+                            action: { type: Type.STRING },
+                            optional: { type: Type.BOOLEAN, description: "true = mögliche Passoption, wird gestrichelt gezeichnet" }
                           },
                           required: ["fromX", "fromY", "toX", "toY"]
                         }
                       },
                       runs: {
                         type: Type.ARRAY,
+                        description: "Laufwege als Pfeile. sprint=true = längerer, dickerer Pfeil mit stärkerer Spitze.",
                         items: {
                           type: Type.OBJECT,
                           properties: {
                             label: { type: Type.STRING },
                             color: { type: Type.STRING },
+                            sprint: { type: Type.BOOLEAN, description: "true wenn der Spieler sprintet (längerer/dickerer Pfeil, stärkere Spitze)" },
                             points: { type: Type.ARRAY, items: { type: Type.ARRAY, items: { type: Type.NUMBER } } }
                           },
                           required: ["points"]
@@ -1884,23 +1908,25 @@ Extrahiere aus diesen Frames die ULTRA-OVERLAY-KEYFRAMES: stabil verankerte Spie
                       },
                       chains: {
                         type: Type.ARRAY,
+                        description: "Spieler-Ketten: dünne Linien zwischen Spielern (Abwehr-/Mittelfeld-/Angriffskette) mit Label.",
                         items: {
                           type: Type.OBJECT,
                           properties: {
                             fromX: { type: Type.NUMBER }, fromY: { type: Type.NUMBER },
                             toX: { type: Type.NUMBER }, toY: { type: Type.NUMBER },
-                            color: { type: Type.STRING }, label: { type: Type.STRING }
+                            color: { type: Type.STRING }, label: { type: Type.STRING, description: "z.B. Abwehrkette | Mittelfeldkette | Angriffskette" }
                           },
                           required: ["fromX", "fromY", "toX", "toY"]
                         }
                       },
                       optimalPositions: {
                         type: Type.ARRAY,
+                        description: "Optimale Positionen (Punkt/kleines Rechteck) mit taktischer Begründung.",
                         items: {
                           type: Type.OBJECT,
                           properties: {
                             toX: { type: Type.NUMBER }, toY: { type: Type.NUMBER },
-                            note: { type: Type.STRING }, label: { type: Type.STRING }
+                            note: { type: Type.STRING, description: "Taktische Begründung (Überzahl, Raumkontrolle, Pressingwinkel)" }, label: { type: Type.STRING }
                           },
                           required: ["toX", "toY"]
                         }
@@ -1923,7 +1949,7 @@ Extrahiere aus diesen Frames die ULTRA-OVERLAY-KEYFRAMES: stabil verankerte Spie
                   required: ["tacticalInsight"]
                 }
               },
-              required: ["summary", "attackDirection", "cameraMotion", "keyframes", "coaching"]
+              required: ["summary", "category", "sceneType", "phase", "action", "zone", "attackDirection", "cameraMotion", "keyframes", "coaching"]
             }
           }
         });

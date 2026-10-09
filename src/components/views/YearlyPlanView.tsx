@@ -281,9 +281,10 @@ export const YearlyPlanView: React.FC<YearlyPlanViewProps> = ({
     const data: Record<string, any> = {};
     const startDate = new Date('2026-06-01');
     const endDate = new Date('2027-07-31');
-    
     let current = new Date(startDate);
-    while (current <= endDate) {
+    if (isNaN(current.getTime()) || isNaN(endDate.getTime())) return;
+    let guard = 0;
+    while (current <= endDate && guard < 2000) { guard++;
       const dateKey = current.toISOString().split('T')[0];
       const dateStr = current.toLocaleDateString('de-DE');
       

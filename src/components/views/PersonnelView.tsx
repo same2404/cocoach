@@ -416,10 +416,18 @@ const PersonnelView: React.FC<PersonnelViewProps> = ({ players, onEditPlayer, on
                   <div className={`absolute left-0 top-0 bottom-0 w-1 ${getCategoryColor(person.category)}`} />
                   
                   <div className="flex items-center gap-3">
-                      <span className={`w-8 h-8 flex items-center justify-center text-xs font-black rounded-lg border shrink-0 transition-transform group-hover:scale-105
-                        ${selectedId === person.id ? 'bg-[#10B981] text-[#0A0E17] border-[#10B981] font-black' : `bg-[#121824] text-[#F8FAFC] border-[#334155]`}`}>
-                        {(normalizeCategory(person.category) === 'player') ? `#${person.number}` : getCategoryIcon(person.category || 'player')}
-                      </span>
+                      {person.image ? (
+                        <img
+                          src={person.image}
+                          alt={person.lastName || person.name || ''}
+                          className={`w-8 h-8 rounded-lg object-cover border shrink-0 transition-transform group-hover:scale-105 ${selectedId === person.id ? 'border-[#10B981]' : 'border-[#334155]'}`}
+                        />
+                      ) : (
+                        <span className={`w-8 h-8 flex items-center justify-center text-xs font-black rounded-lg border shrink-0 transition-transform group-hover:scale-105
+                          ${selectedId === person.id ? 'bg-[#10B981] text-[#0A0E17] border-[#10B981] font-black' : `bg-[#121824] text-[#F8FAFC] border-[#334155]`}`}>
+                          {(normalizeCategory(person.category) === 'player') ? `#${person.number}` : getCategoryIcon(person.category || 'player')}
+                        </span>
+                      )}
                       <div className="text-left">
                         <p className={`font-black uppercase text-[11px] leading-tight flex items-center gap-1.5 ${selectedId === person.id ? 'text-[#F8FAFC]' : 'text-[#F8FAFC]'}`}>
                           {person.lastName}

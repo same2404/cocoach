@@ -22,7 +22,10 @@ import {
   TrendingUp,
   CheckCircle2,
   XCircle,
-  HelpCircle
+  HelpCircle,
+  ArrowRight,
+  Hourglass,
+  GitBranch
 } from 'lucide-react';
 
 interface PhysioPlanViewProps {
@@ -170,6 +173,330 @@ export const PhysioPlanView: React.FC<PhysioPlanViewProps> = ({
     coach: sortedPlayers.filter(p => p.category === 'coach'),
     staff: sortedPlayers.filter(p => p.category === 'staff'),
     medical: sortedPlayers.filter(p => p.category === 'medical')
+  };
+
+  // --- ERGÄNZUNG: Moderne Verletzungs-Verlaufs-Analyse (Flowchart/Prozessdiagramm) ---
+  // Leitet aus allen Physio-Einträgen automatisch die gesamte Verletzungsgeschichte je Spieler ab.
+  const injuryFlow = useMemo(() => {
+    type PhaseId = 'rot' | 'gelb' | 'gruen';
+
+    const phaseOf = (status?: string): PhaseId | null => {
+      if (!status) return null;
+      if (status.includes('Grün') || status === 'Spielfähig' || status === 'Wieder Fit') return 'gruen';
+      if (status.includes('Gelb') || status === 'Reha-Phase' || status === 'In Behandlung') return 'gelb';
+      if (status.includes('Rot') || status === 'Langzeit' || status === 'Ausfall') return 'rot';
+      return null;
+    };
+
+    const toDay = (d?: string): Date | null => {
+      if (!d) return null;
+      const t = new Date(d);
+      return isNaN(t.getTime()) ? null : t;
+    };
+
+    const dayMs = 86400000;
+
+    // Pro Spieler chronologische Akte aufbauen
+    const perPlayer = squadPlayers.map(p => {
+      const entries = physioEntries
+        .filter(e => e.playerId === p.id)
+        .filter(e => e.date)
+        .map(e => ({ ...e, color: phaseOf(e.status) }))
+        .filter(e => e.color !== null)
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+      return { player: p, entries };
+    });
+
+    // Nur Spieler mit mindestens einem Farb-Eintrag im Diagramm zeigen
+    const active = perPlayer.filter(r => r.entries.length > 0);
+
+    // Zeitbereich: frühester Eintrag bis heute
+    let minD = new Date();
+    let maxD = new Date();
+    active.forEach(r => {
+      r.entries.forEach(e => {
+        const d = new Date(e.date);
+        if (!isNaN(d.getTime())) {
+          if (d < minD) minD = d;
+          if (d > maxD) maxD = d;
+        }
+      });
+    });
+    const rangeStart = new Date(minD);
+    rangeStart.setHours(0, 0, 0, 0);
+    const rangeEnd = new Date(maxD.getTime() + 7 * dayMs + 86400000);
+    rangeEnd.setHours(0, 0, 0, 0);
+
+    const toX = (d: Date): number => {
+      const t = d.getTime();
+      const s = rangeStart.getTime();
+      const e = rangeEnd.getTime();
+      if (e <= s) return 0;
+      return Math.max(0, Math.min(1, (t - s) / (e - s)));
+    };
+
+    // Lücken von größer als 60 Tagen ohne Eintrag als "gesund/pausiert" interpretieren (Grün-Segment)
+    const maxGapDays = 60;
+
+    const rows = active.map(({ player, entries }) => {
+      // Segmente: Von Eintrag i bis Eintrag i+1 (bzw. bis heute) gilt der Status von Eintrag i.
+      const segments: { from: number; to: number; color: PhaseId; label: string; injury: string }[] = [];
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+
+      for (let i = 0; i < entries.length; i++) {
+        const cur = new Date(entries[i].date);
+        cur.setHours(0, 0, 0, 0);
+        let nxt: Date;
+        if (i + 1 < entries.length) {
+          nxt = new Date(entries[i + 1].date);
+          nxt.setHours(0, 0, 0, 0);
+        } else {
+          nxt = todayStart;
+        }
+        const gapDays = (nxt.getTime() - cur.getTime()) / dayMs;
+        let segEnd = nxt;
+        if (i + 1 < entries.length && gapDays > maxGapDays) segEnd = new Date(cur.getTime() + maxGapDays * dayMs);
+        if (segEnd >= cur) {
+          segments.push({
+            from: toX(cur),
+            to: toX(segEnd),
+            color: entries[i].color as PhaseId,
+            label: entries[i].status || '',
+            injury: entries[i].diagnosis || entries[i].type || ''
+          });
+        }
+        // Gap als Grün-Segment ergänzen
+        if (i + 1 < entries.length && gapDays > maxGapDays) {
+          const gapStart = new Date(cur.getTime() + maxGapDays * dayMs);
+          segments.push({ from: toX(gapStart), to: toX(nxt), color: 'gruen', label: 'Pause / Gesund', injury: '' });
+        }
+      }
+
+      // Dauer der Belastung der aktuellen Phase (Tage) + vermutlich fehlende Zeit
+      const last = entries[entries.length - 1];
+      const curPhase = (last?.color || null) as PhaseId | null;
+      let phaseStart: Date | null = null;
+      if (last) {
+        phaseStart = new Date(last.date);
+        phaseStart.setHours(0, 0, 0, 0);
+        for (let i = entries.length - 2; i >= 0; i--) {
+          const prev = new Date(entries[i].date);
+          prev.setHours(0, 0, 0, 0);
+          const hold = new Date(entries[i + 1].date);
+          hold.setHours(0, 0, 0, 0);
+          if (entries[i].color !== curPhase || (phaseStart.getTime() - prev.getTime()) > maxGapDays * dayMs) break;
+          if (hold.getTime() - prev.getTime() <= maxGapDays * dayMs) phaseStart = prev;
+          else break;
+        }
+      }
+      const currentDurationDays = curPhase && last ? Math.max(1, Math.round((todayStart.getTime() - phaseStart!.getTime()) / dayMs)) : 0;
+
+      let estimatedMissingDays = 0;
+      if (curPhase === 'rot') estimatedMissingDays = Math.max(0, 14 - currentDurationDays);
+      else if (curPhase === 'gelb') estimatedMissingDays = Math.max(0, 7 - currentDurationDays);
+
+      const manualDuration = typeof (player as any).physioDurationOverrideDays === 'number' ? (player as any).physioDurationOverrideDays : null;
+      const manualMissing = typeof (player as any).physioMissingOverrideDays === 'number' ? (player as any).physioMissingOverrideDays : null;
+
+      return {
+        player,
+        segments,
+        curPhase,
+        currentDurationDays,
+        estimatedMissingDays,
+        lastLabel: last?.label || '',
+        lastDiagnosis: last ? (last.diagnosis || '') : '',
+        manualDuration,
+        manualMissing
+      };
+    });
+
+    // Phase-Statistiken
+    const latestPhase = squadPlayers.map(p => {
+      const entries = physioEntries
+        .filter(e => e.playerId === p.id)
+        .filter(e => e.date && phaseOf(e.status))
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      const last = entries[entries.length - 1];
+      return { player: p, phase: last ? (phaseOf(last.status) as PhaseId) : null };
+    });
+    const rotCount = latestPhase.filter(x => x.phase === 'rot').length;
+    const gelbCount = latestPhase.filter(x => x.phase === 'gelb').length;
+    const gruenCount = latestPhase.filter(x => x.phase === 'gruen').length;
+
+    return { rows, rangeStart, rangeEnd, rotCount, gelbCount, gruenCount, total: squadPlayers.length };
+  }, [physioEntries, squadPlayers]);
+
+  // Modernes Struktur-/Prozessdiagramm (Flowchart-artig): visualisiert den Inhalt des Physio-Plans
+  // als horizontales Phasen-Band mit Spieler-Zuordnungen, Belastungsdauer und geschätzter Restzeit.
+  const PhaseFlowNow = () => {
+    const { rows, rotCount, gelbCount, gruenCount } = injuryFlow;
+
+    const phasen = [
+      { id: 'gruen', label: 'Spielfähig / Voll belastbar', short: 'Grün', count: gruenCount, icon: '🟢', bar: 'bg-emerald-500', text: 'text-emerald-400', ring: 'border-emerald-500' },
+      { id: 'gelb', label: 'Teilbelastung / Reha-Aufbau', short: 'Gelb', count: gelbCount, icon: '🟡', bar: 'bg-amber-400', text: 'text-amber-400', ring: 'border-amber-500' },
+      { id: 'rot', label: 'Ausfall / Nicht belastbar', short: 'Rot', count: rotCount, icon: '🔴', bar: 'bg-red-500', text: 'text-red-400', ring: 'border-red-500' }
+    ];
+
+    return (
+      <div className="px-3 py-2 shrink-0 border-t border-slate-800 bg-slate-950">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 bg-cyan-500/10 text-cyan-400 rounded-lg border border-cyan-500/30">
+              <GitBranch size={15} className="text-cyan-400" />
+            </div>
+            <h3 className="font-black uppercase text-[10px] tracking-widest text-cyan-300">
+              Modernes Verletzungs-Verlaufsdiagramm
+            </h3>
+            <span className="text-slate-700 text-xs">|</span>
+            <span className="text-[9px] font-bold uppercase text-slate-400">
+              Prozess-Flow • Dauer der Belastung • Geschätzte Restzeit – Werte manuell editierbar (Tage)
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3 text-[9px] font-black uppercase">
+            <span className="flex items-center gap-1 text-sky-400"><span className="w-1.5 h-1.5 bg-sky-400 rounded-full inline-block"></span> Manuell</span>
+            <span className="flex items-center gap-1 text-slate-500"><span className="w-1.5 h-1.5 bg-slate-600 rounded-full inline-block"></span> Auto</span>
+            <span className="flex items-center gap-1 text-emerald-400"><span className="w-2.5 h-2.5 bg-emerald-500 rounded-sm inline-block"></span> Belastbar</span>
+            <span className="flex items-center gap-1 text-amber-400"><span className="w-2.5 h-2.5 bg-amber-400 rounded-sm inline-block"></span> Aufbau</span>
+            <span className="flex items-center gap-1 text-red-400"><span className="w-2.5 h-2.5 bg-red-500 rounded-sm inline-block"></span> Ausfall</span>
+            <span className="flex items-center gap-1 text-slate-400"><span className="w-2.5 h-2.5 bg-slate-600 rounded-sm inline-block"></span> Pause</span>
+          </div>
+        </div>
+
+        {/* Prozess-Flow (Flowchart): Phasen-Streifen */}
+        <div className="flex items-stretch gap-1 mb-2">
+          {phasen.map((ph, i) => (
+            <div key={ph.id} className="flex-1 flex items-center gap-1">
+              <div className={`flex-1 bg-slate-900 border ${ph.ring} rounded-md px-2 py-1.5 shadow-sm`}>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] leading-none">{ph.icon}</span>
+                  <span className={`text-[9px] font-black uppercase ${ph.text}`}>{ph.short}</span>
+                </div>
+                <div className="text-sm font-black text-white mt-0.5">{ph.count} Spieler</div>
+                <div className="h-1 mt-1 rounded-full bg-slate-950 overflow-hidden">
+                  <div className={`h-full ${ph.bar}`} style={{ width: `${injuryFlow.total ? Math.max(3, (ph.count / injuryFlow.total) * 100) : 0}%` }}></div>
+                </div>
+              </div>
+              {i < phasen.length - 1 && (
+                <ArrowRight size={15} className="text-slate-600 shrink-0" />
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Spieler-Verläufe (Zeitstrahl je Spieler) */}
+        <div className="overflow-y-auto custom-scrollbar max-h-64">
+          <table className="w-full border-collapse text-[9px] font-bold">
+            <thead className="sticky top-0 bg-slate-950 text-cyan-300 z-10 border-b border-slate-800">
+              <tr>
+                <th className="px-2 py-1 text-left w-36 font-black uppercase">Spieler</th>
+                <th className="px-2 py-1 text-left w-24 font-black uppercase">Aktueller Status</th>
+                <th className="px-2 py-1 text-left w-32 font-black uppercase">Diagnose / Verletzung</th>
+                <th className="px-2 py-1 text-left font-black uppercase">Verletzungs-Zeitraum (Zeitachse)</th>
+                <th className="px-2 py-1 text-center w-28 font-black uppercase text-amber-300">Dauer der Belastung (Tage)</th>
+                <th className="px-2 py-1 text-center w-28 font-black uppercase text-cyan-300">Vermutlich fehlende Zeit (Tage)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="p-4 text-center text-slate-500 italic uppercase tracking-wider text-[10px]">
+                    Noch keine farbigen Physio-Einträge – der Verlauf füllt sich automatisch.
+                  </td>
+                </tr>
+              )}
+              {rows.map(row => {
+                const playerName = `${row.player.lastName || (row.player as any).name || row.player.firstName || ''}`;
+                const phase = row.curPhase || 'gruen';
+                const phMeta = phasen.find(p => p.id === phase)!;
+                const durValue = row.manualDuration !== null && row.manualDuration !== undefined
+                  ? String(row.manualDuration)
+                  : String(Math.round(row.currentDurationDays));
+                const missValue = row.manualMissing !== null && row.manualMissing !== undefined
+                  ? String(row.manualMissing)
+                  : String(row.curPhase === 'gruen' ? 0 : Math.round(row.estimatedMissingDays));
+                return (
+                  <tr key={row.player.id} className="border-b border-slate-800/70 hover:bg-slate-900 transition-colors">
+                    <td className="px-2 py-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className={`w-2 h-2 rounded-full shrink-0 ${phMeta.bar}`}></span>
+                        <span className="font-black uppercase text-white">{playerName}</span>
+                      </div>
+                    </td>
+                    <td className="px-2 py-1.5">
+                      <span className={`px-1.5 py-0.5 rounded uppercase font-black text-[8px] ${phase === 'rot' ? 'bg-red-950 text-red-400' : phase === 'gelb' ? 'bg-amber-950 text-amber-400' : 'bg-emerald-950 text-emerald-400'}`}>
+                        {phMeta.icon} {phMeta.short}
+                      </span>
+                    </td>
+                    <td className="px-2 py-1.5">
+                      <div className="flex items-center gap-1 min-w-0">
+                        <AlertCircle size={11} className="text-slate-500 shrink-0" />
+                        <span className="text-slate-300 font-semibold truncate" title={row.lastDiagnosis}>
+                          {row.lastDiagnosis || '–'}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-2 py-1.5">
+                      <div className="relative h-5 rounded bg-slate-950 border border-slate-800 overflow-hidden">
+                        {row.segments.map((s, si) => (
+                          <div
+                            key={si}
+                            title={`${playerName}: ${s.label || s.injury}`}
+                            className={`absolute inset-y-0 ${
+                              s.color === 'rot' ? 'bg-red-500/70' :
+                              s.color === 'gelb' ? 'bg-amber-400/70' :
+                              'bg-emerald-500/50'
+                            }`}
+                            style={{ left: `${Math.max(0, s.from * 100)}%`, width: `${Math.max(1, (s.to - s.from) * 100)}%` }}
+                          ></div>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-2 py-1.5 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <span className={`w-1.5 h-1.5 rounded-full ${row.manualDuration !== null && row.manualDuration !== undefined ? 'bg-sky-400' : 'bg-slate-700'}`} title={row.manualDuration !== null && row.manualDuration !== undefined ? 'Manuell eingetragen' : 'Automatisch berechnet'}></span>
+                        <input
+                          type="number"
+                          min={0}
+                          value={durValue}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            const n = v === '' ? 0 : Math.max(0, parseInt(v, 10) || 0);
+                            onUpdatePlayer(row.player.id, 'physioDurationOverrideDays', n);
+                          }}
+                          className="w-14 bg-slate-900 border border-slate-700 rounded text-center text-[10px] font-black text-amber-300 focus:outline-none focus:border-sky-500 px-1 py-0.5"
+                          style={{ WebkitAppearance: 'none', MozAppearance: 'textfield' }}
+                        />
+                      </div>
+                    </td>
+                    <td className="px-2 py-1.5 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <span className={`w-1.5 h-1.5 rounded-full ${row.manualMissing !== null && row.manualMissing !== undefined ? 'bg-sky-400' : 'bg-slate-700'}`} title={row.manualMissing !== null && row.manualMissing !== undefined ? 'Manuell eingetragen' : 'Automatisch berechnet'}></span>
+                        <input
+                          type="number"
+                          min={0}
+                          value={missValue}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            const n = v === '' ? 0 : Math.max(0, parseInt(v, 10) || 0);
+                            onUpdatePlayer(row.player.id, 'physioMissingOverrideDays', n);
+                          }}
+                          className="w-14 bg-slate-900 border border-slate-700 rounded text-center text-[10px] font-black text-cyan-300 focus:outline-none focus:border-sky-500 px-1 py-0.5"
+                          style={{ WebkitAppearance: 'none', MozAppearance: 'textfield' }}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -846,6 +1173,9 @@ export const PhysioPlanView: React.FC<PhysioPlanViewProps> = ({
           </section>
         </div>
       </div>
+
+      {/* ERGÄNZUNG: Modernes Verletzungs-Verlaufsdiagramm (eigener Abschnitt unter dem Original-Inhalt) */}
+      <PhaseFlowNow />
 
       {/* Footer Info */}
       <div className="px-3 py-1.5 bg-slate-950 border-t border-slate-800 text-slate-400 flex justify-between items-center shrink-0">

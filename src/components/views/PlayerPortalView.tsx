@@ -2426,74 +2426,74 @@ export const PlayerPortalView: React.FC<PlayerPortalViewProps> = ({
     const dataText = `Aktuelle Scores: Sprint 10m ${S.sprint10mScore}/100 · 30m ${S.sprint30mScore}/100 · Yo-Yo ${S.yoyoScore}/100 · Sprung ${S.jumpScore}/100 · Topspeed ${Math.min(100,(S.maxSpeed/40)*100).toFixed(0)}/100 · Belastung ${S.workloadScore}/100.`;
 
     const cards = [
-      { el: <HoloRadar />, title: 'HOLO-LEISTUNGSRADAR', fn: 'Vergleicht 6 Leistungsachsen auf Skala 0-100.',
-        what: 'Ein Radardiagramm, das die sechs wichtigsten Leistungsmerkmale des Spielers auf einer gemeinsamen Skala (0-100) gegenüberstellt und so sofort zeigt, wo Stärken und Schwächen liegen.',
+      { el: <HoloRadar />, title: 'HOLO-LEISTUNGSRADAR', fn: 'Radar-Vergleich der 6 Kern-Werte (Sprint 10m/30m, Yo-Yo, Sprung, Topspeed, Belastung) auf Skala 0–100.',
+        what: 'Das Leistungsradar stellt die sechs wichtigsten Leistungswerte des Spielers in einem Sechseck dar: Sprint 10m, Sprint 30m, Yo-Yo-Ausdauer, Sprungkraft, Topspeed und aktuelle Belastung. Jede Achse läuft von 0 (innen) bis 100 (außen), gut = groß, schlecht = klein. Die Fläche des 6-Ecks zeigt die Gesamtleistung: je größer und runder, desto ausgeglichener – je eckiger, desto klarer das Stärken-/Schwächenprofil.',
         leistung: `Die Fläche des 6-Ecks entspricht der Gesamtleistung. Der stärkste Wert ist ${vol(Math.max(S.sprint10mScore,S.sprint30mScore,S.yoyoScore,S.jumpScore,Math.min(100,(S.maxSpeed/40)*100),S.workloadScore))}, der schwächste ${vol(Math.min(S.sprint10mScore,S.sprint30mScore,S.yoyoScore,S.jumpScore,Math.min(100,(S.maxSpeed/40)*100),S.workloadScore))}. ${dataText}`,
         erwartung: 'Ein Profil über 70/100 in Sprint, Ausdauer und Sprungkraft gilt als belastbarer Basiswert für den Spielbetrieb.',
         gefehlt: 'Die Radarflächen, die unter 60 liegen, fehlen für ein rundes Profil – je eckiger die Form, desto klarer das Defizit.',
         erreichen: 'Gezielte Kraft-/Sprintzyklen und Ausdauerblöcke schließen die schwachen Achsen und runden das Sechseck nach oben ab.' },
-      { el: <LoadGauge />, title: 'BELASTUNGS-LOAD-GAUGE', fn: 'Aktuelle Trainingsbelastung als Rundinstrument.',
-        what: 'Ein Rundmessgerät, das die aktuelle Belastung (0-100) als leuchtendes Segment anzeigt – wie ein Tacho für den Trainingszustand.',
+      { el: <LoadGauge />, title: 'BELASTUNGS-LOAD-GAUGE', fn: 'Aktuelle Trainingsbelastung (0–100) als Rundinstrument – je voller der Ring, desto höher die Belastung.',
+        what: 'Ein Rundmessgerät wie ein Tacho für den Trainingszustand: Der leuchtende Bogen zeigt die aktuelle Belastung (0–100), die Ampel (Grün/Gelb/Rot) klassifiziert sie. So erkennt der Trainer sofort, ob der Spieler entlastet werden muss oder Belastung verträgt – ein Diagnose-Werkzeug gegen Überlastung und Verletzungen.',
         leistung: `Aktuelle Belastung: ${S.workloadScore}/100. ${S.loadAmpel}-Ampel. Team-Durchschnitt: ${S.teamWorkload}.`,
         erwartung: 'Im Regenerationsbereich unter 60, im Belastungspeak zwischen 60-85, kritisch über 85.',
         gefehlt: S.workloadScore < 60 ? 'Wenig Trainingsreiz – für Wettkampfhärte fehlen Belastungspeaks.' : S.workloadScore > 85 ? 'Übersteuerung – es fehlt ein gezielter Regenerationstag.' : 'Ausgewogener Bereich erreicht, nur die Feinjustierung fehlt.',
         erreichen: 'Load nach Ampel steuern: Grün = normal weiter, Gelb = reduzieren, Rot = Regeneration einplanen.' },
-      { el: <GpsNeonBars />, title: 'GPS-LOAD VOLUMETRIC', fn: 'Distanz, Topspeed, High-Speed & Sprints als Neon-Balken.',
-        what: 'Glühende Balken zeigen die Laufleistung des Spielers (km, km/h, High-Speed-Meter, Sprintanzahl) und vergleichen ihn automatisch mit dem Mannschaftsdurchschnitt.',
+      { el: <GpsNeonBars />, title: 'GPS-LOAD VOLUMETRIC', fn: 'Laufvolumen aus dem GPS-Tracker (Distanz, Topspeed, High-Speed, Sprints) im Vergleich zum Team-Durchschnitt.',
+        what: 'Glühende Balken zeigen die echten GPS-Messwerte in vier Bereichen: Gesamtdistanz (km), Spitzengeschwindigkeit (km/h), High-Speed-Distanz (m) und Sprintanzahl. Der schmale Referenzstrich ist der Mannschaftsdurchschnitt – so sieht man sofort, ob der Spieler über oder unter dem Team-Niveau liegt und wo das Laufvolumen Defizite hat.',
         leistung: `Distanz ${S.distKm} km · Topspeed ${S.maxSpeed} km/h · High-Speed ${S.highSpeedM} m · ${S.sprints} Sprints.`,
         erwartung: 'Mittelfeldspieler ~10-11 km, Stürmer höhere Sprintsprints, Abwehrspieler kürzere aber intensive Distanzen.',
         gefehlt: 'Die Balken, die unter dem Team-Strich bleiben, zeigen fehlendes Volumen oder fehlende Intensität (zu wenige Sprint-Spitzen).',
         erreichen: 'Volumen über Dauerläufe, Intensität über Sprints/Konditionierung steigern – Ziele pro Einheit festlegen.' },
-      { el: <SprintCurve />, title: 'SPRINT-ANTRIEB SKURVE', fn: 'Beschleunigungsprofil 10m → 30m als Kurve.',
-        what: 'Zeigt die Kurve des Antritt-Verlaufs: der 10m-Wert misst die Explosivität, der 30m-Wert die Endgeschwindigkeit – und die Steigung zeigt, wie schnell der Spieler beschleunigt.',
+      { el: <SprintCurve />, title: 'SPRINT-ANTRIEB SKURVE', fn: 'Beschleunigungsprofil: Antritt über 10m → Grundspeed über 30m als Verlaufskurve.',
+        what: 'Die Kurve zeigt den Beschleunigungsverlauf über die ersten 30 Meter. Kurze Antrittzeit über 10m = explosive Beschleunigung, kurze Zeit über 30m = hohe Endgeschwindigkeit. Aus der Steigung der Kurve liest man, wie schnell der Spieler Tempo aufbaut und wo der Sprint „abfällt" – entscheidend für Duelle, Pressing und Umschalten.',
         leistung: `Antritt 10m: ${S.sprint10m.toFixed(2)}s · Grundspeed 30m: ${S.sprint30m.toFixed(2)}s · Antritts-Score ${S.sprint10mScore}/100.`,
         erwartung: 'Sehr gute 10m-Werte (unter ~1,65s) sind Voraussetzung für Duelle und Umschalten.',
         gefehlt: 'Ein flacher Verlauf zwischen 10m und 30m bedeutet, dass der Antritt da ist, aber die Endspeed ausfällt – oder umgekehrt.',
         erreichen: 'Explosives Startsprint-Training (Acceleration) und maximale Sprint-Cape für die Endgeschwindigkeit.' },
-      { el: <HrWaterfall />, title: 'HERZFREQUENZ-SPEKTRUM', fn: 'Herzfrequenz-Zonen als Spektral-Wasserfall.',
-        what: 'Stellt die Herzfrequenz des Spielers als Farb-Spektrum dar und zeigt, in welcher Belastungszone (Ausdauer/Aerob/Anaerob) er sich bewegt.',
+      { el: <HrWaterfall />, title: 'HERZFREQUENZ-SPEKTRUM', fn: 'Herzfrequenz-Zonen als Spektral-Wasserfall: Pulsverlauf und Belastungszonen pro Minute.',
+        what: 'Stellt den Herzfrequenz-Verlauf als farbiges Spektrum dar. Niedrige Zonen (Erholung, aerob) nach unten, hohe Zonen (anaerob, Spitzenbelastung) nach oben. So sieht man, in welcher Intensitätszone der Spieler wie lange arbeitet und wie schnell sich der Puls zwischen Belastungen wieder senkt – ein Maß für Regenerationsfähigkeit und aerobe Grundlage.',
         leistung: `Durchschnittliche Herzfrequenz: ${S.avgHr} bpm · geschätzte Intensitätszone ~${Math.max(35,Math.min(99,Math.round(((S.avgHr-100)/(195-100))*100)))}%.`,
         erwartung: 'Eine flexible Kurve, die in Pausen absinkt und bei Belastung schnell steigt (schnelle Regeneration).',
         gefehlt: 'Bleibt die HF dauerhaft hoch und erholt sich schlecht, fehlt aerobe Grundlagenausdauer.',
         erreichen: 'Gezielte Ausdauer-Einheiten im aeroben Bereich und Kontrolle der Puls-Senkung zwischen den Belastungen.' },
-      { el: <ScorerOrbit />, title: 'SCORER-ORBIT', fn: 'Tore, Vorlagen & Minuten als Planeten.',
-        what: 'Setzt die wichtigsten Offensiv-Kennzahlen (Tore, Vorlagen, Einsatzminuten) als „Planeten" in Umlaufbahnen rund um den Spieler – Größe = Gewicht/Relevanz.',
+      { el: <ScorerOrbit />, title: 'SCORER-ORBIT', fn: 'Offensiv-Produktion: Tore, Vorlagen & Minuten als kreisende Körper – Größe = Wichtigkeit.',
+        what: 'Sammelt die entscheidenden Offensiv-Kennzahlen (Tore, Vorlagen, Einsatzminuten) als „Planeten" rund um den Spieler. Je größer ein Planet, desto größer sein Beitrag. Man erkennt auf einen Blick, ob der Spieler seine Scorer-Werte aus Toren, Vorlagen oder aus reiner Präsenz (Minuten) bezieht – und wo der Ertrag fehlt.',
         leistung: `Tore: ${S.totalGoals} · Vorlagen: ${S.totalAssists} · Einsatzminuten: ${S.totalMinutes}.`,
         erwartung: 'Für einen ${S.position} sollte sich das Gewicht auf die passende Position verteilen: Stürmer auf Tore, Mittelfeld auf Vorlagen, Abwehr auf Minuten/Belastbarkeit.',
         gefehlt: 'Fehlt der Tor-Planet Größe, war die Abschlussqualität / der letzte Pass zu selten im Spiel.',
         erreichen: 'Abschlusstraining, besserer Zeilenlauf in die Box und erhöhte Entscheidungsqualität im letzten Drittel.' },
-      { el: <PassTackleDonut />, title: 'EFFIZIENZ-DONUT', fn: 'Passquote & Zweikampfquote als Ring-Segmente.',
-        what: 'Donut-Ringe zeigen die technische (Passquote) und physische (Zweikampfquote) Effizienz, damit man sieht, wie sauber und wie aggressiv gespielt wird.',
+      { el: <PassTackleDonut />, title: 'EFFIZIENZ-DONUT', fn: 'Passquote (%) & Zweikampfquote (%) als Ring-Segmente – Füllgrad = Effizienz.',
+        what: 'Zwei Donut-Ringe zeigen die technische und physische Effizienz: Passquote (erfolgreiche Pässe in %) und Zweikampfquote (gewonnene Zweikämpfe in %). Der Füllgrad jedes Rings entspricht der Quote – je voller, desto sauberer das Passspiel bzw. desto stärker das Zweikampfverhalten. Ein dünner Ring zeigt sofort, in welchem Bereich Effizienz fehlt.',
         leistung: `Passquote: ${S.avgPass}% · Zweikampfquote: ${S.avgTackle}%.`,
         erwartung: 'Passquote über 80%, Zweikampfquote über 55% gelten als solide Basis.',
         gefehlt: 'Eine niedrige Zweikampfquote zeigt fehlende Physis/Entschlossenheit – eine niedrige Passquote fehlende Ruhe/Position.',
         erreichen: 'Zweikampftraining & Timing verbessern; Passspiel mit direktem Spiel und besserer Ballposition stabilisieren.' },
-      { el: <EnergyMatrix />, title: 'HOCHINTENSIVE ENERGIEMATRIX', fn: 'Heat-Grid der hohen Laufbelastung.',
-        what: 'Ein farbiges Raster, dessen Zellen die Verteilung hochintensiver Läufe darstellt – je heller, desto mehr explosive Belastungsspitzen.',
+      { el: <EnergyMatrix />, title: 'HOCHINTENSIVE ENERGIEMATRIX', fn: 'Raster der hochintensiven Belastung: Zellen = Intensität explosiver Läufe pro Bereich.',
+        what: 'Ein farbiges Raster, in dem jede Zelle den Anteil hochintensiver Läufe in einem Bereich der Einheit darstellt. Helle Zellen = viele explosive Antritte/Sprints, dunkle = wenig. Damit sieht man, wo im Spiel und auf welchem Raum die Belastungsspitzen liegen – und ob der Spieler genügend entscheidende Sprints in wichtigen Momenten bringt.',
         leistung: `${S.sprints} Sprints · ${S.highSpeedM}m High-Speed-Distanz.`,
         erwartung: 'Eine gleichmäßig intensive Matrix mit klaren hellen Spitzen bei Spielgeschehen (Konter, Sprints in die Tiefe).',
         gefehlt: 'Sind die Zellen zu dunkel, fehlen die entscheidenden explosiven Antritte in wichtigen Spielmomenten.',
         erreichen: 'Intervall- und Sprinttraining mit Wiederholungshärte und kurzen Pausen, um das Explosions-Niveau zu erhöhen.' },
-      { el: <LoadPyramid />, title: 'AUSLASTUNGS-PYRAMIDE', fn: 'Frische, Belastung & Ampel als 3D-Pyramide.',
-        what: 'Baut ein dreistufiges Pyramiden-Modell aus Frische, aktueller Belastung und Ampelstatus – je kompakter und leuchtender, desto besser ausbalanciert.',
+      { el: <LoadPyramid />, title: 'AUSLASTUNGS-PYRAMIDE', fn: 'Balance aus Frische (Basis), Belastung (Mitte) & Ampel (Spitze) als 3D-Pyramide.',
+        what: 'Ein dreistufiges Pyramiden-Modell des aktuellen Zustands: Die Basis zeigt die Frische/Regeneration des Spielers, die Mitte die aktuelle Belastung, die Spitze den Ampelstatus. Eine stabile, breite Pyramide (viel Frische, kontrollierte Belastung, grüne Ampel) bedeutet Einsatzbereitschaft. Eine „toplastige" Pyramide (hohe Belastung, wenig Frische) signalisiert Überlastung vor dem Spiel.',
         leistung: `Frische ~${Math.max(40,100-S.workloadScore)}% · Belastung ${S.workloadScore}/100 · Ampel ${S.loadAmpel}.`,
         erwartung: 'Eine klare Hierarchie: hohe Frische-Basis, kontrollierte Belastung, grüne Ampel vor dem Spiel.',
         gefehlt: 'Ein Toplastiges Modell (hohe Belastung, frische Basis klein) bedeutet vor dem Spiel zu wenig Frische.',
         erreichen: 'Vor Wettkämpfen Entlastung / Tapering einplanen, damit die Pyramide zur Belastungsspitze steht.' },
-      { el: <RpeBars />, title: 'RPE-TRAININGSLAST', fn: 'RPE 1-10 je Einheit als Neon-Säulen.',
-        what: 'Balken, die zeigen, wie anstrengend jede Trainingseinheit subjektiv empfunden wurde (RPE-Skala 1-10) – die Grundlage für die Belastungssteuerung.',
+      { el: <RpeBars />, title: 'RPE-TRAININGSLAST', fn: 'Subjektive Anstrengung (RPE 1–10) pro Trainingseinheit als Neon-Säulen – Lastverlauf sichtbar.',
+        what: 'Jede Säule steht für eine Trainingseinheit und zeigt deren subjektive Anstrengung auf der RPE-Skala von 1 (sehr leicht) bis 10 (maximal). So wird der Belastungsverlauf über die Woche sichtbar: harte und leichte Tage im Wechsel sind ideal für Regeneration und Leistungszuwachs, dauerhaft hohe Werte zeigen Überlastung an.',
         leistung: `${(sheetLogs && sheetLogs.length ? sheetLogs.length : 1)} Einheit(en) ausgewertet.`,
         erwartung: 'Eine wechselnde Tages-RPE (leichte + harte Tage) ist ideal für superkompensation und Frische.',
         gefehlt: 'Zu viele gleiche/hohe Werte überlasten den Regenerationsprozess – zu niedrige bringen keine Entwicklung.',
         erreichen: 'RPE am Tagesende ehrlich dokumentieren und die Woche so mischen, dass harte und leichte Tage rotieren.' },
-      { el: <FitnessPulse />, title: 'FITNESS & FRISCHE', fn: 'Pulsierende Ringe für den Ampelstatus.',
-        what: 'Ein pulsierendes Radar, dessen Farbe und Tempo den aktuellen Frische-Zustand (Ampel) nachempfindet – ein schneller Überblick, ob der Spieler einsatzbereit ist.',
+      { el: <FitnessPulse />, title: 'FITNESS & FRISCHE', fn: 'Aktuelle Einsatzbereitschaft: pulsfarbene Ampel-Ringe = Frische-Zustand.',
+        what: 'Ein pulsierendes Radar, dessen Farbe den aktuellen Frische-Zustand anzeigt – Grün = frisch und einsatzbereit, Gelb = eingeschränkt, Rot = nicht regeneriert. Das Pulsieren und die Ringe visualisieren Tempo und Intensität der Erholung. Ein Schnell-Check, ob der Spieler für das nächste Training oder Spiel verfügbar ist.',
         leistung: `Zustand: ${S.fitness} · Ampel: ${S.loadAmpel}.`,
         erwartung: 'Vor dem Spiel eine grüne Ampel – der Spieler muss früh genug regeneriert und frisch sein.',
         gefehlt: 'Gelbe/Rote Ampel zeigt, dass die Regeneration (Schlaf, Ernährung, Entlastung) zu kurz kam.',
         erreichen: 'Regenerationsroutinen (Eisbad, Schlafhygiene, Proteine, Entlastungs-Einheiten) vor und nach Belastung fest einplanen.' },
-      { el: <KpiConstellation />, title: 'PERFORMANCE-KONSTELLATION', fn: 'KPI-Scores als Partikel-Sternbild.',
-        what: 'Verbindet alle sechs Kern-KPIs als leuchtende Sternenpunkte und Datenlinien – eine Art „Gesamtausdruck" der Leistungsfähigkeit in einem Sternbild.',
+      { el: <KpiConstellation />, title: 'PERFORMANCE-KONSTELLATION', fn: 'Gesamtbild aller KPI-Scores als Partikel-Sternbild – Helligkeit = Stärke.',
+        what: 'Verbindet die sechs Kern-KPIs zu einem „Sternbild": Jeder KPI ist ein leuchtender Punkt, Datenlinien verbinden sie. Große, helle Sterne sind Stärken, kleine/dunkle Sterne sind Ausbaubereiche. Das Muster zeigt den Gesamtausdruck der Leistungsfähigkeit und macht komplexe Leistungswerte mit einem Blick vergleichbar.',
         leistung: `Die Konstellation zeigt die Summe aller Werte; große helle Sterne = Stärken, kleine = Ausbaubereiche. ${dataText}`,
         erwartung: 'Eine möglichst helle, gleichmäßig verteilte Konstellation ohne schwache „dunkle" Sterne.',
         gefehlt: 'Die kleinen/dunklen Sterne der Konstellation sind die KPI-Bereiche, die im Match am meisten fehlten.',
@@ -5535,33 +5535,35 @@ export const PlayerPortalView: React.FC<PlayerPortalViewProps> = ({
                         onClick={handlePitchClick}
                         className="w-full relative rounded-xl border border-[#1f2937] overflow-hidden cursor-crosshair select-none"
                         style={{
-                          aspectRatio: '16/10',
+                          aspectRatio: '100/154',
                           background: 'linear-gradient(135deg, #1a472a 0%, #14532d 50%, #166534 100%)'
                         }}
                       >
-                        {/* Football lines SVG (vertical) */}
-                        <svg viewBox="0 0 100 64" className="w-full h-full absolute inset-0 pointer-events-none opacity-50">
-                          <rect x="2" y="2" width="96" height="60" fill="none" stroke="white" strokeWidth="0.5" />
-                          <line x1="50" y1="2" x2="50" y2="62" stroke="white" strokeWidth="0.5" />
-                          <circle cx="50" cy="32" r="9.15" fill="none" stroke="white" strokeWidth="0.5" />
-                          <circle cx="50" cy="32" r="0.5" fill="white" />
-                          <rect x="2" y="12" width="17.5" height="40" fill="none" stroke="white" strokeWidth="0.5" />
-                          <rect x="2" y="20.5" width="5.5" height="23" fill="none" stroke="white" strokeWidth="0.5" />
-                          <circle cx="11" cy="32" r="0.5" fill="white" />
-                          <path d="M 18.5 26.5 A 9.15 9.15 0 0 1 18.5 37.5" fill="none" stroke="white" strokeWidth="0.5" />
-                          <rect x="80.5" y="12" width="17.5" height="40" fill="none" stroke="white" strokeWidth="0.5" />
-                          <rect x="92.5" y="20.5" width="5.5" height="23" fill="none" stroke="white" strokeWidth="0.5" />
-                          <circle cx="89" cy="32" r="0.5" fill="white" />
-                          <path d="M 81.5 26.5 A 9.15 9.15 0 0 0 81.5 37.5" fill="none" stroke="white" strokeWidth="0.5" />
+                        {/* Football lines SVG (portrait, goals top/bottom) */}
+                        <svg viewBox="0 0 100 154" className="w-full h-full absolute inset-0 pointer-events-none opacity-50">
+                          <rect x="2" y="2" width="96" height="150" fill="none" stroke="white" strokeWidth="0.5" />
+                          <line x1="2" y1="77" x2="98" y2="77" stroke="white" strokeWidth="0.5" />
+                          <circle cx="50" cy="77" r="9.15" fill="none" stroke="white" strokeWidth="0.5" />
+                          <circle cx="50" cy="77" r="0.5" fill="white" />
+                          <rect x="20.3" y="2" width="59.4" height="24.3" fill="none" stroke="white" strokeWidth="0.5" />
+                          <rect x="36.55" y="2" width="26.9" height="8.1" fill="none" stroke="white" strokeWidth="0.5" />
+                          <circle cx="50" cy="18.2" r="0.5" fill="white" />
+                          <path d="M 45.75 26.3 A 9.15 9.15 0 0 1 54.25 26.3" fill="none" stroke="white" strokeWidth="0.5" />
+                          <rect x="20.3" y="127.7" width="59.4" height="24.3" fill="none" stroke="white" strokeWidth="0.5" />
+                          <rect x="36.55" y="143.9" width="26.9" height="8.1" fill="none" stroke="white" strokeWidth="0.5" />
+                          <circle cx="50" cy="135.8" r="0.5" fill="white" />
+                          <path d="M 45.75 127.7 A 9.15 9.15 0 0 0 54.25 127.7" fill="none" stroke="white" strokeWidth="0.5" />
+                          <rect x="47" y="0" width="6" height="2" fill="white" opacity="0.6" />
+                          <rect x="47" y="152" width="6" height="2" fill="white" opacity="0.6" />
                           <path d="M 2 3 A 1 1 0 0 1 3 2" fill="none" stroke="white" strokeWidth="0.5" />
                           <path d="M 98 3 A 1 1 0 0 0 97 2" fill="none" stroke="white" strokeWidth="0.5" />
-                          <path d="M 2 61 A 1 1 0 0 0 3 62" fill="none" stroke="white" strokeWidth="0.5" />
-                          <path d="M 98 61 A 1 1 0 0 1 97 62" fill="none" stroke="white" strokeWidth="0.5" />
+                          <path d="M 2 151 A 1 1 0 0 0 3 152" fill="none" stroke="white" strokeWidth="0.5" />
+                          <path d="M 98 151 A 1 1 0 0 1 97 152" fill="none" stroke="white" strokeWidth="0.5" />
                         </svg>
 
                         {/* TRAJECTORY VECTORS / CONNECTING MOVEMENT LINES */}
                         {(movementViewMode === 'combined' || movementViewMode === 'vectors') && pointsBeforeFilter.length >= 2 && (
-                          <svg viewBox="0 0 100 64" className="w-full h-full absolute inset-0 pointer-events-none z-10 overflow-visible">
+                          <svg viewBox="0 0 100 154" className="w-full h-full absolute inset-0 pointer-events-none z-10 overflow-visible">
                             <defs>
                               <marker id="arrow-sprint" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse">
                                 <path d="M 0 1 L 10 5 L 0 9 z" fill="#ef4444" />
@@ -5581,9 +5583,9 @@ export const PlayerPortalView: React.FC<PlayerPortalViewProps> = ({
                               if (idx === 0) return null;
                               const prev = pointsBeforeFilter[idx - 1];
                               const x1 = prev.y;
-                              const y1 = 64 - prev.x * 0.64;
+                              const y1 = 154 - prev.x * 1.54;
                               const x2 = pt.y;
-                              const y2 = 64 - pt.x * 0.64;
+                              const y2 = 154 - pt.x * 1.54;
 
                               const actType = pt.actionType || 'run';
                               const strokeColor = actType === 'sprint' ? '#ef4444' : actType === 'defensive' ? '#3b82f6' : actType === 'walk' ? '#10b981' : '#f59e0b';

@@ -3,7 +3,7 @@
 
 import { initializeApp } from 'firebase/app';
 import { initializeFirestore, getFirestore } from 'firebase/firestore';
-import { getAuth, GoogleAuthProvider } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, setPersistence, browserLocalPersistence, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import firebaseConfig from '../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
@@ -23,6 +23,69 @@ try {
 
 export const db = dbInstance;
 export const auth = getAuth(app);
+
+// Anmeldung dauerhaft im Browser speichern (nicht nur pro Sitzung): Die bereits
+// vorhandene anonyme Identität wird beim nächsten App-Start sofort wiederhergestellt.
+// So bleibt die App sofort nutzbar und es entstehen keine ständig neuen
+// aonymen Konten (welche die Auth-Rate-Limits erreicht hätten => "App hängt").
+void setPersistence(auth, browserLocalPersistence)
+  .then(() => console.info('FC Auggen: Anmeldung wird im Browser gespeichert (Start ohne Wartezeit)'))
+  .catch((err) => console.warn('Persistence nicht gesetzt:', err));
+
+let lastAnonAttemptAt = 0;
+
+// Stellt sicher, dass eine (anonyme) Anmeldung existiert. Mit Cooldown, damit
+// bei Problemen nicht unbegrenzt neue Anmeldeversuche ankommen (Rate-Limits).
+export async function ensureAnonymousSession(): Promise<void> {
+  if (typeof window === 'undefined') return;
+  if (auth.currentUser) return;
+  const now = Date.now();
+  if (now - lastAnonAttemptAt < 30_000) return;
+  lastAnonAttemptAt = now;
+  try {
+    await signInAnonymously(auth);
+  } catch (err: any) {
+    console.warn('Anonyme Anmeldung fehlgeschlagen:', err?.message ?? err);
+  }
+}
+
+// Fehler, bei denen ein NEUER Firestore-Listener helfen kann: Der SDK erholt
+// sich nach einem einmaligen "permission-denied" nie wieder von selbst.
+export function isRetryableSnapshotError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err || '');
+  return /permission-denied|insufficient permissions|unavailable|not-authenticated|auth\//i.test(msg);
+}
+
+// RACE-FIX (App "hängt"/bleibt leer): Firestore darf erst benutzt werden, wenn die
+// (anonyme) Anmeldung abgeschlossen ist. Starten Listener ohne Token, antwortet
+// Firestore einmalig mit "permission-denied" und der SDK erholt sich danach NIE
+// wieder – alle Daten bleiben dauerhaft leer. main.tsx wartet auf dbReadiness,
+// bevor die App gerendert wird. Bei totalem Ausfall (Offline) nach max. 8 s
+// trotzdem fortfahren (App startet dann ggf. ohne Cloud-Sync).
+export const dbReadiness: Promise<void> = (async () => {
+  if (typeof window === 'undefined') return;
+  await new Promise<void>((resolve) => {
+    let settled = false;
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user?.uid && !settled) {
+        settled = true;
+        unsubscribe();
+        resolve();
+      }
+    });
+    // Hard cap: niemals blockieren (offline = App trotzdem starten).
+    setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        unsubscribe();
+        resolve();
+      }
+    }, 8000);
+    // Nur nötig, wenn in dieser Browser-Sitzung noch kein Nutzer existiert
+    // (dauerhafte Speicherung -> in der Regel sofortiger Wiederherstellung).
+    void ensureAnonymousSession();
+  });
+})();
 export const googleProvider = new GoogleAuthProvider();
 
 // Hintergrund-Sync für Offline-Warteschlange starten (Ziel: Firestore, sobald erreichbar/autorisiert)

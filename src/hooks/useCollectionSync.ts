@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { collection, onSnapshot, doc, setDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, ensureAnonymousSession, isRetryableSnapshotError } from '../firebase';
 import { getLocalCollection, saveLocalCollection, enqueueSyncOperation, getPendingLocalItems } from '../lib/offlineStorage';
 
 function sanitizeFirestoreData<T>(obj: T): T {
@@ -142,93 +142,136 @@ export function useCollectionSync<T>(
     setLoading(true);
     setError(null);
 
+    // Watchdog (Anti-Haenger): Fall Backend/Regeln nicht antworten,
+    // wird das Laden nach 9s garantiert beendet - die Seite bleibt IMMER nutzbar.
+    // Sobald ein Snapshot eintrifft, wird er abgeschaltet (kein Fehlalarm).
+    const watchdog = window.setTimeout(() => {
+      setLoading(false);
+      console.warn(`[Watchdog] ${effectiveCollection}: Sync nach 9s beendet (Firestore antwortete nicht) - lokale/zwischengespeicherte Daten bleiben sichtbar.`);
+    }, 9000);
+
     const colRef = collection(db, effectiveCollection);
     const q = sortField ? query(colRef, orderBy(sortField as string, sortDirection)) : colRef;
 
-    const unsubscribe = onSnapshot(
-      q,
-      async (snapshot) => {
-        const items: T[] = [];
-        snapshot.forEach((docSnap) => {
-          items.push({ [idField]: docSnap.id, ...docSnap.data() } as unknown as T);
-        });
+    // Selbstheilung: Der Firebase-SDK erholt sich nach einem einmaligen
+    // "permission-denied" NIE wieder (Listener bleibt "terminal" ohne Daten).
+    // Deshalb wird bei Autorisierungs-/Netzwerkfehlern nach kurzer Pause ein
+    // NEUER Listener erstellt und die (anonyme) Anmeldung bei Bedarf erneuert.
+    let stopped = false;
+    let currentUnsubscribe: (() => void) | null = null;
+    let retryTimer: number | null = null;
+    let retries = 0;
 
-        if (sortField && !q) {
-          items.sort((a: any, b: any) => {
-            const valA = a[sortField];
-            const valB = b[sortField];
-            if (valA === undefined) return 1;
-            if (valB === undefined) return -1;
-            if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
-            if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
-            return 0;
+    const startListener = () => {
+      if (stopped) return;
+      currentUnsubscribe = onSnapshot(
+        q,
+        async (snapshot) => {
+          window.clearTimeout(watchdog);
+          const items: T[] = [];
+          snapshot.forEach((docSnap) => {
+            items.push({ [idField]: docSnap.id, ...docSnap.data() } as unknown as T);
           });
-        }
 
-        // Offline-first: Server-Snapshot mit lokalen Quellen (Sync-Queue,
-        // IndexedDB-Cache UND In-Memory-Stand) vereinigen. Ein zeitweiser
-        // spärlicher Serverstand darf die lokal vorhandenen Einheiten NICHT
-        // ausblenden - sonst verschwinden nach einem Write alle Einheiten.
-        try {
-          const [pending, cached] = await Promise.all([
-            getPendingLocalItems(effectiveCollection),
-            getLocalCollection(effectiveCollection),
-          ]);
-          const idKey = (it: any) => String(it?.[idField] || it?.id);
+          if (sortField && !q) {
+            items.sort((a: any, b: any) => {
+              const valA = a[sortField];
+              const valB = b[sortField];
+              if (valA === undefined) return 1;
+              if (valB === undefined) return -1;
+              if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+              if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+              return 0;
+            });
+          }
 
-          const setMap = new Map<string, any>();
-          const deleteIds = new Set<string>();
-          for (const op of pending) {
-            if (op.operation === 'SET' && op.data) setMap.set(op.itemId, op.data);
-            else if (op.operation === 'DELETE') deleteIds.add(op.itemId);
-          }
-          let mergedItems = items;
-          if (deleteIds.size > 0) {
-            mergedItems = items.filter((it) => !deleteIds.has(idKey(it)));
-          }
-          for (const [pid, pdata] of setMap) {
-            const idx = mergedItems.findIndex((it) => idKey(it) === pid);
-            const obj = { [idField]: pid, ...pdata } as unknown as T;
-            if (idx >= 0) mergedItems[idx] = obj;
-            else mergedItems.push(obj);
-          }
-          // Cache-Union: lokal bekannte Elemente, die der Server (noch) nicht
-          // hat, bleiben sichtbar und gehen NICHT verloren.
-          for (const source of [cached, dataRef.current]) {
-            if (!Array.isArray(source)) continue;
-            const known = new Set(mergedItems.map(idKey));
-            for (const localItem of source) {
-              const ck = idKey(localItem);
-              if (!ck || deleteIds.has(ck)) continue;
-              if (!known.has(ck)) {
-                mergedItems.push(localItem as T);
-                known.add(ck);
+          // Offline-first: Server-Snapshot mit lokalen Quellen (Sync-Queue,
+          // IndexedDB-Cache UND In-Memory-Stand) vereinigen. Ein zeitweiser
+          // spärlicher Serverstand darf die lokal vorhandenen Einheiten NICHT
+          // ausblenden - sonst verschwinden nach einem Write alle Einheiten.
+          try {
+            const [pending, cached] = await Promise.all([
+              getPendingLocalItems(effectiveCollection),
+              getLocalCollection(effectiveCollection),
+            ]);
+            const idKey = (it: any) => String(it?.[idField] || it?.id);
+
+            const setMap = new Map<string, any>();
+            const deleteIds = new Set<string>();
+            for (const op of pending) {
+              if (op.operation === 'SET' && op.data) setMap.set(op.itemId, op.data);
+              else if (op.operation === 'DELETE') deleteIds.add(op.itemId);
+            }
+            let mergedItems = items;
+            if (deleteIds.size > 0) {
+              mergedItems = items.filter((it) => !deleteIds.has(idKey(it)));
+            }
+            for (const [pid, pdata] of setMap) {
+              const idx = mergedItems.findIndex((it) => idKey(it) === pid);
+              const obj = { [idField]: pid, ...pdata } as unknown as T;
+              if (idx >= 0) mergedItems[idx] = obj;
+              else mergedItems.push(obj);
+            }
+            // Cache-Union: lokal bekannte Elemente, die der Server (noch) nicht
+            // hat, bleiben sichtbar und gehen NICHT verloren.
+            for (const source of [cached, dataRef.current]) {
+              if (!Array.isArray(source)) continue;
+              const known = new Set(mergedItems.map(idKey));
+              for (const localItem of source) {
+                const ck = idKey(localItem);
+                if (!ck || deleteIds.has(ck)) continue;
+                if (!known.has(ck)) {
+                  mergedItems.push(localItem as T);
+                  known.add(ck);
+                }
               }
             }
+            if (stopped) return;
+            setData(mergedItems);
+            dataRef.current = mergedItems;
+            setLoading(false);
+            // Caching: Firestore-Stand + offene Writes + Cache-Union lokal spiegeln.
+            saveLocalCollection(effectiveCollection, mergedItems).catch((e) =>
+              console.warn(`[Offline] Cache ${effectiveCollection} nicht geschrieben:`, e)
+            );
+          } catch (e) {
+            if (stopped) return;
+            console.warn(`[Offline] Merge der offenen Writes fehlgeschlagen:`, e);
+            setData(items);
+            dataRef.current = items;
+            setLoading(false);
           }
-          setData(mergedItems);
-          dataRef.current = mergedItems;
+        },
+        (err) => {
+          if (stopped) return;
+          console.error(`[Firestore] Error ${effectiveCollection}:`, err.message);
+          setError(err);
           setLoading(false);
-          // Caching: Firestore-Stand + offene Writes + Cache-Union lokal spiegeln.
-          saveLocalCollection(effectiveCollection, mergedItems).catch((e) =>
-            console.warn(`[Offline] Cache ${effectiveCollection} nicht geschrieben:`, e)
-          );
-        } catch (e) {
-          console.warn(`[Offline] Merge der offenen Writes fehlgeschlagen:`, e);
-          setData(items);
-          dataRef.current = items;
-          setLoading(false);
+          // Bei (teils temporären) Autorisierungs-/Netzwerkfehlern erneut verbinden.
+          if (isRetryableSnapshotError(err) && retries < 4) {
+            retries += 1;
+            const delay = 1500 * Math.pow(2, retries - 1);
+            retryTimer = window.setTimeout(() => {
+              if (stopped) return;
+              void ensureAnonymousSession();
+              startListener();
+            }, delay);
+          } else {
+            // Nicht behebbar -> Watchdog aus, lokale Daten bleiben sichtbar.
+            window.clearTimeout(watchdog);
+          }
         }
-      },
-      (err) => {
-        console.error(`[Firestore] Error ${effectiveCollection}:`, err.message);
-        setError(err);
-        setLoading(false);
-        // Beim Lesefehler lokale Daten behalten (nicht leeren!)
-      }
-    );
+      );
+    };
 
-    return () => unsubscribe();
+    startListener();
+
+    return () => {
+      stopped = true;
+      if (currentUnsubscribe) currentUnsubscribe();
+      if (retryTimer !== null) window.clearTimeout(retryTimer);
+      window.clearTimeout(watchdog);
+    };
   }, [effectiveCollection, idField, sortField, sortDirection, enabled]);
 
   const addOrUpdateItem = useCallback(

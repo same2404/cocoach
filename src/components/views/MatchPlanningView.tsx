@@ -43,6 +43,10 @@ interface MatchPlanningViewProps {
   onWipeAllMatches?: () => Promise<void>;
   onRestoreMatches?: () => Promise<void>;
   title?: string;
+  // DFB-Stammspieler-Regel: Optional externe Datengrundlage (z.B. Pflichtspiele)
+  // Wenn gesetzt, wird die Stammspieler-Berechnung aus diesen Daten gespeist.
+  stammspielerMatches?: Match[];
+  stammspielerMinutes?: MatchMinuteRecord[];
 }
 
 // KW calculation helper
@@ -73,7 +77,9 @@ export const MatchPlanningView: React.FC<MatchPlanningViewProps> = ({
   onDeleteOpponent,
   onWipeAllMatches,
   onRestoreMatches,
-  title = "Pflichtspiel-Planung"
+  title = "Pflichtspiel-Planung",
+  stammspielerMatches,
+  stammspielerMinutes
 }) => {
   const [selectedMatchId, setSelectedMatchId] = useState<string | number>(matches[0]?.id || '');
   const [viewMode, setViewMode] = useState<'list' | 'detail' | 'table'>(title.includes('Test') ? 'table' : 'list');
@@ -188,6 +194,72 @@ export const MatchPlanningView: React.FC<MatchPlanningViewProps> = ({
       return (Number(a.index) || 0) - (Number(b.index) || 0);
     });
   }, [matches]);
+
+  // DFB-Stammspieler-Regel:
+  // Datengrundlage: Pflichtspiele (wenn uebergeben), sonst eigene Spiele/Minuten.
+  const stammspielerMatchList = stammspielerMatches || matches;
+  const stammspielerMinuteList = stammspielerMinutes || matchMinutes;
+
+  const stammspielerSortedMatches = useMemo(() => {
+    return [...stammspielerMatchList].sort((a, b) => {
+      const dateA = parseMatchDate(a.date);
+      const dateB = parseMatchDate(b.date);
+      if (dateA && dateB && dateA !== dateB) {
+        return dateA.localeCompare(dateB);
+      }
+      if (dateA && !dateB) return -1;
+      if (!dateA && dateB) return 1;
+      return (Number(a.index) || 0) - (Number(b.index) || 0);
+    });
+  }, [stammspielerMatchList]);
+
+  // Nur bisher tatsaechlich gespielte Spiele (haben ein Ergebnis mit ":") zaehlen,
+  // damit zukuenftige Termine die Stammspieler-Quote nicht verdünnen.
+  const stammspielerPlayedMatches = useMemo(() => {
+    return stammspielerSortedMatches.filter(m =>
+      typeof m.result === 'string' && m.result.includes(':')
+    );
+  }, [stammspielerSortedMatches]);
+
+  // Pro Spieler die Spiele zaehlen, in denen er eingesetzt war (Minuten > 0)
+  const appearancesByPlayer = useMemo(() => {
+    const map: Record<string, Set<string>> = {};
+    stammspielerMinuteList.forEach(rec => {
+      const allMinutes = { ...(rec.matchMinutes || {}), ...(rec.minutes || {}) };
+      const set = map[rec.playerId] || (map[rec.playerId] = new Set<string>());
+      Object.entries(allMinutes).forEach(([matchId, mins]) => {
+        if (Number(mins) > 0) set.add(String(matchId));
+      });
+    });
+    return map;
+  }, [stammspielerMinuteList]);
+
+  const getStammspielerStatus = (playerId: string) => {
+    const appearanceSet = appearancesByPlayer[playerId] || new Set<string>();
+    const playedGames = stammspielerPlayedMatches.filter(m => appearanceSet.has(String(m.id))).length;
+    const totalGames = stammspielerPlayedMatches.length;
+    const pct = totalGames > 0 ? (playedGames / totalGames) * 100 : 0;
+
+    // 3 Spiele hintereinander eingesetzt?
+    let streak = 0;
+    let hasStreak3 = false;
+    for (const m of stammspielerPlayedMatches) {
+      if (appearanceSet.has(String(m.id))) {
+        streak++;
+        if (streak >= 3) { hasStreak3 = true; break; }
+      } else {
+        streak = 0;
+      }
+    }
+
+    if (pct > 50 || hasStreak3) {
+      return { label: 'Stammspieler', cls: 'bg-red-50 text-red-700 border-red-300', pct };
+    }
+    if (pct >= 40) {
+      return { label: 'Grenzbereich', cls: 'bg-amber-50 text-amber-700 border-amber-300', pct };
+    }
+    return { label: 'Kein Stammspieler', cls: 'bg-emerald-50 text-emerald-700 border-emerald-300', pct };
+  };
 
   const matchStats = useMemo(() => {
     let played = 0;
@@ -1199,6 +1271,7 @@ export const MatchPlanningView: React.FC<MatchPlanningViewProps> = ({
                             <th className="p-3 border-r border-[#DADADA] text-center">START</th>
                             <th className="p-3 border-r border-[#DADADA] text-center">ENDE</th>
                             <th className="p-3 border-r border-[#DADADA] text-center text-[#1A1A1A]">MIN</th>
+                            <th className="p-3 border-r border-[#DADADA] text-center">STAMMSPIELER-STATUS</th>
                             <th className="p-3">NOTIZEN</th>
                           </tr>
                         </thead>
@@ -1250,6 +1323,16 @@ export const MatchPlanningView: React.FC<MatchPlanningViewProps> = ({
                                   <span className={`px-2.5 py-1 rounded-lg font-black text-xs ${minutes > 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-300' : 'text-[#4A4A4A]'}`}>
                                     {minutes}
                                   </span>
+                                </td>
+                                <td className="p-3 border-r border-[#DADADA] text-center">
+                                  {(() => {
+                                    const status = getStammspielerStatus(player.id);
+                                    return (
+                                      <span title={`${status.label} · ${status.pct.toFixed(1)}% Einsätze`} className={`px-2.5 py-1 rounded-lg font-black text-[10px] uppercase inline-flex items-center border ${status.cls}`}>
+                                        {status.pct.toFixed(0)}% {status.label}
+                                      </span>
+                                    );
+                                  })()}
                                 </td>
                                 <td className="p-2.5">
                                   <EditableField 

@@ -1,4 +1,5 @@
 import React, { Component, ReactNode } from 'react';
+import { isStaleChunkError, hardReloadForStaleChunk } from '../lib/staleChunk';
 
 interface Props { children: ReactNode; }
 interface State { hasError: boolean; message: string; }
@@ -11,11 +12,21 @@ export class NaomiErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error) {
+    // Alte (veraltete) Build-Datei: Nach Deploy neue Hashes → Import fehlt.
+    // Einmalig (mit Cache-Busting) neu laden, damit die aktuelle Version aktiv ist.
+    const msg = error?.message || '';
+    if (isStaleChunkError(msg)) {
+      if (hardReloadForStaleChunk()) return;
+    }
     console.warn('[Naomi] Fehler abgefangen, KEIN Auto-Reload:', error);
   }
 
   render() {
     if (this.state.hasError) {
+      if (isStaleChunkError(this.state.message)) {
+        // Nur Stale-Chunk: automatisch neu laden, das ist sicher und ohne Datenverlust.
+        if (hardReloadForStaleChunk()) return null;
+      }
       return (
         <div style={{
           minHeight: '100vh', display: 'flex', flexDirection: 'column',

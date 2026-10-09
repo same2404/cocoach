@@ -1364,33 +1364,67 @@ export const TacticBoard: React.FC<TacticBoardProps> = ({
                       />
                     )}
 
-                    <Circle 
-                      radius={radius} 
-                      fill={el.color || "#C00000"} 
-                      stroke="white" 
-                      strokeWidth={2} 
-                      shadowBlur={5} 
-                      shadowOpacity={0.3} 
-                    />
+                    {el.playerData?.image || el.playerData?.additionalImages?.[0] ? (
+                      <Group
+                        clipFunc={(ctx: any) => {
+                          ctx.beginPath();
+                          ctx.arc(0, 0, radius, 0, Math.PI * 2, false);
+                          ctx.closePath();
+                        }}
+                      >
+                        <URLImage
+                          imageUrl={el.playerData?.image || (el.playerData as any)?.additionalImages?.[0]}
+                          x={-radius}
+                          y={-radius}
+                          width={radius * 2}
+                          height={radius * 2}
+                        />
+                        <Circle
+                          radius={radius}
+                          fill="transparent"
+                          stroke="white"
+                          strokeWidth={2.5}
+                        />
+                      </Group>
+                    ) : (
+                      <Circle 
+                        radius={radius} 
+                        fill={el.color || "#C00000"} 
+                        stroke="white" 
+                        strokeWidth={2} 
+                        shadowBlur={5} 
+                        shadowOpacity={0.3} 
+                      />
+                    )}
                     <Text
-                      text={el.playerData?.lastName.substring(0, 3).toUpperCase()}
-                      fontSize={radius * 0.5}
+                      text={el.playerData?.number ? String(el.playerData.number) : ''}
+                      fontSize={radius * 0.85}
                       fontStyle="bold"
                       fill="white"
                       align="center"
                       width={radius * 2}
                       x={-radius}
-                      y={-radius * 0.25}
+                      y={-radius * 0.55}
                     />
                     <Text
-                      text={el.playerData?.number ? String(el.playerData.number) : ''}
-                      fontSize={radius * 0.4}
+                      text={`${el.playerData?.lastName || ''}`.toUpperCase()}
+                      fontSize={radius * 0.34}
+                      fontStyle="bold"
                       fill="white"
-                      opacity={0.7}
                       align="center"
-                      width={radius * 2}
-                      x={-radius}
-                      y={radius * 0.25}
+                      width={radius * 2.1}
+                      x={-radius * 1.05}
+                      y={radius * 0.15}
+                    />
+                    <Text
+                      text={el.playerData?.firstName ? `, ${el.playerData.firstName}` : ''}
+                      fontSize={radius * 0.26}
+                      fill="white"
+                      opacity={0.85}
+                      align="center"
+                      width={radius * 2.1}
+                      x={-radius * 1.05}
+                      y={radius * 0.55}
                     />
                   </Group>
                 );

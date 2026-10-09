@@ -1,5 +1,6 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw, ShieldCheck, RotateCcw } from 'lucide-react';
+import { isStaleChunkError, hardReloadForStaleChunk } from '../lib/staleChunk';
 
 interface Props {
   children: ReactNode;
@@ -23,6 +24,13 @@ export class ErrorBoundary extends Component<Props, State> {
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('SupervisorAgent [System Protection]: Caught uncaught UI error:', error, errorInfo);
+    // Stale-Chunk: Nach jedem Deploy neue Datei-Hashes. Lädt der Browser noch
+    // die alte Version, schlägt der dynamische Import fehl → einmalig (mit
+    // Cache-Busting) neu laden.
+    const msg = error?.message || '';
+    if (isStaleChunkError(msg)) {
+      hardReloadForStaleChunk();
+    }
   }
 
   public componentDidMount() {
@@ -36,6 +44,11 @@ export class ErrorBoundary extends Component<Props, State> {
   private handleUnhandledRejection = (event: PromiseRejectionEvent) => {
     // Prevent unhandled promise rejections (like transient stream errors or network timeouts) from crashing the UI
     console.warn('SupervisorAgent [System Protection]: Intercepted unhandled promise rejection:', event.reason);
+    // Stale-Chunk kann auch als Promise-Rejection ankommen → automatisch neu laden.
+    const msg = event.reason?.message || String(event.reason || '');
+    if (isStaleChunkError(msg)) {
+      hardReloadForStaleChunk();
+    }
     // Don't mark as fatal error unless explicitly necessary
   };
 

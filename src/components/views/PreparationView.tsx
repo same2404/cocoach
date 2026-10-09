@@ -352,7 +352,9 @@ export const PreparationView: React.FC<PreparationViewProps> = ({
     let current = new Date(start);
     let te = 1;
     
-    while (current <= end) {
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) return;
+    let guard = 0;
+    while (current <= end && guard < 1200) { guard++;
       const dateStr = current.toISOString().split('T')[0];
       const day = getDayName(dateStr);
       const kw = Math.ceil((current.getTime() - start.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1;

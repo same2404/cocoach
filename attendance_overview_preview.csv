@@ -1,0 +1,1536 @@
+Datum;EH;Spieler;Anwesenheit;Status
+2026-07-07;6;Rufer, Fabian;ja;x
+2026-07-07;6;Misic, Luka;ja;x
+2026-07-07;6;Lauer, Stefan;ja;x
+2026-07-07;6;Fangmeier, Jakob;ja;x
+2026-07-07;6;Agbozo, Jesse;ja;x
+2026-07-07;6;Reichert, Lenny;ja;x
+2026-07-07;6;Disch, Maximilian;ja;x
+2026-07-07;6;Souleymané, Said;ja;x
+2026-07-07;6;Reinecker, Steffen;ja;x
+2026-07-07;6;Podlich, Timm;ja;x
+2026-07-07;6;Valchuk, David;ja;x
+2026-07-07;6;Scalici, Giuliano;ja;x
+2026-07-07;6;Ehret Jo, Jonathan;ja;x
+2026-07-07;6;Ehret Ju, Julian;ja;x
+2026-07-07;6;Tschira, Julien;ja;x
+2026-07-07;6;Roth M, Matti;ja;x
+2026-07-07;6;Pereira Marques, Francisco;nein;v
+2026-07-07;6;Bao Nguyen, Thai;ja;x
+2026-07-07;6;Ismaili, Sabahudin;ja;x
+2026-07-07;6;Schäfer, Tim;ja;x
+2026-07-07;6;Tiedemann, Tim;ja;x
+2026-07-07;6;Roth Y, Yanik;ja;x
+2026-07-07;6;AKUEGWU, Jack;ja;x
+2026-07-07;6;Dischinger, Jonathan;nein;v
+2026-07-07;6;Ontuzans, Daniels;ja;x
+2026-07-07;6;Jungkeit, Amin;ja;x
+2026-07-07;6;Kiefl, Elias;ja;x
+2026-07-07;6;Kobus, Marcel;ja;x
+2026-07-07;6;Zitzelsberger, Klaus;ja;x
+2026-07-07;6;Brombacher  Franziska;ja;x
+2026-07-07;6;Diestelhorst, Björn;ja;x
+2026-07-10;7;Rufer, Fabian;ja;x
+2026-07-10;7;Misic, Luka;ja;x
+2026-07-10;7;Lauer, Stefan;ja;x
+2026-07-10;7;Fangmeier, Jakob;ja;x
+2026-07-10;7;Agbozo, Jesse;ja;x
+2026-07-10;7;Reichert, Lenny;ja;x
+2026-07-10;7;Disch, Maximilian;ja;x
+2026-07-10;7;Souleymané, Said;ja;x
+2026-07-10;7;Reinecker, Steffen;ja;x
+2026-07-10;7;Podlich, Timm;ja;x
+2026-07-10;7;Valchuk, David;ja;x
+2026-07-10;7;Scalici, Giuliano;ja;x
+2026-07-10;7;Ehret Jo, Jonathan;ja;x
+2026-07-10;7;Ehret Ju, Julian;ja;x
+2026-07-10;7;Tschira, Julien;ja;x
+2026-07-10;7;Roth M, Matti;ja;x
+2026-07-10;7;Pereira Marques, Francisco;nein;v
+2026-07-10;7;Bao Nguyen, Thai;ja;x
+2026-07-10;7;Ismaili, Sabahudin;ja;x
+2026-07-10;7;Schäfer, Tim;ja;x
+2026-07-10;7;Tiedemann, Tim;ja;x
+2026-07-10;7;Roth Y, Yanik;ja;x
+2026-07-10;7;AKUEGWU, Jack;ja;x
+2026-07-10;7;Dischinger, Jonathan;ja;x
+2026-07-10;7;Ontuzans, Daniels;nein;v
+2026-07-10;7;Jungkeit, Amin;ja;x
+2026-07-10;7;Kiefl, Elias;ja;x
+2026-07-10;7;Kobus, Marcel;ja;x
+2026-07-10;7;Zitzelsberger, Klaus;ja;x
+2026-07-10;7;Brombacher  Franziska;ja;x
+2026-07-10;7;Diestelhorst, Björn;ja;x
+2026-07-13;8;Rufer, Fabian;ja;x
+2026-07-13;8;Misic, Luka;ja;x
+2026-07-13;8;Lauer, Stefan;nein;v
+2026-07-13;8;Fangmeier, Jakob;ja;x
+2026-07-13;8;Agbozo, Jesse;ja;x
+2026-07-13;8;Reichert, Lenny;ja;x
+2026-07-13;8;Disch, Maximilian;nein;v
+2026-07-13;8;Souleymané, Said;ja;x
+2026-07-13;8;Reinecker, Steffen;ja;x
+2026-07-13;8;Podlich, Timm;ja;x
+2026-07-13;8;Valchuk, David;ja;x
+2026-07-13;8;Scalici, Giuliano;ja;x
+2026-07-13;8;Ehret Jo, Jonathan;ja;x
+2026-07-13;8;Ehret Ju, Julian;ja;x
+2026-07-13;8;Tschira, Julien;nein;v
+2026-07-13;8;Roth M, Matti;ja;x
+2026-07-13;8;Pereira Marques, Francisco;nein;v
+2026-07-13;8;Bao Nguyen, Thai;ja;x
+2026-07-13;8;Ismaili, Sabahudin;ja;x
+2026-07-13;8;Schäfer, Tim;nein;v
+2026-07-13;8;Tiedemann, Tim;nein;v
+2026-07-13;8;Roth Y, Yanik;ja;x
+2026-07-13;8;AKUEGWU, Jack;ja;x
+2026-07-13;8;Dischinger, Jonathan;nein;v
+2026-07-13;8;Ontuzans, Daniels;ja;x
+2026-07-13;8;Jungkeit, Amin;ja;x
+2026-07-13;8;Kiefl, Elias;ja;x
+2026-07-13;8;Kobus, Marcel;ja;x
+2026-07-13;8;Zitzelsberger, Klaus;ja;x
+2026-07-13;8;Brombacher  Franziska;ja;x
+2026-07-13;8;Diestelhorst, Björn;ja;x
+2026-07-14;9;Rufer, Fabian;ja;x
+2026-07-14;9;Misic, Luka;ja;x
+2026-07-14;9;Lauer, Stefan;nein;v
+2026-07-14;9;Fangmeier, Jakob;ja;x
+2026-07-14;9;Agbozo, Jesse;ja;x
+2026-07-14;9;Reichert, Lenny;ja;x
+2026-07-14;9;Disch, Maximilian;ja;x
+2026-07-14;9;Souleymané, Said;nein;v
+2026-07-14;9;Reinecker, Steffen;ja;x
+2026-07-14;9;Podlich, Timm;ja;x
+2026-07-14;9;Valchuk, David;ja;x
+2026-07-14;9;Scalici, Giuliano;ja;x
+2026-07-14;9;Ehret Jo, Jonathan;ja;x
+2026-07-14;9;Ehret Ju, Julian;ja;x
+2026-07-14;9;Tschira, Julien;ja;x
+2026-07-14;9;Roth M, Matti;ja;x
+2026-07-14;9;Pereira Marques, Francisco;nein;v
+2026-07-14;9;Bao Nguyen, Thai;ja;x
+2026-07-14;9;Ismaili, Sabahudin;ja;x
+2026-07-14;9;Schäfer, Tim;nein;v
+2026-07-14;9;Tiedemann, Tim;nein;v
+2026-07-14;9;Roth Y, Yanik;ja;x
+2026-07-14;9;AKUEGWU, Jack;ja;x
+2026-07-14;9;Dischinger, Jonathan;nein;v
+2026-07-14;9;Ontuzans, Daniels;ja;x
+2026-07-14;9;Jungkeit, Amin;ja;x
+2026-07-14;9;Kiefl, Elias;ja;x
+2026-07-14;9;Kobus, Marcel;ja;x
+2026-07-14;9;Zitzelsberger, Klaus;ja;x
+2026-07-14;9;Diestelhorst, Björn;ja;x
+2026-07-16;10;Rufer, Fabian;ja;x
+2026-07-16;10;Misic, Luka;nein;v
+2026-07-16;10;Lauer, Stefan;ja;x
+2026-07-16;10;Fangmeier, Jakob;nein;v
+2026-07-16;10;Agbozo, Jesse;ja;x
+2026-07-16;10;Reichert, Lenny;ja;x
+2026-07-16;10;Disch, Maximilian;nein;v
+2026-07-16;10;Souleymané, Said;ja;x
+2026-07-16;10;Reinecker, Steffen;ja;x
+2026-07-16;10;Podlich, Timm;ja;x
+2026-07-16;10;Valchuk, David;ja;x
+2026-07-16;10;Scalici, Giuliano;ja;x
+2026-07-16;10;Ehret Jo, Jonathan;ja;x
+2026-07-16;10;Ehret Ju, Julian;ja;x
+2026-07-16;10;Tschira, Julien;nein;v
+2026-07-16;10;Roth M, Matti;ja;x
+2026-07-16;10;Pereira Marques, Francisco;nein;v
+2026-07-16;10;Bao Nguyen, Thai;ja;x
+2026-07-16;10;Ismaili, Sabahudin;ja;x
+2026-07-16;10;Schäfer, Tim;ja;x
+2026-07-16;10;Tiedemann, Tim;ja;x
+2026-07-16;10;Roth Y, Yanik;ja;x
+2026-07-16;10;AKUEGWU, Jack;ja;x
+2026-07-16;10;Dischinger, Jonathan;ja;x
+2026-07-16;10;Ontuzans, Daniels;ja;x
+2026-07-16;10;Jungkeit, Amin;ja;x
+2026-07-16;10;Kiefl, Elias;ja;x
+2026-07-16;10;Kobus, Marcel;ja;x
+2026-07-16;10;Zitzelsberger, Klaus;ja;x
+2026-07-16;10;Brombacher  Franziska;ja;x
+2026-07-16;10;Diestelhorst, Björn;ja;x
+2026-07-17;11;Rufer, Fabian;ja;x
+2026-07-17;11;Misic, Luka;nein;v
+2026-07-17;11;Lauer, Stefan;ja;x
+2026-07-17;11;Fangmeier, Jakob;nein;v
+2026-07-17;11;Agbozo, Jesse;ja;x
+2026-07-17;11;Reichert, Lenny;ja;x
+2026-07-17;11;Disch, Maximilian;nein;v
+2026-07-17;11;Souleymané, Said;ja;x
+2026-07-17;11;Reinecker, Steffen;ja;x
+2026-07-17;11;Podlich, Timm;ja;x
+2026-07-17;11;Valchuk, David;ja;x
+2026-07-17;11;Scalici, Giuliano;ja;x
+2026-07-17;11;Ehret Jo, Jonathan;ja;x
+2026-07-17;11;Ehret Ju, Julian;ja;x
+2026-07-17;11;Tschira, Julien;nein;v
+2026-07-17;11;Roth M, Matti;ja;x
+2026-07-17;11;Pereira Marques, Francisco;nein;v
+2026-07-17;11;Bao Nguyen, Thai;ja;x
+2026-07-17;11;Ismaili, Sabahudin;ja;x
+2026-07-17;11;Schäfer, Tim;ja;x
+2026-07-17;11;Tiedemann, Tim;ja;x
+2026-07-17;11;Roth Y, Yanik;ja;x
+2026-07-17;11;AKUEGWU, Jack;ja;x
+2026-07-17;11;Dischinger, Jonathan;ja;x
+2026-07-17;11;Ontuzans, Daniels;ja;x
+2026-07-17;11;Jungkeit, Amin;ja;x
+2026-07-17;11;Kiefl, Elias;ja;x
+2026-07-17;11;Kobus, Marcel;ja;x
+2026-07-17;11;Zitzelsberger, Klaus;ja;x
+2026-07-17;11;Brombacher  Franziska;ja;x
+2026-07-17;11;Diestelhorst, Björn;ja;x
+2026-07-17;11;Carbone, Nico;ja;x
+2026-07-17;11;Klemt, Christof;ja;x
+2026-07-17;11;Dr. Schlehuber, Tarek;ja;x
+2026-07-18;12;Rufer, Fabian;ja;x
+2026-07-18;12;Misic, Luka;nein;v
+2026-07-18;12;Lauer, Stefan;ja;x
+2026-07-18;12;Fangmeier, Jakob;nein;v
+2026-07-18;12;Agbozo, Jesse;ja;x
+2026-07-18;12;Reichert, Lenny;ja;x
+2026-07-18;12;Disch, Maximilian;nein;v
+2026-07-18;12;Souleymané, Said;ja;x
+2026-07-18;12;Reinecker, Steffen;ja;x
+2026-07-18;12;Podlich, Timm;ja;x
+2026-07-18;12;Valchuk, David;ja;x
+2026-07-18;12;Scalici, Giuliano;ja;x
+2026-07-18;12;Ehret Jo, Jonathan;ja;x
+2026-07-18;12;Ehret Ju, Julian;ja;x
+2026-07-18;12;Tschira, Julien;nein;v
+2026-07-18;12;Roth M, Matti;ja;x
+2026-07-18;12;Pereira Marques, Francisco;nein;v
+2026-07-18;12;Bao Nguyen, Thai;ja;x
+2026-07-18;12;Ismaili, Sabahudin;ja;x
+2026-07-18;12;Schäfer, Tim;ja;x
+2026-07-18;12;Tiedemann, Tim;ja;x
+2026-07-18;12;Roth Y, Yanik;ja;x
+2026-07-18;12;AKUEGWU, Jack;ja;x
+2026-07-18;12;Dischinger, Jonathan;ja;x
+2026-07-18;12;Ontuzans, Daniels;ja;x
+2026-07-18;12;Jungkeit, Amin;ja;x
+2026-07-18;12;Kiefl, Elias;ja;x
+2026-07-18;12;Kobus, Marcel;ja;x
+2026-07-18;12;Zitzelsberger, Klaus;ja;x
+2026-07-18;12;Brombacher  Franziska;ja;x
+2026-07-18;12;Diestelhorst, Björn;ja;x
+2026-07-18;12;Carbone, Nico;ja;x
+2026-07-18;12;Klemt, Christof;ja;x
+2026-07-18;12;Dr. Schlehuber, Tarek;ja;x
+2026-07-19;13;Rufer, Fabian;ja;x
+2026-07-19;13;Misic, Luka;nein;v
+2026-07-19;13;Lauer, Stefan;ja;x
+2026-07-19;13;Fangmeier, Jakob;nein;v
+2026-07-19;13;Agbozo, Jesse;ja;x
+2026-07-19;13;Reichert, Lenny;ja;x
+2026-07-19;13;Disch, Maximilian;nein;v
+2026-07-19;13;Souleymané, Said;ja;x
+2026-07-19;13;Reinecker, Steffen;ja;x
+2026-07-19;13;Podlich, Timm;ja;x
+2026-07-19;13;Valchuk, David;ja;x
+2026-07-19;13;Scalici, Giuliano;ja;x
+2026-07-19;13;Ehret Jo, Jonathan;ja;x
+2026-07-19;13;Ehret Ju, Julian;ja;x
+2026-07-19;13;Tschira, Julien;nein;v
+2026-07-19;13;Roth M, Matti;ja;x
+2026-07-19;13;Pereira Marques, Francisco;nein;v
+2026-07-19;13;Bao Nguyen, Thai;ja;x
+2026-07-19;13;Ismaili, Sabahudin;ja;x
+2026-07-19;13;Schäfer, Tim;ja;x
+2026-07-19;13;Tiedemann, Tim;ja;x
+2026-07-19;13;Roth Y, Yanik;ja;x
+2026-07-19;13;AKUEGWU, Jack;ja;x
+2026-07-19;13;Dischinger, Jonathan;ja;x
+2026-07-19;13;Ontuzans, Daniels;ja;x
+2026-07-19;13;Jungkeit, Amin;ja;x
+2026-07-19;13;Kiefl, Elias;ja;x
+2026-07-19;13;Kobus, Marcel;ja;x
+2026-07-19;13;Zitzelsberger, Klaus;ja;x
+2026-07-19;13;Brombacher  Franziska;ja;x
+2026-07-19;13;Diestelhorst, Björn;ja;x
+2026-07-19;13;Carbone, Nico;ja;x
+2026-07-19;13;Klemt, Christof;ja;x
+2026-07-19;13;Dr. Schlehuber, Tarek;ja;x
+2026-07-21;14;Rufer, Fabian;ja;x
+2026-07-21;14;Misic, Luka;nein;v
+2026-07-21;14;Lauer, Stefan;ja;x
+2026-07-21;14;Fangmeier, Jakob;ja;x
+2026-07-21;14;Agbozo, Jesse;ja;x
+2026-07-21;14;Reichert, Lenny;ja;x
+2026-07-21;14;Disch, Maximilian;nein;v
+2026-07-21;14;Souleymané, Said;ja;x
+2026-07-21;14;Reinecker, Steffen;ja;x
+2026-07-21;14;Podlich, Timm;ja;x
+2026-07-21;14;Valchuk, David;ja;x
+2026-07-21;14;Scalici, Giuliano;ja;x
+2026-07-21;14;Ehret Jo, Jonathan;ja;x
+2026-07-21;14;Ehret Ju, Julian;ja;x
+2026-07-21;14;Tschira, Julien;nein;v
+2026-07-21;14;Roth M, Matti;ja;x
+2026-07-21;14;Pereira Marques, Francisco;nein;v
+2026-07-21;14;Bao Nguyen, Thai;ja;x
+2026-07-21;14;Ismaili, Sabahudin;nein;v
+2026-07-21;14;Schäfer, Tim;ja;x
+2026-07-21;14;Tiedemann, Tim;ja;x
+2026-07-21;14;Roth Y, Yanik;ja;x
+2026-07-21;14;AKUEGWU, Jack;ja;x
+2026-07-21;14;Dischinger, Jonathan;ja;x
+2026-07-21;14;Ontuzans, Daniels;ja;x
+2026-07-21;14;Jungkeit, Amin;ja;x
+2026-07-21;14;Kiefl, Elias;ja;x
+2026-07-21;14;Kobus, Marcel;ja;x
+2026-07-21;14;Zitzelsberger, Klaus;ja;x
+2026-07-21;14;Brombacher  Franziska;ja;x
+2026-07-21;14;Diestelhorst, Björn;ja;x
+2026-07-21;14;Carbone, Nico;ja;x
+2026-07-22;15;Rufer, Fabian;ja;x
+2026-07-22;15;Misic, Luka;nein;v
+2026-07-22;15;Lauer, Stefan;ja;x
+2026-07-22;15;Fangmeier, Jakob;ja;x
+2026-07-22;15;Agbozo, Jesse;ja;x
+2026-07-22;15;Reichert, Lenny;ja;x
+2026-07-22;15;Disch, Maximilian;ja;x
+2026-07-22;15;Souleymané, Said;ja;x
+2026-07-22;15;Reinecker, Steffen;ja;x
+2026-07-22;15;Podlich, Timm;ja;x
+2026-07-22;15;Valchuk, David;ja;x
+2026-07-22;15;Scalici, Giuliano;ja;x
+2026-07-22;15;Ehret Jo, Jonathan;ja;x
+2026-07-22;15;Ehret Ju, Julian;ja;x
+2026-07-22;15;Tschira, Julien;nein;v
+2026-07-22;15;Roth M, Matti;ja;x
+2026-07-22;15;Pereira Marques, Francisco;nein;v
+2026-07-22;15;Bao Nguyen, Thai;ja;x
+2026-07-22;15;Ismaili, Sabahudin;ja;x
+2026-07-22;15;Schäfer, Tim;ja;x
+2026-07-22;15;Tiedemann, Tim;ja;x
+2026-07-22;15;Roth Y, Yanik;ja;x
+2026-07-22;15;AKUEGWU, Jack;ja;x
+2026-07-22;15;Dischinger, Jonathan;ja;x
+2026-07-22;15;Ontuzans, Daniels;nein;v
+2026-07-22;15;Jungkeit, Amin;ja;x
+2026-07-22;15;Kiefl, Elias;ja;x
+2026-07-22;15;Kobus, Marcel;ja;x
+2026-07-22;15;Zitzelsberger, Klaus;ja;x
+2026-07-22;15;Brombacher  Franziska;ja;x
+2026-07-22;15;Diestelhorst, Björn;ja;x
+2026-07-24;16;Rufer, Fabian;ja;x
+2026-07-24;16;Misic, Luka;ja;x
+2026-07-24;16;Lauer, Stefan;ja;x
+2026-07-24;16;Fangmeier, Jakob;ja;x
+2026-07-24;16;Agbozo, Jesse;ja;x
+2026-07-24;16;Reichert, Lenny;ja;x
+2026-07-24;16;Disch, Maximilian;nein;v
+2026-07-24;16;Souleymané, Said;ja;x
+2026-07-24;16;Reinecker, Steffen;ja;x
+2026-07-24;16;Podlich, Timm;ja;x
+2026-07-24;16;Valchuk, David;ja;x
+2026-07-24;16;Scalici, Giuliano;ja;x
+2026-07-24;16;Ehret Jo, Jonathan;ja;x
+2026-07-24;16;Ehret Ju, Julian;ja;x
+2026-07-24;16;Tschira, Julien;ja;x
+2026-07-24;16;Roth M, Matti;ja;x
+2026-07-24;16;Pereira Marques, Francisco;nein;v
+2026-07-24;16;Bao Nguyen, Thai;ja;x
+2026-07-24;16;Ismaili, Sabahudin;ja;x
+2026-07-24;16;Schäfer, Tim;ja;x
+2026-07-24;16;Tiedemann, Tim;ja;x
+2026-07-24;16;Roth Y, Yanik;ja;x
+2026-07-24;16;AKUEGWU, Jack;ja;x
+2026-07-24;16;Dischinger, Jonathan;ja;x
+2026-07-24;16;Ontuzans, Daniels;nein;v
+2026-07-24;16;Jungkeit, Amin;ja;x
+2026-07-24;16;Kiefl, Elias;ja;x
+2026-07-24;16;Kobus, Marcel;ja;x
+2026-07-24;16;Zitzelsberger, Klaus;ja;x
+2026-07-24;16;Brombacher  Franziska;ja;x
+2026-07-24;16;Diestelhorst, Björn;ja;x
+2026-07-24;16;Carbone, Nico;ja;x
+2026-07-28;17;Rufer, Fabian;ja;x
+2026-07-28;17;Misic, Luka;ja;x
+2026-07-28;17;Lauer, Stefan;ja;x
+2026-07-28;17;Fangmeier, Jakob;ja;x
+2026-07-28;17;Agbozo, Jesse;ja;x
+2026-07-28;17;Reichert, Lenny;ja;x
+2026-07-28;17;Disch, Maximilian;ja;x
+2026-07-28;17;Souleymané, Said;ja;x
+2026-07-28;17;Reinecker, Steffen;ja;x
+2026-07-28;17;Podlich, Timm;ja;x
+2026-07-28;17;Valchuk, David;ja;x
+2026-07-28;17;Scalici, Giuliano;ja;x
+2026-07-28;17;Ehret Jo, Jonathan;ja;x
+2026-07-28;17;Ehret Ju, Julian;ja;x
+2026-07-28;17;Tschira, Julien;nein;v
+2026-07-28;17;Roth M, Matti;ja;x
+2026-07-28;17;Pereira Marques, Francisco;nein;v
+2026-07-28;17;Bao Nguyen, Thai;ja;x
+2026-07-28;17;Ismaili, Sabahudin;ja;x
+2026-07-28;17;Schäfer, Tim;ja;x
+2026-07-28;17;Tiedemann, Tim;ja;x
+2026-07-28;17;Roth Y, Yanik;ja;x
+2026-07-28;17;AKUEGWU, Jack;ja;x
+2026-07-28;17;Dischinger, Jonathan;ja;x
+2026-07-28;17;Ontuzans, Daniels;ja;x
+2026-07-28;17;Jungkeit, Amin;ja;x
+2026-07-28;17;Kiefl, Elias;ja;x
+2026-07-28;17;Kobus, Marcel;ja;x
+2026-07-28;17;Zitzelsberger, Klaus;ja;x
+2026-07-28;17;Brombacher  Franziska;ja;x
+2026-07-28;17;Diestelhorst, Björn;ja;x
+2026-07-30;18;Rufer, Fabian;ja;x
+2026-07-30;18;Misic, Luka;ja;x
+2026-07-30;18;Lauer, Stefan;ja;x
+2026-07-30;18;Fangmeier, Jakob;ja;x
+2026-07-30;18;Agbozo, Jesse;ja;x
+2026-07-30;18;Reichert, Lenny;ja;x
+2026-07-30;18;Disch, Maximilian;ja;x
+2026-07-30;18;Souleymané, Said;ja;x
+2026-07-30;18;Reinecker, Steffen;nein;v
+2026-07-30;18;Podlich, Timm;ja;x
+2026-07-30;18;Valchuk, David;ja;x
+2026-07-30;18;Scalici, Giuliano;ja;x
+2026-07-30;18;Ehret Jo, Jonathan;ja;x
+2026-07-30;18;Ehret Ju, Julian;ja;x
+2026-07-30;18;Tschira, Julien;nein;v
+2026-07-30;18;Roth M, Matti;ja;x
+2026-07-30;18;Pereira Marques, Francisco;nein;v
+2026-07-30;18;Bao Nguyen, Thai;ja;x
+2026-07-30;18;Ismaili, Sabahudin;ja;x
+2026-07-30;18;Schäfer, Tim;ja;x
+2026-07-30;18;Tiedemann, Tim;ja;x
+2026-07-30;18;Roth Y, Yanik;ja;x
+2026-07-30;18;AKUEGWU, Jack;ja;x
+2026-07-30;18;Dischinger, Jonathan;ja;x
+2026-07-30;18;Ontuzans, Daniels;ja;x
+2026-07-30;18;Jungkeit, Amin;ja;x
+2026-07-30;18;Kiefl, Elias;ja;x
+2026-07-30;18;Kobus, Marcel;ja;x
+2026-07-30;18;Zitzelsberger, Klaus;ja;x
+2026-07-30;18;Brombacher  Franziska;ja;x
+2026-07-30;18;Diestelhorst, Björn;ja;x
+2026-07-31;19;Rufer, Fabian;ja;x
+2026-07-31;19;Misic, Luka;ja;x
+2026-07-31;19;Lauer, Stefan;ja;x
+2026-07-31;19;Fangmeier, Jakob;ja;x
+2026-07-31;19;Agbozo, Jesse;ja;x
+2026-07-31;19;Reichert, Lenny;ja;x
+2026-07-31;19;Disch, Maximilian;ja;x
+2026-07-31;19;Souleymané, Said;ja;x
+2026-07-31;19;Reinecker, Steffen;nein;v
+2026-07-31;19;Podlich, Timm;ja;x
+2026-07-31;19;Valchuk, David;ja;x
+2026-07-31;19;Scalici, Giuliano;ja;x
+2026-07-31;19;Ehret Jo, Jonathan;ja;x
+2026-07-31;19;Ehret Ju, Julian;ja;x
+2026-07-31;19;Tschira, Julien;nein;v
+2026-07-31;19;Roth M, Matti;ja;x
+2026-07-31;19;Pereira Marques, Francisco;nein;v
+2026-07-31;19;Bao Nguyen, Thai;ja;x
+2026-07-31;19;Ismaili, Sabahudin;ja;x
+2026-07-31;19;Schäfer, Tim;ja;x
+2026-07-31;19;Tiedemann, Tim;ja;x
+2026-07-31;19;Roth Y, Yanik;ja;x
+2026-07-31;19;AKUEGWU, Jack;ja;x
+2026-07-31;19;Dischinger, Jonathan;ja;x
+2026-07-31;19;Ontuzans, Daniels;ja;x
+2026-07-31;19;Jungkeit, Amin;ja;x
+2026-07-31;19;Kiefl, Elias;ja;x
+2026-07-31;19;Kobus, Marcel;ja;x
+2026-07-31;19;Zitzelsberger, Klaus;ja;x
+2026-07-31;19;Brombacher  Franziska;ja;x
+2026-07-31;19;Diestelhorst, Björn;ja;x
+2026-08-03;20;Rufer, Fabian;ja;x
+2026-08-03;20;Misic, Luka;ja;x
+2026-08-03;20;Lauer, Stefan;ja;x
+2026-08-03;20;Fangmeier, Jakob;ja;x
+2026-08-03;20;Agbozo, Jesse;ja;x
+2026-08-03;20;Reichert, Lenny;ja;x
+2026-08-03;20;Disch, Maximilian;ja;x
+2026-08-03;20;Souleymané, Said;ja;x
+2026-08-03;20;Reinecker, Steffen;ja;x
+2026-08-03;20;Podlich, Timm;ja;x
+2026-08-03;20;Valchuk, David;ja;x
+2026-08-03;20;Scalici, Giuliano;ja;x
+2026-08-03;20;Ehret Jo, Jonathan;ja;x
+2026-08-03;20;Ehret Ju, Julian;ja;x
+2026-08-03;20;Tschira, Julien;ja;x
+2026-08-03;20;Roth M, Matti;ja;x
+2026-08-03;20;Pereira Marques, Francisco;nein;v
+2026-08-03;20;Bao Nguyen, Thai;ja;x
+2026-08-03;20;Ismaili, Sabahudin;ja;x
+2026-08-03;20;Schäfer, Tim;ja;x
+2026-08-03;20;Tiedemann, Tim;ja;x
+2026-08-03;20;Roth Y, Yanik;ja;x
+2026-08-03;20;AKUEGWU, Jack;ja;x
+2026-08-03;20;Dischinger, Jonathan;ja;x
+2026-08-03;20;Ontuzans, Daniels;nein;v
+2026-08-03;20;Jungkeit, Amin;ja;x
+2026-08-03;20;Kiefl, Elias;ja;x
+2026-08-03;20;Kobus, Marcel;ja;x
+2026-08-03;20;Zitzelsberger, Klaus;ja;x
+2026-08-03;20;Brombacher  Franziska;ja;x
+2026-08-03;20;Diestelhorst, Björn;ja;x
+2026-08-04;21;Rufer, Fabian;ja;x
+2026-08-04;21;Misic, Luka;ja;x
+2026-08-04;21;Lauer, Stefan;ja;x
+2026-08-04;21;Fangmeier, Jakob;ja;x
+2026-08-04;21;Agbozo, Jesse;ja;x
+2026-08-04;21;Reichert, Lenny;ja;x
+2026-08-04;21;Disch, Maximilian;ja;x
+2026-08-04;21;Souleymané, Said;ja;x
+2026-08-04;21;Reinecker, Steffen;ja;x
+2026-08-04;21;Podlich, Timm;ja;x
+2026-08-04;21;Valchuk, David;ja;x
+2026-08-04;21;Scalici, Giuliano;ja;x
+2026-08-04;21;Ehret Jo, Jonathan;ja;x
+2026-08-04;21;Ehret Ju, Julian;ja;x
+2026-08-04;21;Tschira, Julien;ja;x
+2026-08-04;21;Roth M, Matti;ja;x
+2026-08-04;21;Pereira Marques, Francisco;nein;v
+2026-08-04;21;Bao Nguyen, Thai;ja;x
+2026-08-04;21;Ismaili, Sabahudin;ja;x
+2026-08-04;21;Schäfer, Tim;ja;x
+2026-08-04;21;Tiedemann, Tim;nein;v
+2026-08-04;21;Roth Y, Yanik;ja;x
+2026-08-04;21;AKUEGWU, Jack;ja;x
+2026-08-04;21;Dischinger, Jonathan;ja;x
+2026-08-04;21;Ontuzans, Daniels;nein;v
+2026-08-04;21;Jungkeit, Amin;ja;x
+2026-08-04;21;Kiefl, Elias;ja;x
+2026-08-04;21;Kobus, Marcel;ja;x
+2026-08-04;21;Zitzelsberger, Klaus;ja;x
+2026-08-04;21;Brombacher  Franziska;ja;x
+2026-08-04;21;Diestelhorst, Björn;ja;x
+2026-08-06;22;Rufer, Fabian;ja;x
+2026-08-06;22;Misic, Luka;ja;x
+2026-08-06;22;Lauer, Stefan;ja;x
+2026-08-06;22;Fangmeier, Jakob;nein;v
+2026-08-06;22;Agbozo, Jesse;ja;x
+2026-08-06;22;Reichert, Lenny;ja;x
+2026-08-06;22;Disch, Maximilian;ja;x
+2026-08-06;22;Souleymané, Said;ja;x
+2026-08-06;22;Reinecker, Steffen;ja;x
+2026-08-06;22;Podlich, Timm;ja;x
+2026-08-06;22;Valchuk, David;ja;x
+2026-08-06;22;Scalici, Giuliano;ja;x
+2026-08-06;22;Ehret Jo, Jonathan;ja;x
+2026-08-06;22;Ehret Ju, Julian;ja;x
+2026-08-06;22;Tschira, Julien;ja;x
+2026-08-06;22;Roth M, Matti;ja;x
+2026-08-06;22;Pereira Marques, Francisco;nein;v
+2026-08-06;22;Bao Nguyen, Thai;ja;x
+2026-08-06;22;Ismaili, Sabahudin;ja;x
+2026-08-06;22;Schäfer, Tim;ja;x
+2026-08-06;22;Tiedemann, Tim;ja;x
+2026-08-06;22;Roth Y, Yanik;ja;x
+2026-08-06;22;AKUEGWU, Jack;ja;x
+2026-08-06;22;Dischinger, Jonathan;ja;x
+2026-08-06;22;Ontuzans, Daniels;ja;x
+2026-08-06;22;Jungkeit, Amin;ja;x
+2026-08-06;22;Kiefl, Elias;ja;x
+2026-08-06;22;Kobus, Marcel;ja;x
+2026-08-06;22;Zitzelsberger, Klaus;ja;x
+2026-08-06;22;Brombacher  Franziska;ja;x
+2026-08-06;22;Diestelhorst, Björn;ja;x
+2026-08-07;23;Zitzelsberger, Klaus;ja;x
+2026-08-07;23;Brombacher , Franziska;ja;x
+2026-08-07;23;Brombacher Franziskar;ja;x
+2026-08-07;23;Björn  Dieselhorst;ja;x
+2026-08-07;23;Carbone, Nico;ja;x
+2026-08-10;24;Rufer, Fabian;ja;x
+2026-08-10;24;Misic, Luka;ja;x
+2026-08-10;24;Lauer, Stefan;ja;x
+2026-08-10;24;Fangmeier, Jakob;ja;x
+2026-08-10;24;Reichert, Lenny;ja;x
+2026-08-10;24;Disch, Maximilian;ja;x
+2026-08-10;24;Souleymané, Said;ja;x
+2026-08-10;24;Reinecker, Steffen;ja;x
+2026-08-10;24;Podlich, Timm;ja;x
+2026-08-10;24;Valchuk, David;ja;x
+2026-08-10;24;Scalici, Giuliano;ja;x
+2026-08-10;24;Ehret Jo, Jonathan;ja;x
+2026-08-10;24;Ehret Ju, Julian;ja;x
+2026-08-10;24;Tschira, Julien;ja;x
+2026-08-10;24;Roth M, Matti;ja;x
+2026-08-10;24;Pereira Marques, Francisco;ja;x
+2026-08-10;24;Bao Nguyen, Thai;ja;x
+2026-08-10;24;Ismaili, Sabahudin;ja;x
+2026-08-10;24;Schäfer, Tim;ja;x
+2026-08-10;24;Tiedemann, Tim;ja;x
+2026-08-10;24;Roth Y, Yanik;ja;x
+2026-08-10;24;Dischinger J Johnatan;ja;x
+2026-08-10;24;AKUEGWU, Jack;ja;x
+2026-08-10;24;Dischinger, Jonathan;ja;x
+2026-08-10;24;Ontuzans, Daniels;ja;x
+2026-08-10;24;Jungkeit, Amin;ja;x
+2026-08-10;24;Kiefl, Elias;ja;x
+2026-08-10;24;Kobus, Marcel;ja;x
+2026-08-10;24;Zitzelsberger, Klaus;ja;x
+2026-08-10;24;Brombacher , Franziska;ja;x
+2026-08-10;24;Brombacher Franziskar;ja;x
+2026-08-10;24;Björn  Dieselhorst;ja;x
+2026-08-10;24;Carbone, Nico;ja;x
+2026-08-11;25;Rufer, Fabian;ja;x
+2026-08-11;25;Misic, Luka;ja;x
+2026-08-11;25;Lauer, Stefan;ja;x
+2026-08-11;25;Fangmeier, Jakob;ja;x
+2026-08-11;25;Agbozo, Jesse;ja;x
+2026-08-11;25;Reichert, Lenny;ja;x
+2026-08-11;25;Disch, Maximilian;ja;x
+2026-08-11;25;Souleymané, Said;ja;x
+2026-08-11;25;Reinecker, Steffen;ja;x
+2026-08-11;25;Podlich, Timm;ja;x
+2026-08-11;25;Valchuk, David;ja;x
+2026-08-11;25;Scalici, Giuliano;ja;x
+2026-08-11;25;Ehret Ju, Julian;ja;x
+2026-08-11;25;Tschira, Julien;ja;x
+2026-08-11;25;Roth M, Matti;ja;x
+2026-08-11;25;Pereira Marques, Francisco;nein;v
+2026-08-11;25;Bao Nguyen, Thai;ja;x
+2026-08-11;25;Ismaili, Sabahudin;ja;x
+2026-08-11;25;Schäfer, Tim;ja;x
+2026-08-11;25;Tiedemann, Tim;ja;x
+2026-08-11;25;Roth Y, Yanik;ja;x
+2026-08-11;25;Dischinger J Johnatan;ja;x
+2026-08-11;25;AKUEGWU, Jack;ja;x
+2026-08-11;25;Ontuzans, Daniels;ja;x
+2026-08-11;25;Jungkeit, Amin;ja;x
+2026-08-11;25;Kiefl, Elias;ja;x
+2026-08-11;25;Kobus, Marcel;ja;x
+2026-08-11;25;Zitzelsberger, Klaus;ja;x
+2026-08-11;25;Brombacher , Franziska;ja;x
+2026-08-11;25;Björn  Dieselhorst;ja;x
+2026-08-11;25;Carbone, Nico;ja;x
+2026-08-13;26;Rufer, Fabian;ja;x
+2026-08-13;26;Misic, Luka;ja;x
+2026-08-13;26;Lauer, Stefan;ja;x
+2026-08-13;26;Fangmeier, Jakob;ja;x
+2026-08-13;26;Agbozo, Jesse;ja;x
+2026-08-13;26;Yarayan, Kiyan;ja;x
+2026-08-13;26;Reichert, Lenny;ja;x
+2026-08-13;26;Disch, Maximilian;ja;x
+2026-08-13;26;Souleymané, Said;ja;x
+2026-08-13;26;Reinecker, Steffen;ja;x
+2026-08-13;26;Podlich, Timm;ja;x
+2026-08-13;26;Valchuk, David;ja;x
+2026-08-13;26;Scalici, Giuliano;ja;x
+2026-08-13;26;Ehret Jo, Jonathan;ja;x
+2026-08-13;26;Ehret Ju, Julian;ja;x
+2026-08-13;26;Tschira, Julien;ja;x
+2026-08-13;26;Roth M, Matti;ja;x
+2026-08-13;26;Pereira Marques, Francisco;nein;v
+2026-08-13;26;Bao Nguyen, Thai;ja;x
+2026-08-13;26;Ismaili, Sabahudin;ja;x
+2026-08-13;26;Schäfer, Tim;ja;x
+2026-08-13;26;Tiedemann, Tim;ja;x
+2026-08-13;26;Roth Y, Yanik;ja;x
+2026-08-13;26;Dischinger J Johnatan;ja;x
+2026-08-13;26;AKUEGWU, Jack;ja;x
+2026-08-13;26;Dischinger, Jonathan;ja;x
+2026-08-13;26;Ontuzans, Daniels;ja;x
+2026-08-13;26;Jungkeit, Amin;ja;x
+2026-08-13;26;Kiefl, Elias;ja;x
+2026-08-13;26;Kobus, Marcel;ja;x
+2026-08-13;26;Zitzelsberger, Klaus;ja;x
+2026-08-13;26;Brombacher , Franziska;ja;x
+2026-08-13;26;Björn  Dieselhorst;ja;x
+2026-08-13;26;Diestelhorst, Björn;ja;x
+2026-08-13;26;Carbone, Nico;ja;x
+2026-08-13;26;Klemt, Christof;ja;x
+2026-08-13;26;Dr. Schlehuber, Tarek;ja;x
+2026-08-14;27;Rufer, Fabian;ja;x
+2026-08-14;27;Misic, Luka;ja;x
+2026-08-14;27;Lauer, Stefan;ja;x
+2026-08-14;27;Fangmeier, Jakob;ja;x
+2026-08-14;27;Agbozo, Jesse;ja;x
+2026-08-14;27;Yarayan, Kiyan;ja;x
+2026-08-14;27;Reichert, Lenny;ja;x
+2026-08-14;27;Disch, Maximilian;ja;x
+2026-08-14;27;Souleymané, Said;ja;x
+2026-08-14;27;Reinecker, Steffen;ja;x
+2026-08-14;27;Podlich, Timm;ja;x
+2026-08-14;27;Valchuk, David;ja;x
+2026-08-14;27;Scalici, Giuliano;ja;x
+2026-08-14;27;Ehret Jo, Jonathan;ja;x
+2026-08-14;27;Ehret Ju, Julian;ja;x
+2026-08-14;27;Tschira, Julien;ja;x
+2026-08-14;27;Roth M, Matti;ja;x
+2026-08-14;27;Pereira Marques, Francisco;nein;v
+2026-08-14;27;Bao Nguyen, Thai;ja;x
+2026-08-14;27;Ismaili, Sabahudin;ja;x
+2026-08-14;27;Schäfer, Tim;ja;x
+2026-08-14;27;Tiedemann, Tim;ja;x
+2026-08-14;27;Roth Y, Yanik;ja;x
+2026-08-14;27;Dischinger J Johnatan;ja;x
+2026-08-14;27;AKUEGWU, Jack;ja;x
+2026-08-14;27;Dischinger, Jonathan;ja;x
+2026-08-14;27;Ontuzans, Daniels;ja;x
+2026-08-14;27;Jungkeit, Amin;ja;x
+2026-08-14;27;Kiefl, Elias;ja;x
+2026-08-14;27;Kobus, Marcel;ja;x
+2026-08-14;27;Zitzelsberger, Klaus;ja;x
+2026-08-14;27;Brombacher , Franziska;ja;x
+2026-08-14;27;Björn  Dieselhorst;ja;x
+2026-08-14;27;Diestelhorst, Björn;ja;x
+2026-08-14;27;Carbone, Nico;ja;x
+2026-08-14;27;Klemt, Christof;ja;x
+2026-08-14;27;Dr. Schlehuber, Tarek;ja;x
+2026-08-18;28;Rufer, Fabian;ja;x
+2026-08-18;28;Misic, Luka;ja;x
+2026-08-18;28;Lauer, Stefan;ja;x
+2026-08-18;28;Fangmeier, Jakob;ja;x
+2026-08-18;28;Agbozo, Jesse;ja;x
+2026-08-18;28;Yarayan, Kiyan;ja;x
+2026-08-18;28;Reichert, Lenny;ja;x
+2026-08-18;28;Disch, Maximilian;ja;x
+2026-08-18;28;Souleymané, Said;ja;x
+2026-08-18;28;Reinecker, Steffen;ja;x
+2026-08-18;28;Podlich, Timm;ja;x
+2026-08-18;28;Valchuk, David;ja;x
+2026-08-18;28;Scalici, Giuliano;ja;x
+2026-08-18;28;Ehret Jo, Jonathan;ja;x
+2026-08-18;28;Ehret Ju, Julian;ja;x
+2026-08-18;28;Tschira, Julien;ja;x
+2026-08-18;28;Roth M, Matti;ja;x
+2026-08-18;28;Pereira Marques, Francisco;nein;v
+2026-08-18;28;Bao Nguyen, Thai;ja;x
+2026-08-18;28;Ismaili, Sabahudin;ja;x
+2026-08-18;28;Schäfer, Tim;ja;x
+2026-08-18;28;Tiedemann, Tim;ja;x
+2026-08-18;28;Roth Y, Yanik;ja;x
+2026-08-18;28;Dischinger J Johnatan;ja;x
+2026-08-18;28;AKUEGWU, Jack;ja;x
+2026-08-18;28;Dischinger, Jonathan;ja;x
+2026-08-18;28;Ontuzans, Daniels;ja;x
+2026-08-18;28;Jungkeit, Amin;ja;x
+2026-08-18;28;Kiefl, Elias;ja;x
+2026-08-18;28;Kobus, Marcel;ja;x
+2026-08-18;28;Zitzelsberger, Klaus;ja;x
+2026-08-18;28;Brombacher , Franziska;ja;x
+2026-08-18;28;Björn  Dieselhorst;ja;x
+2026-08-18;28;Diestelhorst, Björn;ja;x
+2026-08-18;28;Carbone, Nico;ja;x
+2026-08-18;28;Klemt, Christof;ja;x
+2026-08-18;28;Dr. Schlehuber, Tarek;ja;x
+2026-08-20;29;Rufer, Fabian;ja;x
+2026-08-20;29;Misic, Luka;ja;x
+2026-08-20;29;Lauer, Stefan;ja;x
+2026-08-20;29;Fangmeier, Jakob;ja;x
+2026-08-20;29;Agbozo, Jesse;ja;x
+2026-08-20;29;Yarayan, Kiyan;ja;x
+2026-08-20;29;Reichert, Lenny;ja;x
+2026-08-20;29;Disch, Maximilian;ja;x
+2026-08-20;29;Souleymané, Said;ja;x
+2026-08-20;29;Reinecker, Steffen;ja;x
+2026-08-20;29;Podlich, Timm;ja;x
+2026-08-20;29;Valchuk, David;ja;x
+2026-08-20;29;Scalici, Giuliano;ja;x
+2026-08-20;29;Ehret Jo, Jonathan;ja;x
+2026-08-20;29;Ehret Ju, Julian;ja;x
+2026-08-20;29;Tschira, Julien;ja;x
+2026-08-20;29;Roth M, Matti;ja;x
+2026-08-20;29;Pereira Marques, Francisco;nein;v
+2026-08-20;29;Bao Nguyen, Thai;ja;x
+2026-08-20;29;Ismaili, Sabahudin;ja;x
+2026-08-20;29;Schäfer, Tim;ja;x
+2026-08-20;29;Tiedemann, Tim;ja;x
+2026-08-20;29;Roth Y, Yanik;ja;x
+2026-08-20;29;Dischinger J Johnatan;ja;x
+2026-08-20;29;AKUEGWU, Jack;ja;x
+2026-08-20;29;Dischinger, Jonathan;ja;x
+2026-08-20;29;Ontuzans, Daniels;ja;x
+2026-08-20;29;Jungkeit, Amin;ja;x
+2026-08-20;29;Kiefl, Elias;ja;x
+2026-08-20;29;Kobus, Marcel;ja;x
+2026-08-20;29;Zitzelsberger, Klaus;ja;x
+2026-08-20;29;Brombacher , Franziska;ja;x
+2026-08-20;29;Björn  Dieselhorst;ja;x
+2026-08-20;29;Diestelhorst, Björn;ja;x
+2026-08-20;29;Carbone, Nico;ja;x
+2026-08-20;29;Klemt, Christof;ja;x
+2026-08-20;29;Dr. Schlehuber, Tarek;ja;x
+2026-08-21;30;Rufer, Fabian;ja;x
+2026-08-21;30;Misic, Luka;ja;x
+2026-08-21;30;Lauer, Stefan;ja;x
+2026-08-21;30;Fangmeier, Jakob;ja;x
+2026-08-21;30;Agbozo, Jesse;ja;x
+2026-08-21;30;Yarayan, Kiyan;ja;x
+2026-08-21;30;Reichert, Lenny;ja;x
+2026-08-21;30;Disch, Maximilian;ja;x
+2026-08-21;30;Souleymané, Said;ja;x
+2026-08-21;30;Reinecker, Steffen;ja;x
+2026-08-21;30;Podlich, Timm;ja;x
+2026-08-21;30;Valchuk, David;ja;x
+2026-08-21;30;Scalici, Giuliano;ja;x
+2026-08-21;30;Ehret Jo, Jonathan;ja;x
+2026-08-21;30;Ehret Ju, Julian;ja;x
+2026-08-21;30;Tschira, Julien;ja;x
+2026-08-21;30;Roth M, Matti;ja;x
+2026-08-21;30;Pereira Marques, Francisco;nein;v
+2026-08-21;30;Bao Nguyen, Thai;ja;x
+2026-08-21;30;Ismaili, Sabahudin;ja;x
+2026-08-21;30;Schäfer, Tim;ja;x
+2026-08-21;30;Tiedemann, Tim;ja;x
+2026-08-21;30;Roth Y, Yanik;ja;x
+2026-08-21;30;Dischinger J Johnatan;ja;x
+2026-08-21;30;AKUEGWU, Jack;ja;x
+2026-08-21;30;Dischinger, Jonathan;ja;x
+2026-08-21;30;Ontuzans, Daniels;ja;x
+2026-08-21;30;Jungkeit, Amin;ja;x
+2026-08-21;30;Kiefl, Elias;ja;x
+2026-08-21;30;Kobus, Marcel;ja;x
+2026-08-21;30;Zitzelsberger, Klaus;ja;x
+2026-08-21;30;Brombacher , Franziska;ja;x
+2026-08-21;30;Björn  Dieselhorst;ja;x
+2026-08-21;30;Diestelhorst, Björn;ja;x
+2026-08-21;30;Carbone, Nico;ja;x
+2026-08-21;30;Klemt, Christof;ja;x
+2026-08-21;30;Dr. Schlehuber, Tarek;ja;x
+2026-08-25;31;Rufer, Fabian;ja;x
+2026-08-25;31;Misic, Luka;ja;x
+2026-08-25;31;Lauer, Stefan;ja;x
+2026-08-25;31;Fangmeier, Jakob;ja;x
+2026-08-25;31;Agbozo, Jesse;ja;x
+2026-08-25;31;Yarayan, Kiyan;ja;x
+2026-08-25;31;Reichert, Lenny;ja;x
+2026-08-25;31;Disch, Maximilian;ja;x
+2026-08-25;31;Souleymané, Said;ja;x
+2026-08-25;31;Reinecker, Steffen;ja;x
+2026-08-25;31;Podlich, Timm;ja;x
+2026-08-25;31;Valchuk, David;ja;x
+2026-08-25;31;Scalici, Giuliano;ja;x
+2026-08-25;31;Ehret Jo, Jonathan;ja;x
+2026-08-25;31;Ehret Ju, Julian;ja;x
+2026-08-25;31;Tschira, Julien;ja;x
+2026-08-25;31;Roth M, Matti;ja;x
+2026-08-25;31;Pereira Marques, Francisco;nein;v
+2026-08-25;31;Bao Nguyen, Thai;ja;x
+2026-08-25;31;Ismaili, Sabahudin;ja;x
+2026-08-25;31;Schäfer, Tim;ja;x
+2026-08-25;31;Tiedemann, Tim;ja;x
+2026-08-25;31;Roth Y, Yanik;ja;x
+2026-08-25;31;Dischinger J Johnatan;ja;x
+2026-08-25;31;AKUEGWU, Jack;ja;x
+2026-08-25;31;Dischinger, Jonathan;ja;x
+2026-08-25;31;Ontuzans, Daniels;ja;x
+2026-08-25;31;Jungkeit, Amin;ja;x
+2026-08-25;31;Kiefl, Elias;ja;x
+2026-08-25;31;Kobus, Marcel;ja;x
+2026-08-25;31;Zitzelsberger, Klaus;ja;x
+2026-08-25;31;Brombacher , Franziska;ja;x
+2026-08-25;31;Björn  Dieselhorst;ja;x
+2026-08-25;31;Diestelhorst, Björn;ja;x
+2026-08-25;31;Carbone, Nico;ja;x
+2026-08-25;31;Klemt, Christof;ja;x
+2026-08-25;31;Dr. Schlehuber, Tarek;ja;x
+2026-08-27;32;Rufer, Fabian;ja;x
+2026-08-27;32;Misic, Luka;ja;x
+2026-08-27;32;Lauer, Stefan;ja;x
+2026-08-27;32;Fangmeier, Jakob;ja;x
+2026-08-27;32;Agbozo, Jesse;ja;x
+2026-08-27;32;Yarayan, Kiyan;ja;x
+2026-08-27;32;Reichert, Lenny;ja;x
+2026-08-27;32;Disch, Maximilian;ja;x
+2026-08-27;32;Souleymané, Said;ja;x
+2026-08-27;32;Reinecker, Steffen;ja;x
+2026-08-27;32;Podlich, Timm;ja;x
+2026-08-27;32;Valchuk, David;ja;x
+2026-08-27;32;Scalici, Giuliano;ja;x
+2026-08-27;32;Ehret Jo, Jonathan;ja;x
+2026-08-27;32;Ehret Ju, Julian;ja;x
+2026-08-27;32;Tschira, Julien;ja;x
+2026-08-27;32;Roth M, Matti;ja;x
+2026-08-27;32;Pereira Marques, Francisco;nein;v
+2026-08-27;32;Bao Nguyen, Thai;ja;x
+2026-08-27;32;Ismaili, Sabahudin;ja;x
+2026-08-27;32;Schäfer, Tim;ja;x
+2026-08-27;32;Tiedemann, Tim;ja;x
+2026-08-27;32;Roth Y, Yanik;ja;x
+2026-08-27;32;Dischinger J Johnatan;ja;x
+2026-08-27;32;AKUEGWU, Jack;ja;x
+2026-08-27;32;Dischinger, Jonathan;ja;x
+2026-08-27;32;Ontuzans, Daniels;ja;x
+2026-08-27;32;Jungkeit, Amin;ja;x
+2026-08-27;32;Kiefl, Elias;ja;x
+2026-08-27;32;Kobus, Marcel;ja;x
+2026-08-27;32;Zitzelsberger, Klaus;ja;x
+2026-08-27;32;Brombacher , Franziska;ja;x
+2026-08-27;32;Björn  Dieselhorst;ja;x
+2026-08-27;32;Diestelhorst, Björn;ja;x
+2026-08-27;32;Carbone, Nico;ja;x
+2026-08-27;32;Klemt, Christof;ja;x
+2026-08-27;32;Dr. Schlehuber, Tarek;ja;x
+2026-08-28;33;Rufer, Fabian;ja;x
+2026-08-28;33;Misic, Luka;ja;x
+2026-08-28;33;Lauer, Stefan;ja;x
+2026-08-28;33;Fangmeier, Jakob;ja;x
+2026-08-28;33;Agbozo, Jesse;ja;x
+2026-08-28;33;Yarayan, Kiyan;ja;x
+2026-08-28;33;Reichert, Lenny;ja;x
+2026-08-28;33;Disch, Maximilian;ja;x
+2026-08-28;33;Souleymané, Said;ja;x
+2026-08-28;33;Reinecker, Steffen;ja;x
+2026-08-28;33;Podlich, Timm;ja;x
+2026-08-28;33;Valchuk, David;ja;x
+2026-08-28;33;Scalici, Giuliano;ja;x
+2026-08-28;33;Ehret Jo, Jonathan;ja;x
+2026-08-28;33;Ehret Ju, Julian;ja;x
+2026-08-28;33;Tschira, Julien;ja;x
+2026-08-28;33;Roth M, Matti;ja;x
+2026-08-28;33;Pereira Marques, Francisco;nein;v
+2026-08-28;33;Bao Nguyen, Thai;ja;x
+2026-08-28;33;Ismaili, Sabahudin;ja;x
+2026-08-28;33;Schäfer, Tim;ja;x
+2026-08-28;33;Tiedemann, Tim;ja;x
+2026-08-28;33;Roth Y, Yanik;ja;x
+2026-08-28;33;Dischinger J Johnatan;ja;x
+2026-08-28;33;AKUEGWU, Jack;ja;x
+2026-08-28;33;Dischinger, Jonathan;ja;x
+2026-08-28;33;Ontuzans, Daniels;ja;x
+2026-08-28;33;Jungkeit, Amin;ja;x
+2026-08-28;33;Kiefl, Elias;ja;x
+2026-08-28;33;Kobus, Marcel;ja;x
+2026-08-28;33;Zitzelsberger, Klaus;ja;x
+2026-08-28;33;Brombacher , Franziska;ja;x
+2026-08-28;33;Björn  Dieselhorst;ja;x
+2026-08-28;33;Diestelhorst, Björn;ja;x
+2026-08-28;33;Carbone, Nico;ja;x
+2026-08-28;33;Klemt, Christof;ja;x
+2026-08-28;33;Dr. Schlehuber, Tarek;ja;x
+2026-09-01;34;Rufer, Fabian;ja;x
+2026-09-01;34;Misic, Luka;ja;x
+2026-09-01;34;Lauer, Stefan;ja;x
+2026-09-01;34;Fangmeier, Jakob;ja;x
+2026-09-01;34;Agbozo, Jesse;ja;x
+2026-09-01;34;Yarayan, Kiyan;ja;x
+2026-09-01;34;Reichert, Lenny;ja;x
+2026-09-01;34;Disch, Maximilian;ja;x
+2026-09-01;34;Souleymané, Said;ja;x
+2026-09-01;34;Reinecker, Steffen;ja;x
+2026-09-01;34;Podlich, Timm;ja;x
+2026-09-01;34;Valchuk, David;ja;x
+2026-09-01;34;Scalici, Giuliano;ja;x
+2026-09-01;34;Ehret Jo, Jonathan;ja;x
+2026-09-01;34;Ehret Ju, Julian;ja;x
+2026-09-01;34;Tschira, Julien;ja;x
+2026-09-01;34;Roth M, Matti;ja;x
+2026-09-01;34;Pereira Marques, Francisco;ja;x
+2026-09-01;34;Bao Nguyen, Thai;ja;x
+2026-09-01;34;Ismaili, Sabahudin;ja;x
+2026-09-01;34;Schäfer, Tim;ja;x
+2026-09-01;34;Tiedemann, Tim;ja;x
+2026-09-01;34;Roth Y, Yanik;ja;x
+2026-09-01;34;AKUEGWU, Jack;ja;x
+2026-09-01;34;Dischinger, Jonathan;ja;x
+2026-09-01;34;Ontuzans, Daniels;ja;x
+2026-09-01;34;Jungkeit, Amin;ja;x
+2026-09-01;34;Kiefl, Elias;ja;x
+2026-09-01;34;Kobus, Marcel;ja;x
+2026-09-01;34;Zitzelsberger, Klaus;ja;x
+2026-09-01;34;Brombacher , Franziska;ja;x
+2026-09-01;34;Diestelhorst, Björn;ja;x
+2026-09-01;34;Carbone, Nico;ja;x
+2026-09-01;34;Klemt, Christof;ja;x
+2026-09-01;34;Dr. Schlehuber, Tarek;ja;x
+2026-09-02;35;Rufer, Fabian;ja;x
+2026-09-02;35;Misic, Luka;ja;x
+2026-09-02;35;Lauer, Stefan;ja;x
+2026-09-02;35;Fangmeier, Jakob;ja;x
+2026-09-02;35;Agbozo, Jesse;ja;x
+2026-09-02;35;Yarayan, Kiyan;ja;x
+2026-09-02;35;Reichert, Lenny;ja;x
+2026-09-02;35;Disch, Maximilian;ja;x
+2026-09-02;35;Souleymané, Said;ja;x
+2026-09-02;35;Reinecker, Steffen;ja;x
+2026-09-02;35;Podlich, Timm;ja;x
+2026-09-02;35;Valchuk, David;ja;x
+2026-09-02;35;Scalici, Giuliano;ja;x
+2026-09-02;35;Ehret Jo, Jonathan;ja;x
+2026-09-02;35;Ehret Ju, Julian;ja;x
+2026-09-02;35;Tschira, Julien;ja;x
+2026-09-02;35;Roth M, Matti;ja;x
+2026-09-02;35;Pereira Marques, Francisco;nein;v
+2026-09-02;35;Bao Nguyen, Thai;ja;x
+2026-09-02;35;Ismaili, Sabahudin;ja;x
+2026-09-02;35;Schäfer, Tim;ja;x
+2026-09-02;35;Tiedemann, Tim;ja;x
+2026-09-02;35;Roth Y, Yanik;ja;x
+2026-09-02;35;Dischinger J Johnatan;ja;x
+2026-09-02;35;AKUEGWU, Jack;ja;x
+2026-09-02;35;Dischinger, Jonathan;ja;x
+2026-09-02;35;Ontuzans, Daniels;ja;x
+2026-09-02;35;Jungkeit, Amin;ja;x
+2026-09-02;35;Kiefl, Elias;ja;x
+2026-09-02;35;Kobus, Marcel;ja;x
+2026-09-02;35;Zitzelsberger, Klaus;ja;x
+2026-09-02;35;Brombacher , Franziska;ja;x
+2026-09-02;35;Björn  Dieselhorst;ja;x
+2026-09-02;35;Diestelhorst, Björn;ja;x
+2026-09-02;35;Carbone, Nico;ja;x
+2026-09-02;35;Klemt, Christof;ja;x
+2026-09-02;35;Dr. Schlehuber, Tarek;ja;x
+2026-09-03;36;Rufer, Fabian;ja;x
+2026-09-03;36;Misic, Luka;ja;x
+2026-09-03;36;Lauer, Stefan;ja;x
+2026-09-03;36;Fangmeier, Jakob;ja;x
+2026-09-03;36;Agbozo, Jesse;ja;x
+2026-09-03;36;Yarayan, Kiyan;ja;x
+2026-09-03;36;Reichert, Lenny;ja;x
+2026-09-03;36;Disch, Maximilian;ja;x
+2026-09-03;36;Souleymané, Said;ja;x
+2026-09-03;36;Reinecker, Steffen;ja;x
+2026-09-03;36;Podlich, Timm;ja;x
+2026-09-03;36;Valchuk, David;ja;x
+2026-09-03;36;Scalici, Giuliano;ja;x
+2026-09-03;36;Ehret Jo, Jonathan;ja;x
+2026-09-03;36;Ehret Ju, Julian;ja;x
+2026-09-03;36;Tschira, Julien;ja;x
+2026-09-03;36;Roth M, Matti;ja;x
+2026-09-03;36;Pereira Marques, Francisco;nein;v
+2026-09-03;36;Bao Nguyen, Thai;ja;x
+2026-09-03;36;Ismaili, Sabahudin;ja;x
+2026-09-03;36;Schäfer, Tim;ja;x
+2026-09-03;36;Tiedemann, Tim;ja;x
+2026-09-03;36;Roth Y, Yanik;ja;x
+2026-09-03;36;Dischinger J Johnatan;ja;x
+2026-09-03;36;AKUEGWU, Jack;ja;x
+2026-09-03;36;Dischinger, Jonathan;ja;x
+2026-09-03;36;Ontuzans, Daniels;ja;x
+2026-09-03;36;Jungkeit, Amin;ja;x
+2026-09-03;36;Kiefl, Elias;ja;x
+2026-09-03;36;Kobus, Marcel;ja;x
+2026-09-03;36;Zitzelsberger, Klaus;ja;x
+2026-09-03;36;Brombacher , Franziska;ja;x
+2026-09-03;36;Björn  Dieselhorst;ja;x
+2026-09-03;36;Diestelhorst, Björn;ja;x
+2026-09-03;36;Carbone, Nico;ja;x
+2026-09-03;36;Klemt, Christof;ja;x
+2026-09-03;36;Dr. Schlehuber, Tarek;ja;x
+2026-09-04;37;Rufer, Fabian;ja;x
+2026-09-04;37;Misic, Luka;ja;x
+2026-09-04;37;Lauer, Stefan;ja;x
+2026-09-04;37;Fangmeier, Jakob;ja;x
+2026-09-04;37;Agbozo, Jesse;ja;x
+2026-09-04;37;Yarayan, Kiyan;ja;x
+2026-09-04;37;Reichert, Lenny;ja;x
+2026-09-04;37;Disch, Maximilian;ja;x
+2026-09-04;37;Souleymané, Said;ja;x
+2026-09-04;37;Reinecker, Steffen;ja;x
+2026-09-04;37;Podlich, Timm;ja;x
+2026-09-04;37;Valchuk, David;ja;x
+2026-09-04;37;Scalici, Giuliano;ja;x
+2026-09-04;37;Ehret Jo, Jonathan;ja;x
+2026-09-04;37;Ehret Ju, Julian;ja;x
+2026-09-04;37;Tschira, Julien;ja;x
+2026-09-04;37;Roth M, Matti;ja;x
+2026-09-04;37;Pereira Marques, Francisco;nein;v
+2026-09-04;37;Bao Nguyen, Thai;ja;x
+2026-09-04;37;Ismaili, Sabahudin;ja;x
+2026-09-04;37;Schäfer, Tim;ja;x
+2026-09-04;37;Tiedemann, Tim;ja;x
+2026-09-04;37;Roth Y, Yanik;ja;x
+2026-09-04;37;Dischinger J Johnatan;ja;x
+2026-09-04;37;AKUEGWU, Jack;ja;x
+2026-09-04;37;Dischinger, Jonathan;ja;x
+2026-09-04;37;Ontuzans, Daniels;ja;x
+2026-09-04;37;Jungkeit, Amin;ja;x
+2026-09-04;37;Kiefl, Elias;ja;x
+2026-09-04;37;Kobus, Marcel;ja;x
+2026-09-04;37;Zitzelsberger, Klaus;ja;x
+2026-09-04;37;Brombacher , Franziska;ja;x
+2026-09-04;37;Björn  Dieselhorst;ja;x
+2026-09-04;37;Diestelhorst, Björn;ja;x
+2026-09-04;37;Carbone, Nico;ja;x
+2026-09-04;37;Klemt, Christof;ja;x
+2026-09-04;37;Dr. Schlehuber, Tarek;ja;x
+2026-09-08;39;Rufer, Fabian;ja;x
+2026-09-08;39;Misic, Luka;ja;x
+2026-09-08;39;Lauer, Stefan;ja;x
+2026-09-08;39;Fangmeier, Jakob;ja;x
+2026-09-08;39;Agbozo, Jesse;ja;x
+2026-09-08;39;Yarayan, Kiyan;ja;x
+2026-09-08;39;Reichert, Lenny;ja;x
+2026-09-08;39;Disch, Maximilian;ja;x
+2026-09-08;39;Souleymané, Said;ja;x
+2026-09-08;39;Reinecker, Steffen;ja;x
+2026-09-08;39;Podlich, Timm;ja;x
+2026-09-08;39;Valchuk, David;ja;x
+2026-09-08;39;Scalici, Giuliano;ja;x
+2026-09-08;39;Ehret Jo, Jonathan;ja;x
+2026-09-08;39;Ehret Ju, Julian;ja;x
+2026-09-08;39;Tschira, Julien;ja;x
+2026-09-08;39;Roth M, Matti;ja;x
+2026-09-08;39;Pereira Marques, Francisco;nein;v
+2026-09-08;39;Bao Nguyen, Thai;ja;x
+2026-09-08;39;Ismaili, Sabahudin;ja;x
+2026-09-08;39;Schäfer, Tim;ja;x
+2026-09-08;39;Tiedemann, Tim;ja;x
+2026-09-08;39;Roth Y, Yanik;ja;x
+2026-09-08;39;Dischinger J Johnatan;ja;x
+2026-09-08;39;AKUEGWU, Jack;ja;x
+2026-09-08;39;Dischinger, Jonathan;ja;x
+2026-09-08;39;Ontuzans, Daniels;ja;x
+2026-09-08;39;Jungkeit, Amin;ja;x
+2026-09-08;39;Kiefl, Elias;ja;x
+2026-09-08;39;Kobus, Marcel;ja;x
+2026-09-08;39;Zitzelsberger, Klaus;ja;x
+2026-09-08;39;Brombacher , Franziska;ja;x
+2026-09-08;39;Björn  Dieselhorst;ja;x
+2026-09-08;39;Diestelhorst, Björn;ja;x
+2026-09-08;39;Carbone, Nico;ja;x
+2026-09-08;39;Klemt, Christof;ja;x
+2026-09-08;39;Dr. Schlehuber, Tarek;ja;x
+2026-09-10;41;Rufer, Fabian;ja;x
+2026-09-10;41;Misic, Luka;ja;x
+2026-09-10;41;Lauer, Stefan;ja;x
+2026-09-10;41;Fangmeier, Jakob;ja;x
+2026-09-10;41;Agbozo, Jesse;ja;x
+2026-09-10;41;Yarayan, Kiyan;ja;x
+2026-09-10;41;Reichert, Lenny;ja;x
+2026-09-10;41;Disch, Maximilian;ja;x
+2026-09-10;41;Souleymané, Said;ja;x
+2026-09-10;41;Reinecker, Steffen;ja;x
+2026-09-10;41;Podlich, Timm;ja;x
+2026-09-10;41;Valchuk, David;ja;x
+2026-09-10;41;Scalici, Giuliano;ja;x
+2026-09-10;41;Ehret Jo, Jonathan;ja;x
+2026-09-10;41;Ehret Ju, Julian;ja;x
+2026-09-10;41;Tschira, Julien;ja;x
+2026-09-10;41;Roth M, Matti;ja;x
+2026-09-10;41;Pereira Marques, Francisco;nein;v
+2026-09-10;41;Bao Nguyen, Thai;ja;x
+2026-09-10;41;Ismaili, Sabahudin;ja;x
+2026-09-10;41;Schäfer, Tim;ja;x
+2026-09-10;41;Tiedemann, Tim;ja;x
+2026-09-10;41;Roth Y, Yanik;ja;x
+2026-09-10;41;Dischinger J Johnatan;ja;x
+2026-09-10;41;AKUEGWU, Jack;ja;x
+2026-09-10;41;Dischinger, Jonathan;ja;x
+2026-09-10;41;Ontuzans, Daniels;ja;x
+2026-09-10;41;Jungkeit, Amin;ja;x
+2026-09-10;41;Kiefl, Elias;ja;x
+2026-09-10;41;Kobus, Marcel;ja;x
+2026-09-10;41;Zitzelsberger, Klaus;ja;x
+2026-09-10;41;Brombacher , Franziska;ja;x
+2026-09-10;41;Björn  Dieselhorst;ja;x
+2026-09-10;41;Diestelhorst, Björn;ja;x
+2026-09-10;41;Carbone, Nico;ja;x
+2026-09-10;41;Klemt, Christof;ja;x
+2026-09-10;41;Dr. Schlehuber, Tarek;ja;x
+2026-09-11;42;Rufer, Fabian;ja;x
+2026-09-11;42;Misic, Luka;ja;x
+2026-09-11;42;Lauer, Stefan;ja;x
+2026-09-11;42;Fangmeier, Jakob;ja;x
+2026-09-11;42;Agbozo, Jesse;ja;x
+2026-09-11;42;Yarayan, Kiyan;ja;x
+2026-09-11;42;Reichert, Lenny;ja;x
+2026-09-11;42;Disch, Maximilian;ja;x
+2026-09-11;42;Souleymané, Said;ja;x
+2026-09-11;42;Reinecker, Steffen;ja;x
+2026-09-11;42;Podlich, Timm;ja;x
+2026-09-11;42;Valchuk, David;ja;x
+2026-09-11;42;Scalici, Giuliano;ja;x
+2026-09-11;42;Ehret Jo, Jonathan;ja;x
+2026-09-11;42;Ehret Ju, Julian;ja;x
+2026-09-11;42;Tschira, Julien;ja;x
+2026-09-11;42;Roth M, Matti;ja;x
+2026-09-11;42;Pereira Marques, Francisco;nein;v
+2026-09-11;42;Bao Nguyen, Thai;ja;x
+2026-09-11;42;Ismaili, Sabahudin;ja;x
+2026-09-11;42;Schäfer, Tim;ja;x
+2026-09-11;42;Tiedemann, Tim;ja;x
+2026-09-11;42;Roth Y, Yanik;ja;x
+2026-09-11;42;Dischinger J Johnatan;ja;x
+2026-09-11;42;AKUEGWU, Jack;ja;x
+2026-09-11;42;Dischinger, Jonathan;ja;x
+2026-09-11;42;Ontuzans, Daniels;ja;x
+2026-09-11;42;Jungkeit, Amin;ja;x
+2026-09-11;42;Kiefl, Elias;ja;x
+2026-09-11;42;Kobus, Marcel;ja;x
+2026-09-11;42;Zitzelsberger, Klaus;ja;x
+2026-09-11;42;Brombacher , Franziska;ja;x
+2026-09-11;42;Björn  Dieselhorst;ja;x
+2026-09-11;42;Diestelhorst, Björn;ja;x
+2026-09-11;42;Carbone, Nico;ja;x
+2026-09-11;42;Klemt, Christof;ja;x
+2026-09-11;42;Dr. Schlehuber, Tarek;ja;x
+2026-09-15;45;Rufer, Fabian;ja;x
+2026-09-15;45;Misic, Luka;ja;x
+2026-09-15;45;Lauer, Stefan;ja;x
+2026-09-15;45;Fangmeier, Jakob;ja;x
+2026-09-15;45;Agbozo, Jesse;ja;x
+2026-09-15;45;Yarayan, Kiyan;ja;x
+2026-09-15;45;Reichert, Lenny;ja;x
+2026-09-15;45;Disch, Maximilian;ja;x
+2026-09-15;45;Souleymané, Said;ja;x
+2026-09-15;45;Reinecker, Steffen;ja;x
+2026-09-15;45;Podlich, Timm;ja;x
+2026-09-15;45;Valchuk, David;ja;x
+2026-09-15;45;Scalici, Giuliano;ja;x
+2026-09-15;45;Ehret Jo, Jonathan;ja;x
+2026-09-15;45;Ehret Ju, Julian;ja;x
+2026-09-15;45;Tschira, Julien;nein;v
+2026-09-15;45;Roth M, Matti;ja;x
+2026-09-15;45;Pereira Marques, Francisco;nein;v
+2026-09-15;45;Bao Nguyen, Thai;ja;x
+2026-09-15;45;Ismaili, Sabahudin;ja;x
+2026-09-15;45;Schäfer, Tim;ja;x
+2026-09-15;45;Tiedemann, Tim;nein;v
+2026-09-15;45;Roth Y, Yanik;ja;x
+2026-09-15;45;Dischinger J Johnatan;ja;x
+2026-09-15;45;AKUEGWU, Jack;ja;x
+2026-09-15;45;Dischinger, Jonathan;ja;x
+2026-09-15;45;Ontuzans, Daniels;ja;x
+2026-09-15;45;Jungkeit, Amin;ja;x
+2026-09-15;45;Kiefl, Elias;ja;x
+2026-09-15;45;Kobus, Marcel;ja;x
+2026-09-15;45;Zitzelsberger, Klaus;ja;x
+2026-09-15;45;Brombacher , Franziska;ja;x
+2026-09-15;45;Björn  Dieselhorst;ja;x
+2026-09-15;45;Diestelhorst, Björn;ja;x
+2026-09-15;45;Carbone, Nico;ja;x
+2026-09-15;45;Klemt, Christof;ja;x
+2026-09-15;45;Dr. Schlehuber, Tarek;ja;x
+2026-09-16;46;Rufer, Fabian;ja;x
+2026-09-16;46;Misic, Luka;ja;x
+2026-09-16;46;Lauer, Stefan;ja;x
+2026-09-16;46;Fangmeier, Jakob;ja;x
+2026-09-16;46;Agbozo, Jesse;ja;x
+2026-09-16;46;Yarayan, Kiyan;ja;x
+2026-09-16;46;Reichert, Lenny;ja;x
+2026-09-16;46;Disch, Maximilian;ja;x
+2026-09-16;46;Souleymané, Said;ja;x
+2026-09-16;46;Reinecker, Steffen;ja;x
+2026-09-16;46;Podlich, Timm;ja;x
+2026-09-16;46;Valchuk, David;ja;x
+2026-09-16;46;Scalici, Giuliano;ja;x
+2026-09-16;46;Ehret Jo, Jonathan;ja;x
+2026-09-16;46;Ehret Ju, Julian;ja;x
+2026-09-16;46;Tschira, Julien;ja;x
+2026-09-16;46;Roth M, Matti;ja;x
+2026-09-16;46;Pereira Marques, Francisco;ja;x
+2026-09-16;46;Bao Nguyen, Thai;ja;x
+2026-09-16;46;Ismaili, Sabahudin;ja;x
+2026-09-16;46;Schäfer, Tim;ja;x
+2026-09-16;46;Tiedemann, Tim;ja;x
+2026-09-16;46;Roth Y, Yanik;ja;x
+2026-09-16;46;AKUEGWU, Jack;ja;x
+2026-09-16;46;Dischinger, Jonathan;ja;x
+2026-09-16;46;Ontuzans, Daniels;ja;x
+2026-09-16;46;Jungkeit, Amin;ja;x
+2026-09-16;46;Kiefl, Elias;ja;x
+2026-09-16;46;Kobus, Marcel;ja;x
+2026-09-16;46;Zitzelsberger, Klaus;ja;x
+2026-09-16;46;Brombacher , Franziska;ja;x
+2026-09-16;46;Diestelhorst, Björn;ja;x
+2026-09-16;46;Carbone, Nico;ja;x
+2026-09-16;46;Klemt, Christof;ja;x
+2026-09-16;46;Dr. Schlehuber, Tarek;ja;x
+2026-09-17;47;Rufer, Fabian;ja;x
+2026-09-17;47;Misic, Luka;ja;x
+2026-09-17;47;Lauer, Stefan;ja;x
+2026-09-17;47;Disch;ja;x
+2026-09-17;47;Fangmeier, Jakob;ja;x
+2026-09-17;47;Agbozo, Jesse;ja;x
+2026-09-17;47;Yarayan, Kiyan;ja;x
+2026-09-17;47;Reichert, Lenny;ja;x
+2026-09-17;47;Disch, Maximilian;ja;x
+2026-09-17;47;Souleymané, Said;ja;x
+2026-09-17;47;Reinecker, Steffen;ja;x
+2026-09-17;47;Podlich, Timm;ja;x
+2026-09-17;47;Valchuk, David;ja;x
+2026-09-17;47;Scalici, Giuliano;ja;x
+2026-09-17;47;Ehret Jo, Jonathan;ja;x
+2026-09-17;47;Ehret Ju, Julian;ja;x
+2026-09-17;47;Tschira, Julien;ja;x
+2026-09-17;47;Roth M, Matti;ja;x
+2026-09-17;47;Pereira Marques, Francisco;ja;x
+2026-09-17;47;Bao Nguyen;ja;x
+2026-09-17;47;Bao Nguyen, Thai;ja;x
+2026-09-17;47;Ismaili, Sabahudin;ja;x
+2026-09-17;47;Schäfer, Tim;ja;x
+2026-09-17;47;Tiedemann, Tim;ja;x
+2026-09-17;47;Roth Y, Yanik;ja;x
+2026-09-17;47;Dischinger;ja;x
+2026-09-17;47;Dischinger J Johnatan;ja;x
+2026-09-17;47;AKUEGWU, Jack;ja;x
+2026-09-17;47;Dischinger, Jonathan;ja;x
+2026-09-17;47;Ontuzans, Daniels;ja;x
+2026-09-17;47;Jungkeit, Amin;ja;x
+2026-09-17;47;Kiefl, Elias;ja;x
+2026-09-17;47;Kobus, Marcel;ja;x
+2026-09-17;47;Zitzelsberger, Klaus;ja;x
+2026-09-17;47;Brombacher;ja;x
+2026-09-17;47;Brombacher , Franziska;ja;x
+2026-09-17;47;Björn  Dieselhorst;ja;x
+2026-09-17;47;Diestelhorst, Björn;ja;x
+2026-09-17;47;Carbone, Nico;ja;x
+2026-09-17;47;Klemt, Christof;ja;x
+2026-09-17;47;Dr. Schlehuber, Tarek;ja;x
+2026-09-20;49;Rufer, Fabian;ja;x
+2026-09-20;49;Misic, Luka;ja;x
+2026-09-20;49;Lauer, Stefan;ja;x
+2026-09-20;49;Disch;ja;x
+2026-09-20;49;Fangmeier, Jakob;ja;x
+2026-09-20;49;Agbozo, Jesse;ja;x
+2026-09-20;49;Yarayan, Kiyan;ja;x
+2026-09-20;49;Reichert, Lenny;ja;x
+2026-09-20;49;Disch, Maximilian;ja;x
+2026-09-20;49;Souleymané, Said;ja;x
+2026-09-20;49;Reinecker, Steffen;ja;x
+2026-09-20;49;Podlich, Timm;ja;x
+2026-09-20;49;Valchuk, David;ja;x
+2026-09-20;49;Scalici, Giuliano;ja;x
+2026-09-20;49;Ehret Jo, Jonathan;ja;x
+2026-09-20;49;Ehret Ju, Julian;ja;x
+2026-09-20;49;Tschira, Julien;ja;x
+2026-09-20;49;Roth M, Matti;ja;x
+2026-09-20;49;Pereira Marques, Francisco;ja;x
+2026-09-20;49;Bao Nguyen;ja;x
+2026-09-20;49;Bao Nguyen, Thai;ja;x
+2026-09-20;49;Ismaili, Sabahudin;ja;x
+2026-09-20;49;Schäfer, Tim;ja;x
+2026-09-20;49;Tiedemann, Tim;ja;x
+2026-09-20;49;Roth Y, Yanik;ja;x
+2026-09-20;49;Dischinger;ja;x
+2026-09-20;49;Dischinger J Johnatan;ja;x
+2026-09-20;49;AKUEGWU, Jack;ja;x
+2026-09-20;49;Dischinger, Jonathan;ja;x
+2026-09-20;49;Ontuzans, Daniels;ja;x
+2026-09-20;49;Jungkeit, Amin;ja;x
+2026-09-20;49;Kiefl, Elias;ja;x
+2026-09-20;49;Kobus, Marcel;ja;x
+2026-09-20;49;Zitzelsberger, Klaus;ja;x
+2026-09-20;49;Brombacher;ja;x
+2026-09-20;49;Brombacher , Franziska;ja;x
+2026-09-20;49;Björn  Dieselhorst;ja;x
+2026-09-20;49;Diestelhorst, Björn;ja;x
+2026-09-20;49;Carbone, Nico;ja;x
+2026-09-20;49;Klemt, Christof;ja;x
+2026-09-20;49;Dr. Schlehuber, Tarek;ja;x
+2026-09-22;51;Rufer, Fabian;ja;x
+2026-09-22;51;Misic, Luka;ja;x
+2026-09-22;51;Lauer, Stefan;ja;x
+2026-09-22;51;Fangmeier, Jakob;ja;x
+2026-09-22;51;Agbozo, Jesse;ja;x
+2026-09-22;51;Yarayan, Kiyan;ja;x
+2026-09-22;51;Reichert, Lenny;ja;x
+2026-09-22;51;Disch, Maximilian;ja;x
+2026-09-22;51;Souleymané, Said;ja;x
+2026-09-22;51;Reinecker, Steffen;ja;x
+2026-09-22;51;Podlich, Timm;ja;x
+2026-09-22;51;Valchuk, David;ja;x
+2026-09-22;51;Scalici, Giuliano;ja;x
+2026-09-22;51;Ehret Jo, Jonathan;ja;x
+2026-09-22;51;Ehret Ju, Julian;ja;x
+2026-09-22;51;Tschira, Julien;nein;v
+2026-09-22;51;Roth M, Matti;ja;x
+2026-09-22;51;Pereira Marques, Francisco;nein;v
+2026-09-22;51;Bao Nguyen, Thai;ja;x
+2026-09-22;51;Ismaili, Sabahudin;ja;x
+2026-09-22;51;Schäfer, Tim;nein;v
+2026-09-22;51;Tiedemann, Tim;ja;x
+2026-09-22;51;Roth Y, Yanik;ja;x
+2026-09-22;51;AKUEGWU, Jack;ja;x
+2026-09-22;51;Dischinger, Jonathan;ja;x
+2026-09-22;51;Ontuzans, Daniels;nein;v
+2026-09-22;51;Jungkeit, Amin;ja;x
+2026-09-22;51;Kiefl, Elias;ja;x
+2026-09-22;51;Kobus, Marcel;ja;x
+2026-09-22;51;Zitzelsberger, Klaus;ja;x
+2026-09-22;51;Brombacher;ja;x
+2026-09-22;51;Brombacher , Franziska;ja;x
+2026-09-22;51;Björn  Dieselhorst;ja;x
+2026-09-22;51;Diestelhorst, Björn;ja;x
+2026-09-22;51;Carbone, Nico;ja;x
+2026-09-22;51;Klemt, Christof;ja;x
+2026-09-22;51;Dr. Schlehuber, Tarek;ja;x
+2026-09-24;53;Rufer, Fabian;ja;x
+2026-09-24;53;Misic, Luka;ja;x
+2026-09-24;53;Lauer, Stefan;ja;x
+2026-09-24;53;Fangmeier, Jakob;ja;x
+2026-09-24;53;Agbozo, Jesse;ja;x
+2026-09-24;53;Yarayan, Kiyan;ja;x
+2026-09-24;53;Reichert, Lenny;ja;x
+2026-09-24;53;Disch, Maximilian;ja;x
+2026-09-24;53;Souleymané, Said;ja;x
+2026-09-24;53;Reinecker, Steffen;ja;x
+2026-09-24;53;Podlich, Timm;ja;x
+2026-09-24;53;Valchuk, David;ja;x
+2026-09-24;53;Scalici, Giuliano;ja;x
+2026-09-24;53;Ehret Jo, Jonathan;nein;v
+2026-09-24;53;Ehret Ju, Julian;ja;x
+2026-09-24;53;Tschira, Julien;nein;v
+2026-09-24;53;Roth M, Matti;ja;x
+2026-09-24;53;Pereira Marques, Francisco;nein;v
+2026-09-24;53;Bao Nguyen, Thai;ja;x
+2026-09-24;53;Ismaili, Sabahudin;ja;x
+2026-09-24;53;Schäfer, Tim;nein;v
+2026-09-24;53;Tiedemann, Tim;ja;x
+2026-09-24;53;Roth Y, Yanik;ja;x
+2026-09-24;53;AKUEGWU, Jack;nein;v
+2026-09-24;53;Dischinger, Jonathan;ja;x
+2026-09-24;53;Ontuzans, Daniels;nein;v
+2026-09-24;53;Jungkeit, Amin;ja;x
+2026-09-24;53;Kiefl, Elias;ja;x
+2026-09-24;53;Kobus, Marcel;ja;x
+2026-09-24;53;Zitzelsberger, Klaus;ja;x
+2026-09-24;53;Brombacher;ja;x
+2026-09-24;53;Brombacher , Franziska;ja;x
+2026-09-24;53;Björn  Dieselhorst;ja;x
+2026-09-24;53;Diestelhorst, Björn;ja;x
+2026-09-24;53;Carbone, Nico;ja;x
+2026-09-24;53;Klemt, Christof;ja;x
+2026-09-24;53;Dr. Schlehuber, Tarek;ja;x
+2026-09-25;54;Rufer, Fabian;ja;x
+2026-09-25;54;Misic, Luka;nein;v
+2026-09-25;54;Lauer, Stefan;ja;x
+2026-09-25;54;Fangmeier, Jakob;ja;x
+2026-09-25;54;Agbozo, Jesse;ja;x
+2026-09-25;54;Yarayan, Kiyan;ja;x
+2026-09-25;54;Reichert, Lenny;ja;x
+2026-09-25;54;Disch, Maximilian;ja;x
+2026-09-25;54;Souleymané, Said;ja;x
+2026-09-25;54;Reinecker, Steffen;ja;x
+2026-09-25;54;Podlich, Timm;ja;x
+2026-09-25;54;Valchuk, David;ja;x
+2026-09-25;54;Scalici, Giuliano;ja;x
+2026-09-25;54;Ehret Jo, Jonathan;nein;v
+2026-09-25;54;Ehret Ju, Julian;ja;x
+2026-09-25;54;Tschira, Julien;nein;v
+2026-09-25;54;Roth M, Matti;ja;x
+2026-09-25;54;Pereira Marques, Francisco;nein;v
+2026-09-25;54;Bao Nguyen, Thai;ja;x
+2026-09-25;54;Ismaili, Sabahudin;ja;x
+2026-09-25;54;Schäfer, Tim;nein;v
+2026-09-25;54;Tiedemann, Tim;ja;x
+2026-09-25;54;Roth Y, Yanik;ja;x
+2026-09-25;54;AKUEGWU, Jack;ja;x
+2026-09-25;54;Dischinger, Jonathan;ja;x
+2026-09-25;54;Ontuzans, Daniels;nein;v
+2026-09-25;54;Jungkeit, Amin;ja;x
+2026-09-25;54;Kiefl, Elias;ja;x
+2026-09-25;54;Kobus, Marcel;ja;x
+2026-09-25;54;Zitzelsberger, Klaus;ja;x
+2026-09-25;54;Brombacher;ja;x
+2026-09-25;54;Brombacher , Franziska;ja;x
+2026-09-25;54;Björn  Dieselhorst;ja;x
+2026-09-25;54;Diestelhorst, Björn;ja;x
+2026-09-25;54;Carbone, Nico;ja;x
+2026-09-25;54;Klemt, Christof;ja;x
+2026-09-25;54;Dr. Schlehuber, Tarek;ja;x
+2026-09-29;55;Rufer, Fabian;ja;x
+2026-09-29;55;Misic, Luka;nein;v
+2026-09-29;55;Lauer, Stefan;ja;x
+2026-09-29;55;Fangmeier, Jakob;ja;x
+2026-09-29;55;Agbozo, Jesse;ja;x
+2026-09-29;55;Yarayan, Kiyan;ja;x
+2026-09-29;55;Reichert, Lenny;ja;x
+2026-09-29;55;Disch, Maximilian;ja;x
+2026-09-29;55;Souleymané, Said;ja;x
+2026-09-29;55;Reinecker, Steffen;ja;x
+2026-09-29;55;Podlich, Timm;ja;x
+2026-09-29;55;Valchuk, David;ja;x
+2026-09-29;55;Scalici, Giuliano;ja;x
+2026-09-29;55;Ehret Jo, Jonathan;ja;x
+2026-09-29;55;Ehret Ju, Julian;ja;x
+2026-09-29;55;Tschira, Julien;nein;v
+2026-09-29;55;Roth M, Matti;nein;v
+2026-09-29;55;Pereira Marques, Francisco;nein;v
+2026-09-29;55;Bao Nguyen, Thai;ja;x
+2026-09-29;55;Ismaili, Sabahudin;ja;x
+2026-09-29;55;Schäfer, Tim;ja;x
+2026-09-29;55;Tiedemann, Tim;ja;x
+2026-09-29;55;Roth Y, Yanik;ja;x
+2026-09-29;55;AKUEGWU, Jack;ja;x
+2026-09-29;55;Dischinger, Jonathan;ja;x
+2026-09-29;55;Ontuzans, Daniels;nein;v
+2026-09-29;55;Jungkeit, Amin;ja;x
+2026-09-29;55;Kiefl, Elias;ja;x
+2026-09-29;55;Kobus, Marcel;ja;x
+2026-09-29;55;Zitzelsberger, Klaus;ja;x
+2026-09-29;55;Brombacher;ja;x
+2026-09-29;55;Brombacher , Franziska;ja;x
+2026-09-29;55;Björn  Dieselhorst;ja;x
+2026-09-29;55;Diestelhorst, Björn;ja;x
+2026-09-29;55;Carbone, Nico;ja;x
+2026-09-29;55;Klemt, Christof;ja;x
+2026-09-29;55;Dr. Schlehuber, Tarek;ja;x
+2026-10-01;56;Rufer, Fabian;ja;x
+2026-10-01;56;Misic, Luka;nein;v
+2026-10-01;56;Lauer, Stefan;ja;x
+2026-10-01;56;Fangmeier, Jakob;ja;x
+2026-10-01;56;Agbozo, Jesse;ja;x
+2026-10-01;56;Yarayan, Kiyan;ja;x
+2026-10-01;56;Reichert, Lenny;nein;v
+2026-10-01;56;Disch, Maximilian;ja;x
+2026-10-01;56;Souleymané, Said;ja;x
+2026-10-01;56;Reinecker, Steffen;ja;x
+2026-10-01;56;Podlich, Timm;ja;x
+2026-10-01;56;Valchuk, David;ja;x
+2026-10-01;56;Scalici, Giuliano;ja;x
+2026-10-01;56;Ehret Jo, Jonathan;ja;x
+2026-10-01;56;Ehret Ju, Julian;ja;x
+2026-10-01;56;Tschira, Julien;nein;v
+2026-10-01;56;Roth M, Matti;ja;x
+2026-10-01;56;Pereira Marques, Francisco;nein;v
+2026-10-01;56;Bao Nguyen, Thai;ja;x
+2026-10-01;56;Ismaili, Sabahudin;ja;x
+2026-10-01;56;Schäfer, Tim;nein;v
+2026-10-01;56;Tiedemann, Tim;ja;x
+2026-10-01;56;Roth Y, Yanik;ja;x
+2026-10-01;56;AKUEGWU, Jack;ja;x
+2026-10-01;56;Dischinger, Jonathan;ja;x
+2026-10-01;56;Ontuzans, Daniels;nein;v
+2026-10-01;56;Jungkeit, Amin;ja;x
+2026-10-01;56;Kiefl, Elias;ja;x
+2026-10-01;56;Kobus, Marcel;ja;x
+2026-10-01;56;Zitzelsberger, Klaus;ja;x
+2026-10-01;56;Brombacher;ja;x
+2026-10-01;56;Brombacher , Franziska;ja;x
+2026-10-01;56;Björn  Dieselhorst;ja;x
+2026-10-01;56;Diestelhorst, Björn;ja;x
+2026-10-01;56;Carbone, Nico;ja;x
+2026-10-01;56;Klemt, Christof;ja;x
+2026-10-01;56;Dr. Schlehuber, Tarek;ja;x
+2026-10-02;57;Rufer, Fabian;ja;x
+2026-10-02;57;Misic, Luka;nein;v
+2026-10-02;57;Lauer, Stefan;ja;x
+2026-10-02;57;Fangmeier, Jakob;ja;x
+2026-10-02;57;Agbozo, Jesse;ja;x
+2026-10-02;57;Yarayan, Kiyan;ja;x
+2026-10-02;57;Reichert, Lenny;ja;x
+2026-10-02;57;Disch, Maximilian;ja;x
+2026-10-02;57;Souleymané, Said;ja;x
+2026-10-02;57;Reinecker, Steffen;ja;x
+2026-10-02;57;Podlich, Timm;ja;x
+2026-10-02;57;Valchuk, David;ja;x
+2026-10-02;57;Scalici, Giuliano;ja;x
+2026-10-02;57;Ehret Jo, Jonathan;ja;x
+2026-10-02;57;Ehret Ju, Julian;nein;v
+2026-10-02;57;Tschira, Julien;nein;v
+2026-10-02;57;Roth M, Matti;ja;x
+2026-10-02;57;Pereira Marques, Francisco;nein;v
+2026-10-02;57;Bao Nguyen, Thai;ja;x
+2026-10-02;57;Ismaili, Sabahudin;ja;x
+2026-10-02;57;Schäfer, Tim;nein;v
+2026-10-02;57;Tiedemann, Tim;ja;x
+2026-10-02;57;Roth Y, Yanik;ja;x
+2026-10-02;57;AKUEGWU, Jack;ja;x
+2026-10-02;57;Dischinger, Jonathan;ja;x
+2026-10-02;57;Ontuzans, Daniels;nein;v
+2026-10-02;57;Jungkeit, Amin;ja;x
+2026-10-02;57;Kiefl, Elias;ja;x
+2026-10-02;57;Kobus, Marcel;ja;x
+2026-10-02;57;Zitzelsberger, Klaus;ja;x
+2026-10-02;57;Brombacher;ja;x
+2026-10-02;57;Brombacher , Franziska;ja;x
+2026-10-02;57;Björn  Dieselhorst;ja;x
+2026-10-02;57;Diestelhorst, Björn;ja;x
+2026-10-02;57;Carbone, Nico;ja;x
+2026-10-02;57;Klemt, Christof;ja;x
+2026-10-02;57;Dr. Schlehuber, Tarek;ja;x

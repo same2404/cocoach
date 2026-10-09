@@ -313,12 +313,15 @@ const ImageGallery = ({ images = [], onUpdate, label }: {
   onUpdate: (newImages: string[]) => void,
   label?: string
 }) => {
+  const MIN_SLOTS = 4;
+  const emptySlots = Math.max(0, MIN_SLOTS - images.length);
+
   return (
     <div className="space-y-3 mt-3">
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         {images.map((img, idx) => (
           <ImageUpload 
-            key={idx}
+            key={`img-${idx}`}
             onUpload={(base64) => {
               const newImages = [...images];
               newImages[idx] = base64;
@@ -332,13 +335,25 @@ const ImageGallery = ({ images = [], onUpdate, label }: {
             className="aspect-video"
           />
         ))}
-        <ImageUpload 
-          onUpload={(base64) => {
-            onUpdate([...images, base64]);
-          }}
-          className="aspect-video"
-          label={label || "BILD HINZUFÜGEN"}
-        />
+        {Array.from({ length: emptySlots }).map((_, i) => (
+          <ImageUpload 
+            key={`empty-${i}`}
+            onUpload={(base64) => {
+              onUpdate([...images, base64]);
+            }}
+            className="aspect-video"
+            label={label || "BILD HINZUFÜGEN"}
+          />
+        ))}
+        {images.length >= MIN_SLOTS && (
+          <ImageUpload 
+            onUpload={(base64) => {
+              onUpdate([...images, base64]);
+            }}
+            className="aspect-video"
+            label={label || "BILD HINZUFÜGEN"}
+          />
+        )}
       </div>
     </div>
   );

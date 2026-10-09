@@ -2,18 +2,49 @@
 
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { auth, googleProvider, db, handleFirestoreError, OperationType, getWeekdayLabel, isQueryParamValid } from './firebase';
+import { auth, googleProvider, db, handleFirestoreError, OperationType, getWeekdayLabel, isQueryParamValid, ensureAnonymousSession } from './firebase';
 import { doc, setDoc, deleteField, updateDoc, deleteDoc, writeBatch, query, collection, where, getDocs, getDoc, onSnapshot } from 'firebase/firestore';
-import { onAuthStateChanged, signInAnonymously, signInWithPopup, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, fetchSignInMethodsForEmail } from 'firebase/auth';
+import { onAuthStateChanged, signInWithPopup, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, fetchSignInMethodsForEmail } from 'firebase/auth';
+import { clearAllLocalCollections } from './lib/offlineStorage';
+
+// Einmaliger Cache-Repair (V1). Die Cache-Union im Sync-Hook blended geloeschte
+// Datensaetze (z. B. duplizierte/leere Spielberichte) dauerhaft aus dem lokalen
+// IndexedDB-Cache wieder ein, selbst wenn sie in Firestore bereits entfernt sind.
+// Deshalb wird direkt beim ersten Start nach dem Update der komplette lokale
+// Collection-Cache einmalig geleert und anschliessend deckungsgleich aus Firestore
+// neu aufgebaut. Das Flag wird erst nach ERFOLGREICHER Bereinigung gesetzt, damit
+// ein zweiter Start den Purge wiederholt, falls der erste fehlschlug.
+(function oneTimeCacheRepair() {
+  try {
+    if (typeof window === 'undefined') return;
+    const FLAG = 'fca_cache_repair_v1';
+    if (localStorage.getItem(FLAG)) return;
+    clearAllLocalCollections()
+      .then(() => {
+        localStorage.setItem(FLAG, 'done');
+        console.warn('[Cache-Repair] Lokaler Collection-Cache vollstaendig bereinigt. Ueberall frischer Server-Stand.');
+      })
+      .catch((e) => {
+        console.warn('[Cache-Repair] Fehlgeschlagen, wird beim naechsten Start wiederholt:', e);
+      });
+  } catch (e) {
+    console.warn('[Cache-Repair] Uebersprungen:', e);
+  }
+})();
 
 import { TABS, PLAYERS as INITIAL_PLAYERS, COMPETITIVE_MATCHES, TEST_MATCHES, SCOUTING_DATA as INITIAL_SCOUTING, INITIAL_FINANCE_DATA, INITIAL_MEETINGS_DATA, INITIAL_TRAINING_SESSIONS, INITIAL_SUMMER_PREP, INITIAL_WINTER_PREP, YEARLY_PLAN, DEPTH_CHART, FINANCE_META, INITIAL_FORMATION, CARD_RECORDS, COMPETITIVE_MINUTES, TEST_MINUTES } from './constants';
-import { SC_SAND_SEED } from './constants/sc-sand-data';
+
 import { TabId, Spieler, Training, Vorbereitung, Spiel, Finanz, LogEntry, Player, IndividualTrainingRecord, TrainingSession, ScoutingEntry, MeetingEntry, FinanceEntry, SummerPrepUnit, WinterPrepUnit, DayPlan } from './types';
 
 import { useSyncedState } from './hooks/useSyncedState';
 import { useCollectionSync } from './hooks/useCollectionSync';
+import { useStandardsSync } from './hooks/useStandardsSync';
+import { useLiteCollectionSync } from './hooks/useLiteCollectionSync';
+import { useAutoUnitSync } from './hooks/useAutoUnitSync';
 
 import { savePlayer as savePlayerFirestore, getPlayer as getPlayerFirestore, saveTraining as saveTrainingFirestore, getTraining as getTrainingFirestore } from './services/firestore';
+import { clearLocalCollection } from './lib/offlineStorage';
+import { ensurePrintHardening, hidePrintOverlays } from './lib/printHardening';
 
 import { UniformMask } from './components/UniformMask';
 import { KaderAgentModal } from './components/KaderAgentModal';
@@ -32,7 +63,7 @@ import { TacticBoard } from './components/TacticBoard';
 import { FormationView } from './components/FormationView';
 import { ScoutingFormationView } from './components/ScoutingFormationView';
 
-import { MatchPlanningView, YearlyPlanView, BudgetFinanceView, CardStatisticsSheet, RunsSWView, PhysioPlanView, IndividualSteuerungView, TrainingAttendanceView, SummerPreparationView, WinterPreparationView, TeamListView, DeveloperTasksView, TrainingPlanningView, MatchReportView, ScoutingView, MeetingsCalendarView, AccessControlView, PlayerPortalView, AcademyAnalysisView, ChampionsCupProView, DashboardView, VideoAnalysisView, Profi3DTacticBoardView, TrackerAcademyReportView, LicenseAdminView, MatchAnalysisProView, NaomiChat, AIQualityFilterView, AnalyticsChartsView, PlayerReportProView, TrainerChatView, AuditLogView, LiveMatchCommentary } from './components/Views';
+import { MatchPlanningView, YearlyPlanView, BudgetFinanceView, CardStatisticsSheet, RunsSWView, PhysioPlanView, IndividualSteuerungView, TrainingAttendanceView, SummerPreparationView, WinterPreparationView, TeamListView, DeveloperTasksView, TrainingPlanningView, MatchReportView, ScoutingView, MeetingsCalendarView, AccessControlView, PlayerPortalView, AcademyAnalysisView, ChampionsCupProView, DashboardView, VideoAnalysisView, Profi3DTacticBoardView, TrackerAcademyReportView, LicenseAdminView, MatchAnalysisProView, StandardsRegistryView, NaomiChat, AIQualityFilterView, AnalyticsChartsView, PlayerReportProView, TrainerChatView, AuditLogView } from './components/lazyViews';
 import { AUTHORIZED_STAFF_LIST } from './components/views/AccessControlView';
 import { getPositionOrder, sortPlayers, isPlayer } from './utils/playerSorting';
 import PersonnelView from './components/views/PersonnelView';
@@ -197,8 +228,10 @@ const App: React.FC = () => {
         // würden abgelehnt und neue Einheiten/Änderungen nur lokal landen.
         // Anonym anmelden, damit Speichern & Sync für ALLE Trainer sofort funktionieren.
         try {
-          const cred = await signInAnonymously(auth);
-          setAuthUser({ ...cred.user, isAnonymous: true });
+          await ensureAnonymousSession();
+          if (auth.currentUser) {
+            setAuthUser({ ...(auth.currentUser as any), isAnonymous: true });
+          }
         } catch (err: any) {
           console.warn('Anonyme Anmeldung fehlgeschlagen:', err?.message || err);
           setAuthUser(null);
@@ -368,14 +401,7 @@ const App: React.FC = () => {
   const [showGoogleGmailModal, setShowGoogleGmailModal] = useState(false);
   const [kaderAgentPreset, setKaderAgentPreset] = useState<'beste_formation' | 'topform_startelf' | 'vollbild_ordnung' | 'laufwege_profi'>('beste_formation');
 
-  const { data: _rawPlayers, loading: loadingSpieler, addOrUpdateItem: saveSpieler, removeItem: deleteSpieler } = useCollectionSync<Spieler>('spieler', 'id', undefined, 'asc', true);
-  const isSCSand = activeClub.id === 'sc-sand-1946';
-  const players = useMemo(() => {
-    if (_rawPlayers.length === 0 && isSCSand && !loadingSpieler) {
-      return SC_SAND_SEED.players as Spieler[];
-    }
-    return _rawPlayers;
-  }, [_rawPlayers, isSCSand, loadingSpieler]);
+  const { data: players, loading: loadingSpieler, addOrUpdateItem: saveSpieler, removeItem: deleteSpieler } = useCollectionSync<Spieler>('spieler', 'id', undefined, 'asc', true);
   const { data: training, loading: loadingTraining, addOrUpdateItem: saveTraining, removeItem: deleteTraining } = useCollectionSync<Training>('training', 'id', undefined, 'asc', true);
   const { data: spiele, loading: loadingSpiele, addOrUpdateItem: saveSpiel, removeItem: deleteSpiel } = useCollectionSync<Spiel>('spiele', 'id', undefined, 'asc', true);
   const { data: budgetFinanz, loading: loadingFinanz, addOrUpdateItem: saveFinanz, removeItem: deleteFinanz } = useCollectionSync<Finanz>('budget_finanz', 'id', undefined, 'asc', true);
@@ -392,7 +418,8 @@ const App: React.FC = () => {
   const { data: depthChart, loading: loadingDepthChart, addOrUpdateItem: saveDepthChart } = useCollectionSync<any>('depth_chart', 'id', undefined, 'asc', true);
   const { data: financeMeta, loading: loadingFinanceMeta, addOrUpdateItem: saveFinanceMeta } = useCollectionSync<any>('finance_meta', 'id', undefined, 'asc', true);
   const { data: meetingsData, loading: loadingMeetings, addOrUpdateItem: saveMeetingEntry, removeItem: deleteMeetingEntry } = useCollectionSync<any>('meetings_data', 'id', 'date', 'desc', true);
-  const { data: trainingSessions, loading: loadingSessions, addOrUpdateItem: saveTrainingSession, removeItem: deleteTrainingSession } = useCollectionSync<any>('training_sessions', 'id', undefined, 'asc', true);
+  const { data: trainingSessions, loading: loadingSessions, addOrUpdateItem: saveTrainingSession, removeItem: deleteTrainingSession } = useLiteCollectionSync<any>('training_sessions', 'id', undefined, 'asc', true);
+  useAutoUnitSync(trainingSessions);
   const { data: individualTrainingData, loading: loadingIndividual, addOrUpdateItem: saveIndividualTraining, removeItem: removeIndividualTraining } = useCollectionSync<any>('individual_training', 'id', undefined, 'asc', true);
   const { data: runRecords, loading: loadingRuns, addOrUpdateItem: saveRunRecord, removeItem: deleteRunRecord } = useCollectionSync<any>('run_records', 'id', undefined, 'asc', true);
   const { data: runMeta, loading: loadingRunMeta, addOrUpdateItem: saveRunMeta } = useCollectionSync<any>('run_meta', 'id', undefined, 'asc', true);
@@ -402,18 +429,12 @@ const App: React.FC = () => {
   const { data: vorbereitungWinter, loading: loadingWinter, addOrUpdateItem: saveVorbereitungWinter, removeItem: removeVorbereitungWinter } = useCollectionSync<any>('vorbereitung_winter', 'id', undefined, 'asc', true);
   const { data: winterPrepConfig, loading: loadingWinterConfig, addOrUpdateItem: saveWinterConfig } = useCollectionSync<any>('winter_prep_config', 'id', undefined, 'asc', true);
   const { data: matchAnalyses, loading: loadingAnalyses, addOrUpdateItem: saveMatchAnalysis, removeItem: deleteMatchAnalysis } = useCollectionSync<any>('match_analyses', 'id', undefined, 'asc', true);
-  const { data: agentLogs, addOrUpdateItem: saveAgentLog, removeItem: deleteAgentLog } = useCollectionSync<any>('agent_logs', 'id', 'timestamp', 'desc', true);
+  const { data: agentLogs, addOrUpdateItem: saveAgentLog, removeItem: deleteAgentLog } = useLiteCollectionSync<any>('agent_logs', 'id', 'timestamp', 'desc', true, true, 300);
   const { data: academyEvaluations, loading: loadingAcademyEvals, addOrUpdateItem: saveAcademyEvaluation, removeItem: deleteAcademyEvaluation } = useCollectionSync<any>('academy_evaluations', 'id', 'createdAt', 'desc', true);
   const { data: academyWeeklyReports, loading: loadingAcademyReports, addOrUpdateItem: saveAcademyWeeklyReport, removeItem: deleteAcademyWeeklyReport } = useCollectionSync<any>('academy_weekly_reports', 'id', 'createdAt', 'desc', true);
   const { data: trackerAcademyReports, loading: loadingTrackerReports, addOrUpdateItem: saveTrackerAcademyReport, removeItem: deleteTrackerAcademyReport } = useCollectionSync<any>('tracker_academy_reports', 'id', 'createdAt', 'desc', true);
 
-  const { data: _rawCompMatches, loading: loadingCompMatches, addOrUpdateItem: originalSaveCompMatch, removeItem: originalDeleteCompMatch } = useCollectionSync<any>('competitive_matches', 'id', 'date', 'asc', true);
-  const competitiveMatches = useMemo(() => {
-    if (_rawCompMatches.length === 0 && isSCSand && !loadingCompMatches) {
-      return SC_SAND_SEED.competitiveMatches;
-    }
-    return _rawCompMatches;
-  }, [_rawCompMatches, isSCSand, loadingCompMatches]);
+  const { data: competitiveMatches, loading: loadingCompMatches, addOrUpdateItem: originalSaveCompMatch, removeItem: originalDeleteCompMatch } = useCollectionSync<any>('competitive_matches', 'id', 'date', 'asc', true);
 
   const [lastAgentCycle, setLastAgentCycle] = useState<{ time: number; summary: string } | null>(null);
 
@@ -424,9 +445,22 @@ const App: React.FC = () => {
   const agentAlertRef = useRef<{ key: string; sentAt: number } | null>(null);
 
   // Hintergrund-Heartbeat: echter Master-Agent-Zyklus alle 60s beim App-Start (nicht nur im Modal)
+  // WICHTIG: Refs statt direkter Funktionen im Effect, damit sich der Effect NIE selbst
+  // re-triggert (sonst: neuer Log -> neues onSnapshot->neues data->neue deleteAgentLog-Referenz
+  // -> Effect läuft erneut -> Endlosschleife & gesperrte IndexedDB-Merges -> UI bleibt leer).
+  const saveAgentLogRef = useRef(saveAgentLog);
+  saveAgentLogRef.current = saveAgentLog;
+  const deleteAgentLogRef = useRef(deleteAgentLog);
+  deleteAgentLogRef.current = deleteAgentLog;
   useEffect(() => {
     const runBackgroundCycle = () => {
       try {
+        // Produktions-Stabilität: Der 60s-Agent-Zyklus verursacht Dauerlast &
+        // brennt das Firestore-Tageskontingent (Lese- UND Schreibvorgänge) durch,
+        // weil er jede Minute Agent-Logs nach Firestore schreibt. In Produktion
+        // läuft der Zyklus nur noch stark gedrosselt (alle 10 Minuten) und schreibt
+        // protokollierte Befunde nur, wenn sich wirklich etwas geändert hat.
+        const isProd = typeof window !== 'undefined' && window.location.hostname !== 'localhost';
         const { players: p, matches: m, analyses: a } = agentDataRef.current;
         const result = runMasterAgentCycle(p as any, m as any, a as any);
         const sup = result.updatedAgents.SupervisorAgent;
@@ -434,19 +468,38 @@ const App: React.FC = () => {
         const summary = `${sup.metrics.syncStatus} · Team ${result.updatedAgents.TeamAgent.metrics.healthScore}% · Comp ${result.updatedAgents.CompetitionAgent.metrics.healthScore}% · Clean ${clean.metrics.healthScore}% · Mem ${result.updatedAgents.MemoryAgent.metrics.healthScore}% · Cleanup-Vorschläge ${clean.metrics.processedCount}`;
         setLastAgentCycle({ time: Date.now(), summary });
         const base = Date.now();
-        result.logs.forEach((log, i) => {
-          saveAgentLog({
-            id: `agentlog-${base}-${i}`,
+        // Produktion: pro Zyklus nur EIN Sammel-Befund statt aller Einzel-Logs,
+        // damit das Firestore-Schreibkontingent geschont wird (Befunde bleiben
+        // im UI über setLastAgentCycle sichtbar). Lokal: volle Log-Kette.
+        if (isProd) {
+          const errN = Object.values(result.updatedAgents).reduce((s, a) => s + a.findings.filter((f) => f.severity === 'ERROR').length, 0);
+          const warnN = Object.values(result.updatedAgents).reduce((s, a) => s + a.findings.filter((f) => f.severity === 'WARNING').length, 0);
+          saveAgentLogRef.current({
+            id: `agentlog-${base}-collective`,
             timestamp: new Date().toISOString(),
-            agentId: log.agentId,
-            agentName: log.agentName,
-            type: log.type,
-            message: log.message,
-            details: log.details,
+            agentId: 'SupervisorAgent',
+            agentName: 'SupervisorAgent',
+            type: (errN || warnN) ? (errN ? 'ERROR' : 'WARNING') : 'SUCCESS',
+            message: `Befunde: ${errN} Fehler, ${warnN} Warnungen – ${summary}`,
+            details: null,
             collector: 'app-heartbeat',
             healthSup: sup.metrics.healthScore
           } as any);
-        });
+        } else {
+          result.logs.forEach((log, i) => {
+            saveAgentLogRef.current({
+              id: `agentlog-${base}-${i}`,
+              timestamp: new Date().toISOString(),
+              agentId: log.agentId,
+              agentName: log.agentName,
+              type: log.type,
+              message: log.message,
+              details: log.details,
+              collector: 'app-heartbeat',
+              healthSup: sup.metrics.healthScore
+            } as any);
+          });
+        }
 
         // Discord-Webhook-Alarm: nur bei neuen Fehlern/Warnungen, mit 15-min-Cooldown (kein Spam)
         const allAgents = Object.values(result.updatedAgents);
@@ -490,7 +543,7 @@ const App: React.FC = () => {
         if (agentLogsRef.current.length > 300) {
           agentLogsRef.current.slice(200).forEach((l: any) => {
             if (l?.id && typeof l.id === 'string' && l.id.startsWith('agentlog-')) {
-              deleteAgentLog(l.id as any);
+              deleteAgentLogRef.current(l.id as any);
             }
           });
         }
@@ -499,9 +552,10 @@ const App: React.FC = () => {
       }
     };
     runBackgroundCycle();
-    const interval = setInterval(runBackgroundCycle, 60000);
+    const isProdEnv = typeof window !== 'undefined' && window.location.hostname !== 'localhost';
+    const interval = setInterval(runBackgroundCycle, isProdEnv ? 600000 : 60000);
     return () => clearInterval(interval);
-  }, [saveAgentLog, deleteAgentLog]);
+  }, [saveAgentLogRef, deleteAgentLogRef]);
 
   const getAppBackupData = useCallback(() => {
     return {
@@ -655,13 +709,7 @@ const App: React.FC = () => {
       setToast({ message: 'Fehler beim Wiederherstellen der Pflichtspiele!', id: Date.now() });
     }
   }, [saveCompMatch]);
-  const { data: _rawTestMatches, loading: loadingTestMatches, addOrUpdateItem: saveTestMatch, removeItem: deleteTestMatch } = useCollectionSync<any>('test_matches', 'id', 'date', 'asc', true);
-  const testMatches = useMemo(() => {
-    if (_rawTestMatches.length === 0 && isSCSand && !loadingTestMatches) {
-      return SC_SAND_SEED.testMatches;
-    }
-    return _rawTestMatches;
-  }, [_rawTestMatches, isSCSand, loadingTestMatches]);
+  const { data: testMatches, loading: loadingTestMatches, addOrUpdateItem: saveTestMatch, removeItem: deleteTestMatch } = useCollectionSync<any>('test_matches', 'id', 'date', 'asc', true);
   const { data: testMinutes, loading: loadingTestMinutes, addOrUpdateItem: saveTestMinutes, removeItem: deleteTestMinutes } = useCollectionSync<any>('test_minutes', 'playerId', undefined, 'asc', true);
   const { data: u23Matches, loading: loadingU23Matches, addOrUpdateItem: saveU23Match, removeItem: deleteU23Match } = useCollectionSync<any>('u23_matches', 'id', 'date', 'asc', true);
   const { data: u23Minutes, loading: loadingU23Minutes, addOrUpdateItem: saveU23Minutes, removeItem: deleteU23Minutes } = useCollectionSync<any>('u23_minutes', 'playerId', undefined, 'asc', true);
@@ -683,6 +731,57 @@ const App: React.FC = () => {
     return () => clearTimeout(timer);
   }, []);
   const startReady = !isLoading || maxWaitElapsed;
+
+  // Standards-Registry: spiegelt ALLE Standards aus den Spielberichten nach
+  // `match_standards`. Läuft automatisch bei jedem Create/Update eines Berichts.
+  // Alte Daten aus `set_pieces` / `fc_auggen_set_pieces_v2` werden nicht gelesen.
+  const standardsReady = !loadingAnalyses && !loadingCompMatches && !loadingTestMatches && !loadingU23Matches;
+  const standardEntries = useStandardsSync({
+    analyses: matchAnalyses,
+    competitiveMatches,
+    testMatches,
+    u23Matches,
+    ready: standardsReady,
+  });
+
+  // Ärztliche Abteilung: Dr. Klemt + Dr. Schlehuber dauerhaft in der Medizinischen
+  // Abteilung (Physio / Arzt) verfügbar halten. Einmalig beim Laden ergänzt,
+  // danach nur noch geprüft (kein wiederholtes Schreiben).
+  const medicalSeedDoneRef = useRef(false);
+  useEffect(() => {
+    if (medicalSeedDoneRef.current) return;
+    if (loadingSpieler || players.length === 0) return;
+    const required = [
+      { id: 'klemt_christof', lastName: 'Klemt', firstName: 'Christof', position: 'Arzt', notizen: 'Arzt' },
+      { id: 'schlehuber_tarek', lastName: 'Schlehuber', firstName: 'Tarek', position: 'Mannschaftsarzt', notizen: 'Arzt (Mannschaftsarzt)' },
+    ];
+    const missing = required.filter(r => !players.some((p: any) => p.id === r.id));
+    if (missing.length === 0) {
+      medicalSeedDoneRef.current = true;
+      return;
+    }
+    medicalSeedDoneRef.current = true;
+    (async () => {
+      for (const r of missing) {
+        await saveSpieler({
+          number: 0,
+          nummer: 0,
+          name: `${r.lastName}, ${r.firstName}`,
+          firstName: r.firstName,
+          lastName: r.lastName,
+          position: r.position,
+          category: 'medical',
+          titel: 'Dr.',
+          geburtsdatum: '',
+          wochentag: '',
+          status: 'Aktiv',
+          notizen: r.notizen,
+          finance: { baseSalary: 0, seasonExtra: 0, individualBonus: 0, sideAgreements: '', bonusPerMatch: 0, ist: 0 },
+          analysis: {},
+        } as any);
+      }
+    })();
+  }, [loadingSpieler, players, saveSpieler]);
 
   const CLIENT_VERSION = "2026-08-24_12-00";
   useEffect(() => {
@@ -937,7 +1036,7 @@ const App: React.FC = () => {
   }, [toast]);
 
   const [activeDetailTab, setActiveDetailTab] = useState<'analysis' | 'notes'>('analysis');
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(true);
   const [showAddPlayerModal, setShowAddPlayerModal] = useState(false);
   const [deepLinkPlayerId, setDeepLinkPlayerId] = useState<string | null>(null);
 
@@ -1178,18 +1277,32 @@ const App: React.FC = () => {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const autoPrintParam = params.get('print');
-    
-    if (autoPrintParam === 'true' && !loadingSessions && trainingSessions.length > 0) {
-      const timer = setTimeout(() => {
-        try {
-          window.focus();
-          window.print();
-        } catch (e) {
-          console.error("Auto print failed:", e);
-        }
-      }, 1000); // Wait 1 second to make sure React components are completely rendered
-      return () => clearTimeout(timer);
-    }
+
+    if (autoPrintParam !== 'true' || loadingSessions || trainingSessions.length === 0) return;
+
+    let cancelled = false;
+    const run = async () => {
+      try {
+        if (document.fonts && document.fonts.ready) await document.fonts.ready;
+      } catch { /* ignore */ }
+      if (cancelled) return;
+      // Zwei Frames warten -> Lazy-View (Trainingsplanung) ist vollständig gemountet
+      await new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+      );
+      if (cancelled) return;
+      ensurePrintHardening();
+      hidePrintOverlays();
+      try {
+        window.focus();
+        window.print();
+      } catch (e) {
+        console.error("Auto print failed:", e);
+      }
+    };
+
+    const timer = setTimeout(run, 1500);
+    return () => { cancelled = true; clearTimeout(timer); };
   }, [loadingSessions, trainingSessions]);
 
   // Auto-select first session if none selected
@@ -1447,7 +1560,9 @@ const App: React.FC = () => {
     let current = new Date(2026, 6, 1); // 01.07.2026
     const end = new Date(2027, 4, 30); // 30.05.2027
     
-    while (current <= end) {
+    if (isNaN(current.getTime()) || isNaN(end.getTime())) return dates;
+    let guard = 0;
+    while (current <= end && guard < 1200) { guard++;
       const day = current.getDay();
       // 1: Montag, 3: Mittwoch, 5: Freitag
       if (day === 1 || day === 3 || day === 5) {
@@ -1552,7 +1667,6 @@ const App: React.FC = () => {
     if (!session) return;
     
     // Removed window.confirm
-    // players already has SC Sand fallback via useMemo
     const sourcePlayers = (
       isDemo && players.length === 0 ? INITIAL_PLAYERS :
       players
@@ -1592,7 +1706,9 @@ const App: React.FC = () => {
     const yearlyPlanEntries: any[] = [];
     
     let current = new Date(start);
-    while (current <= end) {
+    if (isNaN(current.getTime()) || isNaN(end.getTime())) return;
+    let guard = 0;
+    while (current <= end && guard < 1200) { guard++;
       const dateKey = current.toISOString().split('T')[0];
       const dateStr = current.toLocaleDateString('de-DE');
       const year = current.getFullYear();
@@ -1938,7 +2054,7 @@ const App: React.FC = () => {
     if (['dashboard', 'developer_tasks'].includes(tabId)) return 'ubersicht';
     if (['personnel', 'team_list', 'player_portal', 'scouting'].includes(tabId)) return 'kader';
     if (['academy_analysis', 'attendance', 'training_planning', 'individual_control', 'runs_sw', 'summer_prep', 'winter_prep'].includes(tabId)) return 'training';
-    if (['champions_cup', 'competitive_planning', 'test_planning', 'u23_planning', 'match_report', 'tacticboard', 'trainer_view', 'video_analysis', 'match_analysis_pro'].includes(tabId)) return 'match';
+    if (['champions_cup', 'competitive_planning', 'test_planning', 'u23_planning', 'match_report', 'tacticboard', 'trainer_view', 'video_analysis', 'match_analysis_pro', 'standards_registry'].includes(tabId)) return 'match';
     if (['yearly', 'budget_finance', 'meetings_calendar', 'physio_plan', 'access_control'].includes(tabId)) return 'orga';
     return 'ubersicht';
   };
@@ -2581,6 +2697,8 @@ saveSpieler(updatedPlayer as Spieler);
             onSaveOpponent={saveOpponent}
             onDeleteOpponent={deleteOpponent}
             title="U23 – Einsatzzeiten A‑Kader"
+            stammspielerMatches={competitiveMatches}
+            stammspielerMinutes={competitiveMinutes}
           />
         );
       case 'match_report':
@@ -2866,12 +2984,12 @@ onNavigateToTacticBoard={(_matchId: any, draft?: any) => {
         return <LicenseAdminView />;
       case 'match_analysis_pro':
         return <MatchAnalysisProView matchAnalyses={matchAnalyses} competitiveMatches={competitiveMatches} players={sortedPlayers} />;
+      case 'standards_registry':
+        return <StandardsRegistryView entries={standardEntries} matchAnalyses={matchAnalyses} />;
       case 'analytics_charts':
         return <AnalyticsChartsView player={sortedPlayers[0]} allPlayers={sortedPlayers} />;
       case 'player_report_pro':
         return <PlayerReportProView player={sortedPlayers[0]} players={sortedPlayers} />;
-      case 'live_commentary':
-        return <LiveMatchCommentary />;
       default:
         return (
           <div className="flex flex-col items-center justify-center h-full text-gray-400 gap-4">
@@ -3146,7 +3264,7 @@ onNavigateToTacticBoard={(_matchId: any, draft?: any) => {
               { id: 'ubersicht', label: 'Übersicht', icon: LayoutDashboard, defaultTab: 'dashboard' as TabId, tabIds: isOwner ? ['dashboard', 'developer_tasks'] : ['dashboard'] },
               { id: 'kader', label: 'Kader & Spieler', icon: User, defaultTab: 'personnel' as TabId, tabIds: ['personnel', 'team_list', 'player_portal', 'scouting'] },
               { id: 'training', label: 'Training & Performance', icon: Activity, defaultTab: 'academy_analysis' as TabId, tabIds: ['academy_analysis', 'attendance', 'training_planning', 'individual_control', 'runs_sw', 'summer_prep', 'winter_prep'] },
-              { id: 'match', label: 'Match & Taktik', icon: Trophy, defaultTab: 'tacticboard' as TabId, tabIds: ['champions_cup', 'competitive_planning', 'test_planning', 'u23_planning', 'match_report', 'tacticboard', 'trainer_view', 'video_analysis', 'match_analysis_pro'] },
+              { id: 'match', label: 'Match & Taktik', icon: Trophy, defaultTab: 'tacticboard' as TabId, tabIds: ['champions_cup', 'competitive_planning', 'test_planning', 'u23_planning', 'match_report', 'tacticboard', 'trainer_view', 'video_analysis', 'match_analysis_pro', 'standards_registry'] },
               { id: 'orga', label: 'Organisation', icon: FolderKanban, defaultTab: 'yearly' as TabId, tabIds: isOwner ? ['yearly', 'budget_finance', 'meetings_calendar', 'physio_plan', 'access_control'] : ['yearly', 'budget_finance', 'meetings_calendar', 'physio_plan'] },
               { id: 'all', label: isOwner ? 'Alle (28)' : 'Alle (26)', icon: Layers, defaultTab: 'dashboard' as TabId, tabIds: [] },
             ].map(cat => {
@@ -3296,7 +3414,7 @@ onNavigateToTacticBoard={(_matchId: any, draft?: any) => {
               if (navCategory === 'ubersicht') return ['dashboard', 'developer_tasks'].includes(tab.id);
               if (navCategory === 'kader') return ['personnel', 'team_list', 'player_portal', 'scouting'].includes(tab.id);
               if (navCategory === 'training') return ['academy_analysis', 'attendance', 'training_planning', 'individual_control', 'runs_sw', 'summer_prep', 'winter_prep'].includes(tab.id);
-              if (navCategory === 'match') return ['champions_cup', 'competitive_planning', 'test_planning', 'u23_planning', 'match_report', 'tacticboard', 'trainer_view', 'video_analysis', 'match_analysis_pro'].includes(tab.id);
+              if (navCategory === 'match') return ['champions_cup', 'competitive_planning', 'test_planning', 'u23_planning', 'match_report', 'tacticboard', 'trainer_view', 'video_analysis', 'match_analysis_pro', 'standards_registry'].includes(tab.id);
               if (navCategory === 'orga') return ['yearly', 'budget_finance', 'meetings_calendar', 'physio_plan', 'access_control'].includes(tab.id);
               return true;
             }).map(tab => {
@@ -3422,7 +3540,9 @@ onNavigateToTacticBoard={(_matchId: any, draft?: any) => {
           onMigrate={handleMigrateCloudData}
           saveStatus={saveStatus}
         >
-          {renderContent()}
+          <React.Suspense fallback={<div className="w-full h-full flex items-center justify-center text-gray-400 text-sm font-bold uppercase tracking-widest">Lade Modul...</div>}>
+            {renderContent()}
+          </React.Suspense>
         </UniformMask>
       </main>
 

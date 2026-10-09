@@ -68,6 +68,21 @@ export const VIDEO_CATEGORIES = [
 
 export type VideoCategory = typeof VIDEO_CATEGORIES[number];
 
+/** Pflichtspiel oder Testspiel – Basis der Spiel-Zuordnung eines Clips. */
+export type MatchType = 'pflicht' | 'test';
+
+/** Zusammengeführter Eintrag aus Pflicht- und Testspielen für Filter/Dropdowns. */
+export interface VideoMatchOption {
+  key: string;
+  id: string;
+  type: MatchType;
+  opponent: string;
+  date: string;
+  isHome?: boolean;
+  competition?: string;
+  label: string;
+}
+
 export const CATEGORY_HELP_TEXTS: Record<VideoCategory, { title: string; body: string }> = {
   'Tore': {
     title: 'Kriterien für „Tore"',
@@ -223,9 +238,21 @@ export interface TacticalVideoClip {
   createdAt: string;
   title?: string;
   label?: string;
+  // Strukturierter Szenen-Block (Once-Style Pflicht-Ausgabeformat)
+  sceneType?: string;
+  phase?: string;
+  action?: string;
+  zone?: string;
+  autoCategory?: VideoCategory;
   assignedPlayerId?: string;
   assignedPlayerName?: string;
   cutFileName?: string;
+  // Spiel-Zuordnung (Pflichtspiel / Testspiel aus dem Spielplan)
+  matchId?: string;
+  matchType?: MatchType;
+  matchLabel?: string;
+  matchOpponent?: string;
+  matchDate?: string;
   // CoCoach Maximum Information Extraction (Tiefenanalyse-Szenenfelder)
   aiSceneId?: string;
   categories?: string[];
@@ -297,11 +324,34 @@ export interface SceneTacticBoard {
   players?: Array<{ label: string; team: string; x: number; y: number; key?: string }>;
   ball?: { x: number; y: number };
   chains?: Array<{ label?: string; fromX: number; fromY: number; toX: number; toY: number; color?: string; fromPlayer?: string; toPlayer?: string }>;
-  passes?: Array<{ fromLabel?: string; toLabel?: string; fromX: number; fromY: number; toX: number; toY: number; action?: string; color?: string; fromPlayer?: string; toPlayer?: string }>;
-  runs?: Array<{ label?: string; points: Array<{ x: number; y: number }>; color?: string }>;
+  passes?: Array<{ fromLabel?: string; toLabel?: string; fromX: number; fromY: number; toX: number; toY: number; action?: string; color?: string; fromPlayer?: string; toPlayer?: string; optional?: boolean }>;
+  runs?: Array<{ label?: string; points: Array<{ x: number; y: number }>; color?: string; sprint?: boolean }>;
   ballPath?: Array<{ points: Array<{ x: number; y: number }>; color?: string }>;
   zones?: Array<{ x: number; y: number; w: number; h: number; label?: string; color?: string }>;
   optimalPositions?: Array<{ label?: string; fromX?: number; fromY?: number; toX: number; toY: number; note?: string }>;
+}
+
+/**
+ * Strukturierter Szenen-Block (Pflicht-Ausgabeformat).
+ * Reihenfolge der Felder ist bewusst fest, damit Ausgaben vergleichbar bleiben.
+ */
+export interface SceneBlock {
+  /** Szenentyp – z. B. Offensiver Abschluss */
+  sceneType: string;
+  /** Phase – Aufbauphase | Umschaltphase | Abschlussphase | Standardsituation */
+  phase: string;
+  /** Zone – z. B. rechter Halbraum, Strafraum */
+  zone: string;
+  /** Aktion – knapp, was passiert */
+  action: string;
+  /** Spieler – beteiligte Spieler mit Nummer */
+  players: string[];
+  /** Grafische Elemente – was tatsächlich gezeichnet wird */
+  graphicElements: string[];
+  /** Optimale Position – Empfehlung mit Begründung */
+  optimalPosition: string;
+  /** Auto-Tagging Kategorie – muss einer VIDEO_CATEGORIES entsprechen */
+  autoCategory: VideoCategory;
 }
 
 // ⚡ Ultra-Overlay (Kameratracking / Spieler-Tracking / Keyframes) – Browser interpoliert
@@ -309,7 +359,7 @@ export interface UltraOverlayData {
   summary?: string;
   attackDirection?: string;
   cameraMotion?: { type?: string; movement?: string };
-  keyframes?: UltraKeyframe[];
+  keyframes: UltraKeyframe[];
   coaching?: {
     tacticalInsight?: string;
     errors?: string[];
@@ -317,21 +367,90 @@ export interface UltraOverlayData {
     coachingPoints?: string[];
     importance?: string;
   };
+  // Strukturierter Szenen-Block (serverseitig geliefert, clientseitig validiert)
+  category?: VideoCategory;
+  sceneType?: string;
+  phase?: string;
+  action?: string;
+  zone?: string;
   sceneId?: string | null;
   generatedAt?: number;
 }
 
+/**
+ * Sprint-Läufe werden über die reale Lauflänge erkannt: ein Lauf, der deutlich
+ * länger ist als der Median aller Läufe einer Szene, gilt als Sprint und bekommt
+ * dadurch automatisch eine längere, stärkere Darstellung – unabhängig davon, ob
+ * das KI-Flag `sprint` gesetzt wurde.
+ */
+const SPRINT_LENGTH_FACTOR = 1.35;
+
 export interface UltraKeyframe {
   timeSeconds: number;
   players?: Array<{ id?: string; team?: string; label?: string; x: number; y: number; motion?: string }>;
-  passes?: Array<{ fromX: number; fromY: number; toX: number; toY: number; color?: string; action?: string }>;
-  runs?: Array<{ label?: string; color?: string; points: number[][] | Array<{ x: number; y: number }> }>;
+  passes?: Array<{ fromX: number; fromY: number; toX: number; toY: number; color?: string; action?: string; optional?: boolean }>;
+  runs?: Array<{ label?: string; color?: string; sprint?: boolean; points: number[][] | Array<{ x: number; y: number }> }>;
   ballPath?: Array<{ color?: string; points: number[][] | Array<{ x: number; y: number }> }>;
   zones?: Array<{ x: number; y: number; w: number; h: number; color?: string; label?: string }>;
   chains?: Array<{ fromX: number; fromY: number; toX: number; toY: number; color?: string; label?: string }>;
   optimalPositions?: Array<{ toX: number; toY: number; note?: string; label?: string }>;
   lowConfidence?: boolean;
 }
+
+// Marker-Größen und Farben für die 7 Grafik-Typen (einheitlich für Editor + Live-Overlay)
+const OVERLAY_STYLE = {
+  chain: { color: '#22D3EE', width: 2.2 },
+  pass: { color: '#3B82F6', width: 1.5 },
+  passOptional: { color: '#60A5FA', width: 1.2 },
+  run: { color: '#3B82F6', width: 1.9 },
+  runSprint: { color: '#F97316', width: 2.8 },
+  ball: { color: '#F59E0B', width: 1.7 },
+  zone: { color: '#F59E0B' },
+  optimal: { color: '#E879F9' },
+  own: '#22D3EE',
+  opponent: '#EF4444',
+} as const;
+
+/** Lauflänge eines Polylinien-Punktesatzes (in %-Einheiten, Bildschirmachse). */
+const polylineLength = (pts: Array<{ x: number; y: number }>): number => {
+  let len = 0;
+  for (let i = 1; i < pts.length; i++) {
+    len += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+  }
+  return len;
+};
+
+/** Median-Länge aller Läufe eines Keyframes – Basis für die Sprint-Erkennung. */
+const medianRunLength = (runs: any[] | undefined): number => {
+  const lens = (runs || [])
+    .map(r => (r?.points ? polylineLength(r.points as Array<{ x: number; y: number }>) : 0))
+    .filter(l => l > 0)
+    .sort((a, b) => a - b);
+  if (lens.length === 0) return 0;
+  const mid = Math.floor(lens.length / 2);
+  return lens.length % 2 ? lens[mid] : (lens[mid - 1] + lens[mid]) / 2;
+};
+
+/** Sprint = vom KI markiert ODER objektiv länger als der Median aller Läufe. */
+const runIsSprint = (r: any, median: number): boolean =>
+  !!r?.sprint || (median > 0 && polylineLength(r.points as Array<{ x: number; y: number }>) > median * SPRINT_LENGTH_FACTOR);
+
+/**
+ * Verlängert eine Polylinie in Laufrichtung um einen Anteil der Segmentlänge.
+ * Sprint-Läufe bekommen dadurch sichtbar mehr Länge – unabhängig davon, ob das
+ * KI-Flag gesetzt wurde.
+ */
+const extendPolyline = (pts: Array<{ x: number; y: number }>, factor: number): Array<{ x: number; y: number }> => {
+  if (pts.length < 2) return pts;
+  const last = pts[pts.length - 1];
+  const prev = pts[pts.length - 2];
+  const dx = last.x - prev.x;
+  const dy = last.y - prev.y;
+  const len = Math.hypot(dx, dy);
+  if (len === 0) return pts;
+  const add = len * factor;
+  return [...pts, { x: last.x + (dx / len) * add, y: last.y + (dy / len) * add }];
+};
 
 // Firestore verbietet verschachtelte Arrays → runs/ballPath-Punkte als {x,y}-Objekte speichern
 const sanitizeUltraOverlayForFirestore = (overlay: UltraOverlayData | undefined | null): UltraOverlayData => {
@@ -360,6 +479,141 @@ const clampPct = (v: any, fallback: number = 50): number => {
   return Math.max(0, Math.min(100, n));
 };
 
+/**
+ * Regelbasierte, konsistente Auto-Tagging-Kategorie.
+ * Reihenfolge ist fix definiert – der erste Treffer gewinnt, damit dieselbe
+ * Szene immer dieselbe Kategorie ergibt. Standardsituationen werden bewusst
+ * vor Ballverlust/Spielaufbau geprüft, weil dort die meisten Überlappungen liegen.
+ */
+export function resolveAutoCategory(input: {
+  title?: string;
+  aiCommentary?: string;
+  category?: string;
+  action?: string;
+  phase?: string;
+  sceneType?: string;
+  zone?: string;
+}): VideoCategory {
+  const haystack = [input.title, input.category, input.action, input.phase, input.sceneType, input.zone, input.aiCommentary]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+
+  // 1. Standards (Ecke, Freistoß, Einwurf, Elfmeter)
+  if (/\b(ecke|corner|freistoss|freistoß|free.?kick|einwurf|throw.?in|elfmeter|penalty|abstoss|abstoß|standard)\b/.test(haystack)) {
+    return 'Standards';
+  }
+  // 2. Tore
+  if (/\b(tor|goal|treffer|abschluss|verwandelt|kopfballtor|elfmeter verwandelt)\b/.test(haystack) && !/\b(gegentor|gegen tor|kassiert|zulässt|konzediert)\b/.test(haystack)) {
+    return 'Tore';
+  }
+  // 3. Gegentore
+  if (/\b(gegentor|gegen tor|kassiert|konzediert|eigentor|zulassene tore|gegner trifft)\b/.test(haystack)) {
+    return 'Gegentore';
+  }
+  // 4. Pressing gegen den Ball (Vorrang vor Pressing mit Ball)
+  if (/\b(pressing|gegen den ball|gegenpressing|pressing gegen ball|balleroberung|doppelpassing|pressingwinkel|gegenpressing|auspressen)\b/.test(haystack)) {
+    return 'Pressing GEGEN den Ball';
+  }
+  // 5. Pressing mit Ball
+  if (/\b(pressing mit ball|gegenpressing am ball|doppelpass|aus dem press|druck auf den ball|balleroberung am ball)\b/.test(haystack)) {
+    return 'Pressing MIT Ball';
+  }
+  // 6. Ballverlust
+  if (/\b(ballverlust|verloren|verlust|misslingling|falsche annahme|unnötiges dribbling|keine absicherung|fremdeinwirkung)\b/.test(haystack)) {
+    return 'Ballverlust';
+  }
+  // 7. Spielaufbau
+  if (/\b(spielaufbau|aufbau|über den torwart|doppel.?6|zurückfallender|verlagerung|aus der abwehr|possession|kurzpass|hochpass)\b/.test(haystack)) {
+    return 'Spielaufbau';
+  }
+  return 'Ballverlust';
+}
+
+/** Phase aus dem Szenentext ableiten. */
+function resolvePhase(input: { phase?: string; title?: string; aiCommentary?: string; action?: string; sceneType?: string }): string {
+  if (input.phase) return input.phase;
+  const hay = [input.title, input.action, input.sceneType, input.aiCommentary].filter(Boolean).join(' ').toLowerCase();
+  if (/\b(ecke|freistoss|freistoß|einwurf|elfmeter|standard)\b/.test(hay)) return 'Standardsituation';
+  if (/\b(tor|goal|abschluss|schuss)\b/.test(hay)) return 'Abschlussphase';
+  if (/\b(pressing|balleroberung|gegenpressing)\b/.test(hay)) return 'Umschaltphase';
+  if (/\b(aufbau|aus der abwehr|über den torwart)\b/.test(hay)) return 'Aufbauphase';
+  return 'Aufbauphase';
+}
+
+/**
+ * Baut den strukturierten Szenen-Block in fester Feldreihenfolge.
+ * Grafische Elemente werden aus den vorhandenen Daten abgeleitet, nicht geraten.
+ */
+export function buildSceneBlock(clip: any): SceneBlock {
+  const board: SceneTacticBoard | undefined = clip?.tacticBoard;
+  const playersFromBoard = (board?.players || []).map(p => `${p.team === 'opponent' || /gegner/i.test(p.team || '') ? 'Gegner' : 'FCA'} ${p.label}`);
+  const playersFromKey = (clip?.keyPlayers || []).map((k: any) =>
+    k?.name || (k?.jerseyNumber ? `#${k.jerseyNumber}` : '')).filter(Boolean);
+
+  const graphicElements: string[] = [];
+  if ((board?.players || []).length) graphicElements.push(`Spieler-Marker (${board!.players!.length})`);
+  if ((board?.chains || []).length) graphicElements.push(`Spieler-Kette (${board!.chains!.length})`);
+  if ((board?.passes || []).length) graphicElements.push(`Passweg (${board!.passes!.length})`);
+  const sprintRuns = (board?.runs || []).filter((r: any) => r?.sprint).length;
+  if ((board?.runs || []).length) {
+    graphicElements.push(sprintRuns > 0
+      ? `Laufweg-Pfeil (${board!.runs!.length}, davon ${sprintRuns} Sprint)`
+      : `Laufweg-Pfeil (${board!.runs!.length})`);
+  }
+  if ((board?.ballPath || []).length) graphicElements.push(`Ballweg (${board!.ballPath!.length})`);
+  if ((board?.zones || []).length) graphicElements.push(`Raum/Zone rechteckig (${board!.zones!.length})`);
+  if ((board?.optimalPositions || []).length) graphicElements.push(`Optimale Position (${board!.optimalPositions!.length})`);
+
+  const optimal = (board?.optimalPositions || [])[0];
+
+  return {
+    sceneType: clip?.sceneType || clip?.title || 'Spielsituation',
+    phase: resolvePhase(clip || {}),
+    zone: clip?.zone || clip?.pitchZone || 'Unbekannt',
+    action: clip?.action || '—',
+    players: [...new Set([...playersFromKey, ...playersFromBoard])],
+    graphicElements: graphicElements.length ? graphicElements : ['Keine Grafik vorhanden'],
+    optimalPosition: optimal?.note
+      ? `${optimal.label ? `${optimal.label}: ` : ''}${optimal.note}`
+      : 'Keine Empfehlung',
+    autoCategory: clip?.autoCategory || resolveAutoCategory(clip || {}),
+  };
+}
+
+/** Szenen-Block als UI-Karte – feste Feldreihenfolge, keine Fließtexte. */
+const SceneBlockCard: React.FC<{ clip: any }> = ({ clip }) => {
+  const block = useMemo(() => buildSceneBlock(clip), [clip]);
+  const rows: Array<[string, React.ReactNode]> = [
+    ['Szenentyp', block.sceneType],
+    ['Phase', block.phase],
+    ['Zone', block.zone],
+    ['Aktion', block.action],
+    ['Spieler', block.players.length ? block.players.join(', ') : '—'],
+    ['Grafische Elemente', block.graphicElements.join(' · ')],
+    ['Optimale Position', block.optimalPosition],
+    ['Auto-Tagging', block.autoCategory],
+  ];
+  return (
+    <div className="mt-2 bg-[#0A0F1A] border border-[#1E293B] rounded-lg overflow-hidden">
+      <div className="px-2 py-1 bg-[#111827] border-b border-[#1E293B] flex items-center justify-between">
+        <span className="text-[8px] font-black uppercase tracking-widest text-[#64748B]">Szenen-Block</span>
+        <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase bg-[#8B5CF6]/20 text-[#C4B5FD] border border-[#8B5CF6]/40">
+          {block.autoCategory}
+        </span>
+      </div>
+      <dl className="divide-y divide-[#1A2332]">
+        {rows.map(([label, value]) => (
+          <div key={label} className="flex gap-2 px-2 py-1">
+            <dt className="text-[8px] font-black uppercase tracking-wider text-[#475569] w-[92px] shrink-0 pt-[1px]">{label}</dt>
+            <dd className="text-[10px] text-[#CBD5E1] leading-snug min-w-0 break-words">{value}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+};
+
 // Mini-Taktiktafel (Once-Style) für eine erkannte Szene
 const SceneTacticDiagram: React.FC<{ board?: SceneTacticBoard; expanded: boolean; onToggle: () => void }> = ({ board, expanded, onToggle }) => {
   if (!board) return null;
@@ -373,6 +627,7 @@ const SceneTacticDiagram: React.FC<{ board?: SceneTacticBoard; expanded: boolean
   const optimals = board.optimalPositions || [];
   const chains = board.chains || [];
   const ballPaths = board.ballPath || [];
+  const runMedian = medianRunLength(runs);
 
   return (
     <div className="mt-1">
@@ -389,6 +644,17 @@ const SceneTacticDiagram: React.FC<{ board?: SceneTacticBoard; expanded: boolean
           {/* Spielfeld mit allen Elementen */}
           <div className="relative w-full lg:w-72 h-56 lg:h-64 rounded-xl overflow-hidden bg-[#041f15] border border-[#10B981]/20 shrink-0">
             <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full">
+              <defs>
+                <marker id="miniArrowPass" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                  <path d="M0,0 L10,5 L0,10 z" fill={OVERLAY_STYLE.pass.color} />
+                </marker>
+                <marker id="miniArrowRun" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse">
+                  <path d="M0,0 L10,5 L0,10 z" fill={OVERLAY_STYLE.run.color} />
+                </marker>
+                <marker id="miniArrowSprint" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+                  <path d="M0,0 L10,4 L0,8 z" fill={OVERLAY_STYLE.runSprint.color} />
+                </marker>
+              </defs>
               {/* Spielfeldlinien */}
               <rect x="4" y="4" width="92" height="92" fill="none" stroke="#10B981" strokeOpacity="0.5" strokeWidth="0.6" />
               <line x1="4" y1="50" x2="96" y2="50" stroke="#10B981" strokeOpacity="0.5" strokeWidth="0.6" />
@@ -430,20 +696,34 @@ const SceneTacticDiagram: React.FC<{ board?: SceneTacticBoard; expanded: boolean
                 />
               ) : null)}
 
-              {/* Laufwege */}
-              {runs.map((r, i) => r.points && r.points.length >= 2 ? (
-                <polyline
-                  key={`run-${i}`}
-                  points={r.points.map(p => `${clampPct(p.x)},${flipY(clampPct(p.y))}`).join(' ')}
-                  fill="none" stroke={r.color || '#3B82F6'} strokeWidth="1" strokeDasharray="2.5 1.5" opacity="0.95" strokeLinecap="round"
-                />
-              ) : null)}
+              {/* 4. Laufwege als Pfeile (Sprint = stärkere Spitze, länger) */}
+              {runs.map((r, i) => {
+                if (!r.points || r.points.length < 2) return null;
+                const sprint = runIsSprint(r, runMedian);
+                // Sprint-Läufe werden leicht über die reale Dist hinaus verlängert
+                const pts = r.points.map(p => ({ x: clampPct(p.x), y: flipY(clampPct(p.y)) }));
+                const end = sprint ? extendPolyline(pts, 0.12) : pts;
+                return (
+                  <g key={`run-${i}`}>
+                    <polyline
+                      points={pts.map(p => `${p.x},${p.y}`).join(' ')}
+                      fill="none" stroke={r.color || (sprint ? OVERLAY_STYLE.runSprint.color : OVERLAY_STYLE.run.color)} strokeWidth="2.6" opacity="0.16" strokeLinecap="round"
+                    />
+                    <polyline
+                      points={end.map(p => `${p.x},${p.y}`).join(' ')}
+                      fill="none" stroke={r.color || (sprint ? OVERLAY_STYLE.runSprint.color : OVERLAY_STYLE.run.color)} strokeWidth={sprint ? OVERLAY_STYLE.runSprint.width : OVERLAY_STYLE.run.width} opacity="0.95" strokeLinecap="round"
+                      markerEnd={sprint ? 'url(#miniArrowSprint)' : 'url(#miniArrowRun)'}
+                    />
+                    {sprint && <text x={end[0].x} y={Math.max(end[0].y - 2, 4)} fontSize="2.9" fontWeight="900" fill={OVERLAY_STYLE.runSprint.color}>⚡</text>}
+                  </g>
+                );
+              })}
 
-              {/* Passwege */}
+              {/* 3. Passwege (optional = gestrichelte Passoption) */}
               {passes.map((p, i) => (
                 <g key={`pass-${i}`}>
-                  <line x1={clampPct(p.fromX)} y1={flipY(clampPct(p.fromY))} x2={clampPct(p.toX)} y2={flipY(clampPct(p.toY))} stroke={p.color || '#3B82F6'} strokeWidth="0.8" opacity="0.9" />
-                  <circle cx={clampPct(p.toX)} cy={flipY(clampPct(p.toY))} r="1.1" fill={p.color || '#3B82F6'} opacity="0.9" />
+                  <line x1={clampPct(p.fromX)} y1={flipY(clampPct(p.fromY))} x2={clampPct(p.toX)} y2={flipY(clampPct(p.toY))} stroke={p.color || (p.optional ? OVERLAY_STYLE.passOptional.color : OVERLAY_STYLE.pass.color)} strokeWidth={p.optional ? OVERLAY_STYLE.passOptional.width : OVERLAY_STYLE.pass.width} opacity="0.9" strokeDasharray={p.optional ? '1.6 1.4' : undefined} markerEnd="url(#miniArrowPass)" />
+                  <circle cx={clampPct(p.toX)} cy={flipY(clampPct(p.toY))} r="1.1" fill={p.color || (p.optional ? OVERLAY_STYLE.passOptional.color : OVERLAY_STYLE.pass.color)} opacity="0.9" />
                 </g>
               ))}
 
@@ -611,11 +891,25 @@ const UltraOverlaySVG: React.FC<{ overlay: UltraOverlayData; timeInClip: number 
   if (!overlay || !Array.isArray(overlay.keyframes) || overlay.keyframes.length === 0) return null;
   if (snap.players.length === 0 && snap.passes.length === 0 && snap.zones.length === 0 && snap.runs.length === 0 && snap.chains.length === 0 && snap.optimalPositions.length === 0) return null;
   const vs = (v: any, f: number = 50) => clampPct(v, f);
+  // Sprint-Schwelle dieses Keyframes (Median aller Lauflängen)
+  const liveRunMedian = medianRunLength(snap.runs);
   return (
     <svg className="absolute inset-0 w-full h-full pointer-events-none z-[14]" viewBox="0 0 100 100" preserveAspectRatio="none">
       <defs>
         <marker id="ultraArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
           <path d="M0,0 L10,5 L0,10 z" fill="#22D3EE" />
+        </marker>
+        {/* Passweg-Spitze */}
+        <marker id="ultraArrowPass" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill={OVERLAY_STYLE.pass.color} />
+        </marker>
+        {/* Laufweg-Spitze (normal) */}
+        <marker id="ultraArrowRun" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill={OVERLAY_STYLE.run.color} />
+        </marker>
+        {/* Sprint-Laufweg: größere, stärkere Spitze */}
+        <marker id="ultraArrowSprint" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+          <path d="M0,0 L10,4 L0,8 z" fill={OVERLAY_STYLE.runSprint.color} />
         </marker>
       </defs>
 
@@ -634,18 +928,44 @@ const UltraOverlaySVG: React.FC<{ overlay: UltraOverlayData; timeInClip: number 
         </g>
       ) : null)}
 
-      {(snap.runs || []).map((r: any, i: number) => r.points && r.points.length >= 2 ? (
-        <g key={`ur${i}`}>
-          <polyline points={r.points.map((p: any) => `${vs(ptX(p))},${vs(ptY(p))}`).join(' ')} fill="none" stroke={r.color || '#3B82F6'} strokeWidth="3" opacity="0.22" strokeLinecap="round" />
-          <polyline points={r.points.map((p: any) => `${vs(ptX(p))},${vs(ptY(p))}`).join(' ')} fill="none" stroke={r.color || '#3B82F6'} strokeWidth="1.7" strokeDasharray="2.4 1.8" opacity="0.98" strokeLinecap="round" />
-        </g>
-      ) : null)}
+      {/* 4. Laufweg = Pfeil. Sprint-Läufe sind länger und haben eine stärkere Spitze. */}
+      {(snap.runs || []).map((r: any, i: number) => {
+        if (!r.points || r.points.length < 2) return null;
+        const sprint = runIsSprint(r, liveRunMedian);
+        const base = r.points.map((p: any) => ({ x: ptX(p), y: ptY(p) }));
+        const line = sprint ? extendPolyline(base, 0.12) : base;
+        const toStr = (p: any) => `${vs(p.x)},${vs(p.y)}`;
+        const color = r.color || (sprint ? OVERLAY_STYLE.runSprint.color : OVERLAY_STYLE.run.color);
+        return (
+          <g key={`ur${i}`}>
+            <polyline points={base.map(toStr).join(' ')} fill="none" stroke={color} strokeWidth="3" opacity="0.22" strokeLinecap="round" />
+            <polyline
+              points={line.map(toStr).join(' ')}
+              fill="none"
+              stroke={color}
+              strokeWidth={sprint ? OVERLAY_STYLE.runSprint.width : OVERLAY_STYLE.run.width}
+              opacity="0.98"
+              strokeLinecap="round"
+              markerEnd={sprint ? 'url(#ultraArrowSprint)' : 'url(#ultraArrowRun)'}
+            />
+            {sprint && <text x={vs(line[0].x)} y={vs(line[0].y) - 2} fontSize="3.4" fontWeight="900" fill={OVERLAY_STYLE.runSprint.color} stroke="#000000" strokeWidth="0.4" paintOrder="stroke">⚡ SPRINT</text>}
+          </g>
+        );
+      })}
 
+      {/* 3. Passweg: dünne Linie. `optional: true` = gestrichelte Passoption. */}
       {(snap.passes || []).map((p: any, i: number) => (
         <g key={`up${i}`}>
-          <line x1={vs(p.fromX)} y1={vs(p.fromY)} x2={vs(p.toX)} y2={vs(p.toY)} stroke={p.color || '#3B82F6'} strokeWidth="2.8" opacity="0.28" strokeLinecap="round" />
-          <line x1={vs(p.fromX)} y1={vs(p.fromY)} x2={vs(p.toX)} y2={vs(p.toY)} stroke={p.color || '#3B82F6'} strokeWidth="1.5" opacity="0.98" markerEnd="url(#ultraArrow)" />
-          <circle cx={vs(p.toX)} cy={vs(p.toY)} r="1.4" fill={p.color || '#3B82F6'} />
+          <line x1={vs(p.fromX)} y1={vs(p.fromY)} x2={vs(p.toX)} y2={vs(p.toY)} stroke={p.color || (p.optional ? OVERLAY_STYLE.passOptional.color : OVERLAY_STYLE.pass.color)} strokeWidth="2.8" opacity="0.28" strokeLinecap="round" />
+          <line
+            x1={vs(p.fromX)} y1={vs(p.fromY)} x2={vs(p.toX)} y2={vs(p.toY)}
+            stroke={p.color || (p.optional ? OVERLAY_STYLE.passOptional.color : OVERLAY_STYLE.pass.color)}
+            strokeWidth={p.optional ? OVERLAY_STYLE.passOptional.width : OVERLAY_STYLE.pass.width}
+            opacity="0.98"
+            strokeDasharray={p.optional ? '1.6 1.4' : undefined}
+            markerEnd="url(#ultraArrowPass)"
+          />
+          <circle cx={vs(p.toX)} cy={vs(p.toY)} r="1.4" fill={p.color || (p.optional ? OVERLAY_STYLE.passOptional.color : OVERLAY_STYLE.pass.color)} />
         </g>
       ))}
 
@@ -1409,6 +1729,42 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
     addOrUpdateItem: saveCategoryNote 
   } = useCollectionSync<CategoryTrainerNote>('video_category_notes', 'id');
 
+  // Spielplan: Pflichtspiele + Testspiele für die Clip-Zuordnung
+  const { data: competitiveMatchesRaw } = useCollectionSync<any>('competitive_matches', 'id', 'date', 'asc', true);
+  const { data: testMatchesRaw } = useCollectionSync<any>('test_matches', 'id', 'date', 'asc', true);
+
+  const matchOptions = useMemo<VideoMatchOption[]>(() => {
+    const build = (rows: any[], type: MatchType): VideoMatchOption[] =>
+      (rows || [])
+        .filter(m => m && (m.opponent || m.id))
+        .map(m => {
+          const opponent = String(m.opponent || 'Gegner');
+          const dateVal = m.date || '';
+          const dateLabel = dateVal
+            ? (typeof dateVal === 'string'
+                ? dateVal.slice(0, 10).split('-').reverse().join('.')
+                : new Date(dateVal).toLocaleDateString('de-DE'))
+            : 'ohne Datum';
+          return {
+            key: `${type}_${m.id}`,
+            id: String(m.id),
+            type,
+            opponent,
+            date: typeof dateVal === 'string' ? dateVal : '',
+            isHome: m.isHome,
+            competition: m.competition,
+            label: `${type === 'pflicht' ? 'Pflicht' : 'Test'} · ${dateLabel} · ${m.isHome ? 'Heim' : 'Aus'} · ${opponent}`
+          };
+        });
+    return [...build(competitiveMatchesRaw, 'pflicht'), ...build(testMatchesRaw, 'test')];
+  }, [competitiveMatchesRaw, testMatchesRaw]);
+
+  const matchByKey = useMemo(() => {
+    const acc: Record<string, VideoMatchOption> = {};
+    matchOptions.forEach(m => { acc[m.key] = m; });
+    return acc;
+  }, [matchOptions]);
+
   const categoryNotes = (rawCategoryNotes || []).reduce((acc, item) => {
     acc[item.id || item.category] = item;
     return acc;
@@ -1836,6 +2192,9 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
   // Help text toggle per category + player filter
   const [showHelpCategory, setShowHelpCategory] = useState<string | null>(null);
   const [playerFilterSearch, setPlayerFilterSearch] = useState<string>('');
+  // Spiel-Zuordnung: beim Speichern gewählter Clip / Filter in Schritt 2
+  const [assignedMatchKey, setAssignedMatchKey] = useState<string>('');
+  const [matchFilterKey, setMatchFilterKey] = useState<string>('');
 
   // Active clip preview modal
   const [activePlaybackClip, setActivePlaybackClip] = useState<TacticalVideoClip | null>(null);
@@ -2008,8 +2367,8 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
       let frames: string[] = [];
 
       if (!isVeoLink && videoEl && videoSource) {
-        // 12 Frames gleichmäßig über das Video verteilt -> präzisere Zonenn- & Szenen-Erkennung
-        frames = await extractFrames(videoEl, 12);
+        // 24 Frames gleichmäßig über das Video verteilt, mit eingeblendeter Zeit -> präzise Szenen- & Kategorien-Erkennung
+        frames = await extractTimedFrames(videoEl, 24);
       }
 
       const res = await apiFetch('/api/video-analysis/process', {
@@ -2044,21 +2403,29 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
       const aiClips = result.sceneClips.map((clip: any, idx: number) => {
         const categoryMap: Record<string, VideoCategory> = {
           'TORE': 'Tore',
+          'Tore': 'Tore',
           'GEGENTOR': 'Gegentore',
+          'Gegentore': 'Gegentore',
           'CHANCEN': 'Tore',
           'STANDARDS': 'Standards',
+          'Standards': 'Standards',
           'PRESSING': 'Pressing MIT Ball',
           'AUFBAU': 'Spielaufbau',
+          'Spielaufbau': 'Spielaufbau',
           'UMSCHALTMOMENTE': 'Ballverlust',
           'BALLBESITZ': 'Spielaufbau',
           'BALLGEWINN': 'Pressing GEGEN den Ball',
+          'Pressing GEGEN den Ball': 'Pressing GEGEN den Ball',
+          'Pressing MIT Ball': 'Pressing MIT Ball',
           'KONTER': 'Ballverlust',
           'ABSCHLUSS': 'Tore',
           'ÜBERLADUNG': 'Spielaufbau',
           'DRUCKPHASE': 'Pressing MIT Ball',
           'BALLVERLUST': 'Ballverlust',
+          'Ballverlust': 'Ballverlust',
           'DURCHBRUCH': 'Spielaufbau',
           'FEHLERANALYSE': 'Gegentore',
+          'Gegentore FEHLERANALYSE': 'Gegentore',
         };
         const primaryCat: VideoCategory = clip.categories && clip.categories.length > 0
           ? (categoryMap[clip.categories[0]] || 'Spielaufbau')
@@ -2124,7 +2491,7 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
         throw new Error('Bitte zuerst ein eigenes Video laden (Veo-Link nicht unterstützt).');
       }
 
-      const frames = await extractTimedFrames(videoEl, 18);
+      const frames = await extractTimedFrames(videoEl, 30);
 
       const res = await apiFetch('/api/video-analysis/process', {
         method: 'POST',
@@ -2589,6 +2956,8 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
         ? ('firstName' in assignedPlayer ? `${assignedPlayer.firstName} ${assignedPlayer.lastName}` : (assignedPlayer as any).name)
         : undefined;
 
+      const selectedMatch = assignedMatchKey ? matchByKey[assignedMatchKey] : undefined;
+
       const tagsText = selectedSubTags.length
         ? `\nSub-Tags: ${selectedSubTags.join(', ')}`
         : '';
@@ -2609,6 +2978,15 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
         title: `${selectedCategory} (${formatTime(cutStart)} - ${formatTime(cutEnd)})`,
         assignedPlayerId: assignedPlayerId || undefined,
         assignedPlayerName: assignedPlayerName || undefined,
+        ...(selectedMatch
+          ? {
+              matchId: selectedMatch.id,
+              matchType: selectedMatch.type,
+              matchLabel: selectedMatch.label,
+              matchOpponent: selectedMatch.opponent,
+              matchDate: selectedMatch.date || undefined,
+            }
+          : {}),
         ...(cutFileName ? { cutFileName } : {}),
       };
 
@@ -2631,7 +3009,8 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
         }
       }, 180);
 
-      // Reset notes for next cut but KEEP VIDEO OPEN
+      // Reset notes for next cut but KEEP VIDEO OPEN (Spiel-Zuordnung bleibt bestehen,
+      // damit mehrere Clips desselben Spiels geschnitten werden können)
       setClipNoteDraft('');
       setClipColorDraft('none');
       setAssignedPlayerId('');
@@ -2752,7 +3131,26 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
         throw new Error(errData?.error || `HTTP ${res.status}`);
       }
       const result = sanitizeUltraOverlayForFirestore(await res.json() as UltraOverlayData);
-      await saveClip({ ...clip, ultraOverlay: result });
+      // Auto-Tagging Kategorie deterministisch auflösen: KI-Wert zuerst, sonst Regelwerk
+      const autoCat = resolveAutoCategory({
+        category: result.category,
+        sceneType: result.sceneType,
+        action: result.action,
+        phase: result.phase,
+        title: clip.title,
+        aiCommentary: clip.tacticalNote,
+      });
+      await saveClip({
+        ...clip,
+        ultraOverlay: result,
+        autoCategory: autoCat,
+        category: autoCat,
+        categories: [autoCat],
+        sceneType: result.sceneType || clip.title,
+        phase: result.phase,
+        action: result.action,
+        zone: result.zone,
+      });
       setUltraMsg({ id: clip.id, text: `⚡ Ultra-Overlay erzeugt (${(result.keyframes || []).length} Keyframes) – jetzt im Video abspielen.` });
       setUltraShowForClip(clip.id);
     } catch (err: any) {
@@ -2769,7 +3167,9 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
     if (target) {
       const el = target.tacticalNote || '';
       const note = `${el}${el ? '\n' : ''}🎯 Coach-Taktik (${formatTime(timeSeconds)}): ${board.players?.length || 0} Spieler, ${board.passes?.length || 0} Passwege, ${board.runs?.length || 0} Laufwege, ${board.zones?.length || 0} Räume, ${board.optimalPositions?.length || 0} optimale Positionen.`;
-      void saveClip({ ...target, tacticBoard: board, thumbnailUrl: thumbnailDataUrl, tacticalNote: note });
+      // Auto-Tagging Kategorie deterministisch auflösen (7 feste Kategorien)
+      const autoCat = resolveAutoCategory({ category: target.category, title: target.title, action: target.action, phase: target.phase, aiCommentary: target.tacticalNote });
+      void saveClip({ ...target, tacticBoard: board, thumbnailUrl: thumbnailDataUrl, tacticalNote: note, autoCategory: autoCat });
       setHighlightedClipId(target.id);
       setSaveSuccessMsg('Taktik-Grafik zur Szene gespeichert (Bild aktualisiert).');
       setTagTargetClipId(null);
@@ -2782,10 +3182,18 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
     const start = Math.max(0, timeSeconds - 3);
     const end = Math.min(dur, timeSeconds + 3);
     const newId = `tagger_clip_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    // Auto-Tagging: Kategorie aus Szenen-Daten ableiten (Fallback Spielaufbau)
+    const manualCat: VideoCategory = resolveAutoCategory({
+      title: target?.title,
+      category: target?.category,
+      action: target?.action,
+      phase: target?.phase,
+    });
     const newClip: TacticalVideoClip = {
       id: newId,
-      category: 'Spielaufbau',
-      categories: ['Spielaufbau'],
+      category: manualCat,
+      categories: [manualCat],
+      autoCategory: manualCat,
       videoUrl: videoSource ?? '',
       videoName: videoFileName || 'Spielvideo',
       startTime: start,
@@ -2796,12 +3204,14 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
       colorMarking: 'none',
       createdAt: new Date().toISOString(),
       title: `🎯 Taktik-Anmerkung (${formatTime(start)})`,
+      sceneType: target?.sceneType || 'Manuell getaggte Taktik-Szene',
+      zone: target?.zone,
       tacticBoard: board,
     };
     void saveClip(newClip);
-    setOpenCategories(prev => ({ ...prev, 'Spielaufbau': true }));
+    setOpenCategories(prev => ({ ...prev, [manualCat]: true }));
     setHighlightedClipId(newId);
-    setSaveSuccessMsg('Taktik-Szene gespeichert – mit annotiertem Bild unter „Spielaufbau".');
+    setSaveSuccessMsg(`Taktik-Szene gespeichert – mit annotiertem Bild unter „${manualCat}".`);
     setTagBoard({ attackDirection: 'DOWN', players: [], chains: [], passes: [], runs: [], ballPath: [], zones: [], optimalPositions: [] });
     setTagHistory([]);
     setTaggerOpen(false);
@@ -2992,12 +3402,17 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
   const handleDownloadCsv = () => {
     if (!savedClips?.length) return;
     const today = new Date().toLocaleDateString('de-DE');
-    const head = ['sep=;', 'Kennung', 'Kategorie', 'Titel', 'Label', 'Start (s)', 'Ende (s)', 'Dauer (s)', 'Markierung', 'Zonen', 'Schlüsselspieler', 'Lernpunkt', 'Taktik-Notiz', 'Video-URL', 'Erstellt am'];
+    const head = ['sep=;', 'Kennung', 'Kategorie', 'Titel', 'Label', 'Spiel-Art', 'Spiel', 'Gegner', 'Spiel-Datum', 'Spieler', 'Start (s)', 'Ende (s)', 'Dauer (s)', 'Markierung', 'Zonen', 'Schlüsselspieler', 'Lernpunkt', 'Taktik-Notiz', 'Video-URL', 'Erstellt am'];
     const rows = (savedClips || []).map((c: any) => [
       c.id || '',
       c.category || '',
       c.title || '',
       c.label || '',
+      c.matchType === 'test' ? 'Testspiel' : (c.matchType === 'pflicht' ? 'Pflichtspiel' : ''),
+      c.matchId || '',
+      c.matchOpponent || '',
+      c.matchDate || '',
+      c.assignedPlayerName || '',
       c.startTime ?? '',
       c.endTime ?? '',
       c.duration ?? '',
@@ -3034,13 +3449,59 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
     try {
       const text = await file.text();
       const data = JSON.parse(text);
-      const clips = Array.isArray(data) ? data : Array.isArray(data.clips) ? data.clips : [];
+      // Format 1: MatchIQ-Backup { clips: [...], categoryNotes: [...] } oder Array von Clips
+      let clips = Array.isArray(data) ? data : Array.isArray(data.clips) ? data.clips : null;
+      // Format 2: manifest_master.json des scene_detector_master.py
+      //   [{ id, file, start_time, end_time, category, confidence, begruendung }]
+      if (!clips && Array.isArray(data)) clips = data;
+      const manifestEntries = Array.isArray(data)
+        ? data.filter((e: any) => e && typeof e === 'object' && 'start_time' in e && 'category' in e)
+        : [];
+      if (manifestEntries.length > 0) {
+        clips = manifestEntries;
+      }
       const notes = Array.isArray(data.categoryNotes) ? data.categoryNotes : [];
       let savedClipsN = 0;
       let savedNotesN = 0;
-      for (const c of clips) { try { await saveClip(c); savedClipsN++; } catch { /* einzelne Szene überspringen */ } }
+      for (const c of (clips || [])) {
+        // Manifest-Eintrag (scene_detector_master.py) in TacticalVideoClip umwandeln
+        if ('start_time' in c && 'category' in c && !('createdAt' in c)) {
+          const catRaw = String(c.category || '').trim();
+          const category = (VIDEO_CATEGORIES as readonly string[]).includes(catRaw as VideoCategory)
+            ? (catRaw as VideoCategory)
+            : VIDEO_CATEGORIES[0];
+          const startTime = Number(c.start_time) || 0;
+          const endTime = Number(c.end_time) || (startTime + 5);
+          const clip: TacticalVideoClip = {
+            id: `master_${Date.now()}_${Math.floor(Math.random() * 1e6)}_${savedClipsN}`,
+            category,
+            videoUrl: c.file ? `/clips/${c.file}` : '',
+            videoName: String(c.file || ''),
+            startTime,
+            endTime,
+            duration: Math.max(0.1, endTime - startTime),
+            thumbnailUrl: '',
+            tacticalNote: String(c.begruendung || ''),
+            colorMarking: 'none',
+            createdAt: new Date().toISOString(),
+            title: `Master-Analyse Szene ${c.id ?? ''} (${category})`,
+            label: category,
+            cutFileName: String(c.file || ''),
+            subTags: [category],
+            confidence: {
+              overall: c.confidence != null ? String(Number(c.confidence).toFixed(2)) : '',
+              estimated: false,
+              lowConfidence: Number(c.confidence || 0) < 0.7,
+            },
+          };
+          try { await saveClip(clip); savedClipsN++; } catch { /* einzelne Szene überspringen */ }
+          continue;
+        }
+        try { await saveClip(c); savedClipsN++; } catch { /* einzelne Szene überspringen */ }
+      }
       for (const n of notes) { try { await saveCategoryNote(n); savedNotesN++; } catch { /* Notiz überspringen */ } }
-      setMatchiqMsg(`✅ Import abgeschlossen: ${savedClipsN} Szenen, ${savedNotesN} Trainer-Notizen übernommen.`);
+      const src = manifestEntries.length > 0 ? ' (scene_detector_master)' : '';
+      setMatchiqMsg(`✅ Import abgeschlossen${src}: ${savedClipsN} Szenen, ${savedNotesN} Trainer-Notizen übernommen.`);
       setTimeout(() => setMatchiqMsg(null), 6000);
     } catch (err) {
       setMatchiqMsg(`❌ Import fehlgeschlagen: ${(err as any)?.message || 'Ungültige JSON-Datei'}`);
@@ -3705,6 +4166,9 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
                       </div>
                     </div>
                     </div>
+                    {/* Strukturierter Szenen-Block (Pflicht-Ausgabeformat) */}
+                    <SceneBlockCard clip={clip} />
+
                     {/* Once-Style Taktik-Grafik */}
                     <SceneTacticDiagram
                       board={clip.tacticBoard}
@@ -4012,8 +4476,9 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
                       ) : null)}
                       {(tagBoard.runs || []).map((r, i) => r.points.length >= 2 ? (
                         <g key={`tr${i}`}>
-                          <polyline points={r.points.map(p => `${p.x},${p.y}`).join(' ')} fill="none" stroke={r.color || '#3B82F6'} strokeWidth="1.4" opacity="0.15" strokeLinecap="round" />
-                          <polyline points={r.points.map(p => `${p.x},${p.y}`).join(' ')} fill="none" stroke={r.color || '#3B82F6'} strokeWidth="0.8" strokeDasharray="2.4 1.8" opacity="0.95" strokeLinecap="round" />
+                          <polyline points={r.points.map(p => `${p.x},${p.y}`).join(' ')} fill="none" stroke={r.color || (r.sprint ? OVERLAY_STYLE.runSprint.color : OVERLAY_STYLE.run.color)} strokeWidth="1.4" opacity="0.15" strokeLinecap="round" />
+                          <polyline points={r.points.map(p => `${p.x},${p.y}`).join(' ')} fill="none" stroke={r.color || (r.sprint ? OVERLAY_STYLE.runSprint.color : OVERLAY_STYLE.run.color)} strokeWidth={r.sprint ? OVERLAY_STYLE.runSprint.width : OVERLAY_STYLE.run.width} opacity="0.95" strokeLinecap="round" markerEnd={r.sprint ? 'url(#tagArrowSprint)' : 'url(#tagArrowRun)'} />
+                          {r.sprint && <text x={r.points[0].x} y={Math.max(r.points[0].y - 2, 3)} fontSize="3" fontWeight="900" fill={OVERLAY_STYLE.runSprint.color} stroke="#000000" strokeWidth="0.35" paintOrder="stroke">⚡ SPRINT</text>}
                         </g>
                       ) : null)}
                       {(tagBoard.passes || []).map((p, i) => {
@@ -4021,9 +4486,9 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
                         const b = FPos(p.toPlayer, p.toX, p.toY);
                         return (
                         <g key={`tp${i}`}>
-                          <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={p.color || '#3B82F6'} strokeWidth="1.2" opacity="0.15" strokeLinecap="round" />
-                          <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={p.color || '#3B82F6'} strokeWidth="0.75" opacity="0.95" markerEnd="url(#tagArrowLive)" />
-                          <circle cx={b.x} cy={b.y} r="0.8" fill={p.color || '#3B82F6'} />
+                          <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={p.color || (p.optional ? OVERLAY_STYLE.passOptional.color : OVERLAY_STYLE.pass.color)} strokeWidth="1.2" opacity="0.15" strokeLinecap="round" />
+                          <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={p.color || (p.optional ? OVERLAY_STYLE.passOptional.color : OVERLAY_STYLE.pass.color)} strokeWidth={p.optional ? OVERLAY_STYLE.passOptional.width : OVERLAY_STYLE.pass.width} opacity="0.95" strokeDasharray={p.optional ? '1.6 1.4' : undefined} markerEnd="url(#tagArrowLive)" />
+                          <circle cx={b.x} cy={b.y} r="0.8" fill={p.color || (p.optional ? OVERLAY_STYLE.passOptional.color : OVERLAY_STYLE.pass.color)} />
                         </g>
                         );
                       })}
@@ -4408,6 +4873,31 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
                     </select>
                   </div>
 
+                  <div>
+                    <span className="text-[#64748B] uppercase font-bold text-[10px] block">Spiel (Optional)</span>
+                    <select
+                      value={assignedMatchKey}
+                      onChange={(e) => setAssignedMatchKey(e.target.value)}
+                      className="p-2 bg-[#1E293B] border border-[#334155] rounded-lg text-xs font-bold text-white focus:outline-none focus:border-[#10B981] max-w-[260px]"
+                    >
+                      <option value="">-- Kein Spiel --</option>
+                      {matchOptions.length > 0 && (
+                        <optgroup label="Pflichtspiele">
+                          {matchOptions.filter(m => m.type === 'pflicht').map(m => (
+                            <option key={m.key} value={m.key}>{m.label}</option>
+                          ))}
+                        </optgroup>
+                      )}
+                      {matchOptions.length > 0 && (
+                        <optgroup label="Testspiele">
+                          {matchOptions.filter(m => m.type === 'test').map(m => (
+                            <option key={m.key} value={m.key}>{m.label}</option>
+                          ))}
+                        </optgroup>
+                      )}
+                    </select>
+                  </div>
+
                   {players.length > 0 && (
                     <div>
                       <span className="text-[#64748B] uppercase font-bold text-[10px] block">Spieler (Optional)</span>
@@ -4511,24 +5001,59 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
           </div>
         </div>
 
-        {/* Player Filter Search */}
+        {/* Player + Match Filter */}
         {totalClipsCount > 0 && (
-          <div className="relative max-w-xs">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#64748B]" />
-            <input
-              type="text"
-              placeholder="Nach Spieler filtern (Name oder #)..."
-              value={playerFilterSearch}
-              onChange={(e) => setPlayerFilterSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 bg-[#0F172A] border border-[#2A3447] rounded-xl text-xs font-bold text-white placeholder-[#64748B] focus:outline-none focus:border-[#10B981] transition-all"
-            />
-            {playerFilterSearch && (
-              <button
-                onClick={() => setPlayerFilterSearch('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-white transition-colors cursor-pointer"
-              >
-                <X size={14} />
-              </button>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative max-w-xs flex-1 min-w-[200px]">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#64748B]" />
+              <input
+                type="text"
+                placeholder="Nach Spieler filtern (Name oder #)..."
+                value={playerFilterSearch}
+                onChange={(e) => setPlayerFilterSearch(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 bg-[#0F172A] border border-[#2A3447] rounded-xl text-xs font-bold text-white placeholder-[#64748B] focus:outline-none focus:border-[#10B981] transition-all"
+              />
+              {playerFilterSearch && (
+                <button
+                  onClick={() => setPlayerFilterSearch('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-white transition-colors cursor-pointer"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+
+            {matchOptions.length > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-[#64748B] uppercase font-bold text-[10px]">Spiel</span>
+                <select
+                  value={matchFilterKey}
+                  onChange={(e) => setMatchFilterKey(e.target.value)}
+                  className="p-2 bg-[#0F172A] border border-[#2A3447] rounded-xl text-xs font-bold text-white focus:outline-none focus:border-[#10B981] max-w-[260px]"
+                >
+                  <option value="">Alle Spiele</option>
+                  <option value="__none__">Ohne Spiel-Zuordnung</option>
+                  <optgroup label="Pflichtspiele">
+                    {matchOptions.filter(m => m.type === 'pflicht').map(m => (
+                      <option key={m.key} value={m.key}>{m.label}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Testspiele">
+                    {matchOptions.filter(m => m.type === 'test').map(m => (
+                      <option key={m.key} value={m.key}>{m.label}</option>
+                    ))}
+                  </optgroup>
+                </select>
+                {matchFilterKey && (
+                  <button
+                    onClick={() => setMatchFilterKey('')}
+                    className="text-[#64748B] hover:text-white transition-colors cursor-pointer"
+                    title="Spiel-Filter zurücksetzen"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
             )}
           </div>
         )}
@@ -4541,16 +5066,23 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
 
         {VIDEO_CATEGORIES.map((cat, index) => {
           const allCatClips = clipsByCategory[cat] || [];
-          const catClips = playerFilterSearch.trim()
-            ? allCatClips.filter(c => {
-                const searchLower = playerFilterSearch.toLowerCase().trim();
-                const nameMatch = c.assignedPlayerName?.toLowerCase().includes(searchLower);
-                const numMatch = c.assignedPlayerId && players.some(
-                  p => p.id === c.assignedPlayerId && String(p.number) === searchLower.replace('#', '')
-                );
-                return nameMatch || numMatch;
-              })
-            : allCatClips;
+          let catClips = allCatClips;
+          if (playerFilterSearch.trim()) {
+            const searchLower = playerFilterSearch.toLowerCase().trim();
+            catClips = catClips.filter(c => {
+              const nameMatch = c.assignedPlayerName?.toLowerCase().includes(searchLower);
+              const numMatch = c.assignedPlayerId && players.some(
+                p => p.id === c.assignedPlayerId && String(p.number) === searchLower.replace('#', '')
+              );
+              return nameMatch || numMatch;
+            });
+          }
+          if (matchFilterKey) {
+            catClips = catClips.filter(c => {
+              if (matchFilterKey === '__none__') return !c.matchId;
+              return !!c.matchId && `${c.matchType}_${c.matchId}` === matchFilterKey;
+            });
+          }
           const isOpen = openCategories[cat] ?? true;
 
           return (
@@ -4689,6 +5221,20 @@ export const VideoAnalysisView: React.FC<VideoAnalysisViewProps> = ({ players = 
                               <div className="absolute bottom-2 left-2 px-2 py-0.5 bg-black/80 backdrop-blur-xs rounded text-[10px] font-mono font-bold text-white">
                                 ⏱ {formatTime(clip.startTime)} - {formatTime(clip.endTime)} ({clip.duration}s)
                               </div>
+
+                              {/* Match Badge if assigned */}
+                              {clip.matchOpponent && (
+                                <div
+                                  className={`absolute top-2 left-2 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
+                                    clip.matchType === 'test'
+                                      ? 'bg-purple-600/90 text-white border border-purple-400/50'
+                                      : 'bg-emerald-600/90 text-black border border-emerald-400/50'
+                                  }`}
+                                  title={clip.matchLabel}
+                                >
+                                  {clip.matchType === 'test' ? 'TEST' : 'PFL'} · {clip.matchOpponent}
+                                </div>
+                              )}
 
                               {/* Player Badge if assigned */}
                               {clip.assignedPlayerName && (

@@ -223,6 +223,29 @@ export async function saveLocalCollection(collectionName: string, items: any[]):
   }
 }
 
+// Einmalige Cache-Bereinigung: löst eine komplette Collection aus dem lokalen
+// IndexedDB-Cache. Der Inhalt wird beim nächsten Snapshot deckungsgleich vom
+// Server neu aufgebaut (nur die real existierenden Dokumente bleiben sichtbar).
+export async function clearLocalCollection(collectionName: string): Promise<void> {
+  try {
+    await withStore('collections', 'readwrite', (store) => store.delete(collectionName));
+  } catch (err) {
+    console.warn(`Failed to clear collection "${collectionName}" from IndexedDB:`, err);
+  }
+}
+
+// Einmalige Komplett-Bereinigung des lokalen Collection-Caches. Alle lokal
+// gecachten Collections werden entfernt; Firestore liefert sie anschliessend
+// frisch. Die Sync-Queue (offene Offline-Writes) bleibt UNANGETASTET, damit
+// keine ungespeicherten Aenderungen verloren gehen.
+export async function clearAllLocalCollections(): Promise<void> {
+  try {
+    await withStore('collections', 'readwrite', (store) => store.clear());
+  } catch (err) {
+    console.warn('Failed to clear all local collections from IndexedDB:', err);
+  }
+}
+
 // Queue modification when offline/quota block
 export async function enqueueSyncOperation(
   collectionName: string,

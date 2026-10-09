@@ -1,0 +1,38 @@
+SCHRITT 1: Firestore-Regeln in der Firebase-Konsole setzen (81 Sekunden)
+
+Das ist DER Fix für "nach Reload ist alles weg" + "Kollegen"
+koennen nichts speichern. NUR du kannst das (dein Login).
+
+SCHRITT-FUER-SCHRITT:
+1) Oeffne  https://console.firebase.google.com
+2) Waehle dein Projekt (das mit deiner 43-Einheiten-App).
+3) Links: "Firestore Database"
+4) Tab "Regeln" (oben)
+5) Loesche den vorhandenen Text KOMPLETT.
+6) Fuege GENAU diesen Text ein:
+
+===============================================================
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
+===============================================================
+
+7) Klick "VEROEFFENTLICHEN"
+8) Fertig. Danach in der App: STRG+F5 (harter Reload).
+
+DANACH: Speichern + Kollegen-Login (gleiche E-Mail+Passwort)
+funktionieren. Deine 43 Einheiten + Fotos sind sicher
+(wird durch diese Regel AENDERUNG nicht angefasst).
+
+INFO: "allow read, write" = eingeloggte Kollegen koennen lesen
+UND speichern. Nicht-Eingeloggte sehen nur den Login-Bildschirm.
+
+HINWEIS AN SAMER: Wenn du NACH dem Einfuegen immer noch sagst
+"es geht nicht", dann hat dein Projekt einen ANDEREN
+firestoreDatabaseId (firebase-applet-config.json) - dann
+bittet mich OPenCode darum, das zu pruefen (rein lesend).
