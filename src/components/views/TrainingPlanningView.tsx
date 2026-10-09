@@ -4863,7 +4863,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                   </div>
 
                   {/* Content Sections */}
-                  <div className="flex-1 flex flex-col print:overflow-visible print:h-auto text-slate-900">
+                  <div className="flex-1 flex flex-col print:overflow-visible print:h-auto text-slate-900 print:break-before-page">
                     <div className="flex-1 border-b-2 border-black flex flex-col min-h-[150px] print:min-h-0 print:h-auto print:overflow-visible print:avoid-break">
                       <div className="bg-[#10B981] text-white p-2 border-b border-black text-[10px] font-black uppercase flex justify-between items-center">
                         <span className="flex items-center gap-1.5"><span className="text-sm">⚽</span> Erwärmung / Aktivierung</span>
