@@ -392,21 +392,27 @@ html.light, body.light {
     float: none !important;
   }
 
-  /* 5) Jede Sektion beginnt auf einer neuen A4-Seite.
-        Ist eine Sektion länger als eine Seite, fließt sie auf der
-        Folgenseite weiter (kein break-inside:avoid -> keine Lücken). */
+  /* 5) Sektionen fließen fortlaufend wie in der Dokument-Ansicht am Bildschirm
+        (KEINE erzwungenen Seitenumbrüche; die Seite bricht nur dort, wo die
+        A4-Höhe erreicht ist – wie beim normalen Drucken). */
   .print-page {
     display: block !important;
     width: 100% !important;
     max-width: 100% !important;
-    break-before: page !important;
-    page-break-before: always !important;
     break-inside: auto !important;
     page-break-inside: auto !important;
   }
 
-  /* 6) Bilder füllen die Seitenbreite (Breite 100 %, Höhe automatisch) */
-  .print-page img,
+  /* 5b) Bilder in den Dokument-Sektionen bleiben 1:1 auf Bildschirmgröße
+         (h-32 = 8rem). printHardening.ts erzwingt sonst img{height:auto}. */
+  .print-page img {
+    height: 8rem !important;
+    width: auto !important;
+    object-fit: cover !important;
+  }
+
+  /* 6) Bilder 1:1 wie am Bildschirm. Nur in der Bearbeiten-Karte
+        (.print-img-full) füllen sie die Breite. */
   .print-img-full img,
   .print-img-full {
     width: 100% !important;
