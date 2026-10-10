@@ -358,3 +358,10 @@ html.light, body.light {
 }
 
 @media print { .page-break-force{break-before:page!important;page-break-before:always!important;visibility:hidden!important;height:0!important;display:block!important;} }
+
+@media print {
+  .print-section-break {
+    break-before: page !important;
+    page-break-before: always !important;
+  }
+}

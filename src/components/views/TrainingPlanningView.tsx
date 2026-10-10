@@ -3888,7 +3888,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
           </div>
 
           {/* HAUPTTEIL 1 */}
-          <div className="mb-6 border-2 border-[#F59E0B] rounded-xl overflow-hidden print:avoid-break page-break-force">
+          <div className="mb-6 border-2 border-[#F59E0B] rounded-xl overflow-hidden print:avoid-break print-section-break">
             <div className="bg-[#F59E0B] text-white px-4 py-2 flex items-center justify-between print:bg-[#F59E0B]">
               <h2 className="text-sm font-black uppercase tracking-wider flex items-center gap-2">🏃 Hauptteil 1 — Technik / Taktik</h2>
               <span className="text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded">{localSession.content.main1Duration || '—'}</span>
@@ -3906,7 +3906,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
           </div>
 
           {/* HAUPTTEIL 2 */}
-          <div className="mb-6 border-2 border-[#EF4444] rounded-xl overflow-hidden print:avoid-break page-break-force">
+          <div className="mb-6 border-2 border-[#EF4444] rounded-xl overflow-hidden print:avoid-break print-section-break">
             <div className="bg-[#EF4444] text-white px-4 py-2 flex items-center justify-between print:bg-[#EF4444]">
               <h2 className="text-sm font-black uppercase tracking-wider flex items-center gap-2">⚡ Hauptteil 2 — Intensität / Spiel</h2>
               <span className="text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded">{localSession.content.main2Duration || '—'}</span>
@@ -3924,7 +3924,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
           </div>
 
           {/* SCHLUSS */}
-          <div className="mb-6 border-2 border-[#10B981] rounded-xl overflow-hidden print:avoid-break page-break-force">
+          <div className="mb-6 border-2 border-[#10B981] rounded-xl overflow-hidden print:avoid-break print-section-break">
             <div className="bg-[#10B981] text-white px-4 py-2 flex items-center justify-between print:bg-[#10B981]">
               <h2 className="text-sm font-black uppercase tracking-wider flex items-center gap-2">🧘 Schluss / Cool-Down</h2>
               <span className="text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded">{localSession.content.closingDuration || '—'}</span>
@@ -4850,7 +4850,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                 </div>
 
                 {/* Right Column: Content Sections */}
-                <div className="flex-1 flex flex-col print:!overflow-visible print:!h-auto print:!w-full page-break-force">
+                <div className="flex-1 flex flex-col print:!overflow-visible print:!h-auto print:!w-full print-section-break">
                   {/* Intensity Bar — Wert kommt automatisch aus der Belastungsstufe */}
                   <div className="bg-yellow-400 text-slate-900 border-b-2 border-black p-2 flex justify-center items-center gap-4 text-[10px] font-black uppercase">
                     <span className="text-slate-900 font-black" title="Automatisch aus der Belastungsstufe (grünes Belastungsdiagramm).">Intensität:</span>
@@ -4863,7 +4863,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                   </div>
 
                   {/* Content Sections */}
-                  <div className="flex-1 flex flex-col print:!overflow-visible print:!h-auto text-slate-900 page-break-force">
+                  <div className="flex-1 flex flex-col print:!overflow-visible print:!h-auto text-slate-900 print-section-break">
                     <div className="flex-1 border-b-2 border-black flex flex-col min-h-[150px] print:min-h-0 print:h-auto print:overflow-visible print:avoid-break">
                       <div className="bg-[#10B981] text-white p-2 border-b border-black text-[10px] font-black uppercase flex justify-between items-center">
                         <span className="flex items-center gap-1.5"><span className="text-sm">⚽</span> Erwärmung / Aktivierung</span>
@@ -4928,7 +4928,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                       </div>
                     </div>
 
-                    <div className="flex-1 border-b-2 border-black flex flex-col min-h-[150px] print:!min-h-0 print:!h-auto print:!overflow-visible print:!avoid-break page-break-force">
+                    <div className="flex-1 border-b-2 border-black flex flex-col min-h-[150px] print:!min-h-0 print:!h-auto print:!overflow-visible print:!avoid-break print-section-break">
                       <div className="bg-[#F59E0B] text-white p-2 border-b border-black text-[10px] font-black uppercase flex justify-between items-center">
                         <span className="flex items-center gap-1.5"><span className="text-sm">🏃</span> Hauptteil 1 — Technik / Taktik</span>
                         <div className="flex items-center gap-1">
@@ -4991,7 +4991,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                       </div>
                     </div>
 
-                    <div className="flex-1 border-b-2 border-black flex flex-col min-h-[150px] print:!min-h-0 print:!h-auto print:!overflow-visible print:!avoid-break page-break-force">
+                    <div className="flex-1 border-b-2 border-black flex flex-col min-h-[150px] print:!min-h-0 print:!h-auto print:!overflow-visible print:!avoid-break print-section-break">
                       <div className="bg-[#EF4444] text-white p-2 border-b border-black text-[10px] font-black uppercase flex justify-between items-center">
                         <span className="flex items-center gap-1.5"><span className="text-sm">⚡</span> Hauptteil 2 — Intensität / Spiel</span>
                         <div className="flex items-center gap-1">
@@ -5054,7 +5054,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                       </div>
                     </div>
 
-                    <div className="flex-1 flex flex-col min-h-[150px] print:!min-h-0 print:!h-auto print:!overflow-visible print:!avoid-break page-break-force">
+                    <div className="flex-1 flex flex-col min-h-[150px] print:!min-h-0 print:!h-auto print:!overflow-visible print:!avoid-break print-section-break">
                       <div className="bg-[#10B981] text-white p-2 border-b border-black text-[10px] font-black uppercase flex justify-between items-center">
                         <span className="flex items-center gap-1.5"><span className="text-sm">🧘</span> Schluss / Cool-Down</span>
                         <div className="flex items-center gap-1">
