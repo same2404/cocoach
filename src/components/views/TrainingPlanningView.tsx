@@ -4431,7 +4431,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
               }
             }}
           >
-            <div id="training-plan-card" className="max-w-6xl mx-auto bg-white text-slate-900 border-2 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] p-0 flex flex-col print:shadow-none print:max-w-none print:w-full print:border-none print:mx-0 print:overflow-visible print:h-auto">
+            <div id="training-plan-card" className="max-w-6xl mx-auto bg-white text-slate-900 print:!shadow-none print:!max-w-full print:!w-full print:!border-none print:!mx-0 print:!overflow-visible print:!h-auto">
               
               {/* Top Header Row - Responsive Columns */}
               <div className="grid grid-cols-2 sm:grid-cols-4 border-b-2 border-black bg-white text-[10px] font-black uppercase text-slate-900">
@@ -4658,13 +4658,13 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
               )}
 
               {/* Main Content Area - Split Layout */}
-              <div className="flex flex-col lg:flex-row flex-1 min-h-[600px] print:h-auto print:min-h-0 print:overflow-visible print:flex-col">
+              <div className="flex flex-col lg:flex-row flex-1 min-h-[600px] print:!h-auto print:!min-h-0 print:!overflow-visible print:!flex-col">
                 {/* Leftest Column: Alle Einheiten (vergangene + kommende) */}
                 <div className="w-full lg:w-32 xl:w-36 shrink-0 border-b-2 lg:border-b-0 lg:border-r-2 border-black flex flex-col bg-white print:hidden">
                   {renderAllSessionsColumn()}
                 </div>
                 {/* Left Column: Player List */}
-                <div className="w-full lg:w-1/4 border-b-2 lg:border-b-0 lg:border-r-2 border-black flex flex-col bg-slate-50 print:bg-white print:overflow-visible print:h-auto print:w-full">
+                <div className="w-full lg:w-1/4 border-b-2 lg:border-b-0 lg:border-r-2 border-black flex flex-col bg-slate-50 print:bg-white print:!overflow-visible print:!h-auto print:!w-full">
                   <div className="bg-black text-white p-2 shrink-0 flex justify-between items-center">
                     <div className="flex items-center gap-2">
                       <h3 className="font-black uppercase tracking-widest text-[10px]">Anwesenheit</h3>
@@ -4850,7 +4850,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                 </div>
 
                 {/* Right Column: Content Sections */}
-                <div className="flex-1 flex flex-col print:overflow-visible print:h-auto print:w-full print:break-before-page">
+                <div className="flex-1 flex flex-col print:!overflow-visible print:!h-auto print:!w-full print:!break-before-page">
                   {/* Intensity Bar — Wert kommt automatisch aus der Belastungsstufe */}
                   <div className="bg-yellow-400 text-slate-900 border-b-2 border-black p-2 flex justify-center items-center gap-4 text-[10px] font-black uppercase">
                     <span className="text-slate-900 font-black" title="Automatisch aus der Belastungsstufe (grünes Belastungsdiagramm).">Intensität:</span>
@@ -4863,7 +4863,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                   </div>
 
                   {/* Content Sections */}
-                  <div className="flex-1 flex flex-col print:overflow-visible print:h-auto text-slate-900 print:break-before-page">
+                  <div className="flex-1 flex flex-col print:!overflow-visible print:!h-auto text-slate-900 print:!break-before-page">
                     <div className="flex-1 border-b-2 border-black flex flex-col min-h-[150px] print:min-h-0 print:h-auto print:overflow-visible print:avoid-break">
                       <div className="bg-[#10B981] text-white p-2 border-b border-black text-[10px] font-black uppercase flex justify-between items-center">
                         <span className="flex items-center gap-1.5"><span className="text-sm">⚽</span> Erwärmung / Aktivierung</span>
@@ -4928,7 +4928,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                       </div>
                     </div>
 
-                    <div className="flex-1 border-b-2 border-black flex flex-col min-h-[150px] print:min-h-0 print:h-auto print:overflow-visible print:avoid-break print:break-before-page">
+                    <div className="flex-1 border-b-2 border-black flex flex-col min-h-[150px] print:!min-h-0 print:!h-auto print:!overflow-visible print:!avoid-break print:!break-before-page">
                       <div className="bg-[#F59E0B] text-white p-2 border-b border-black text-[10px] font-black uppercase flex justify-between items-center">
                         <span className="flex items-center gap-1.5"><span className="text-sm">🏃</span> Hauptteil 1 — Technik / Taktik</span>
                         <div className="flex items-center gap-1">
@@ -4991,7 +4991,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                       </div>
                     </div>
 
-                    <div className="flex-1 border-b-2 border-black flex flex-col min-h-[150px] print:min-h-0 print:h-auto print:overflow-visible print:avoid-break print:break-before-page">
+                    <div className="flex-1 border-b-2 border-black flex flex-col min-h-[150px] print:!min-h-0 print:!h-auto print:!overflow-visible print:!avoid-break print:!break-before-page">
                       <div className="bg-[#EF4444] text-white p-2 border-b border-black text-[10px] font-black uppercase flex justify-between items-center">
                         <span className="flex items-center gap-1.5"><span className="text-sm">⚡</span> Hauptteil 2 — Intensität / Spiel</span>
                         <div className="flex items-center gap-1">
@@ -5054,7 +5054,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                       </div>
                     </div>
 
-                    <div className="flex-1 flex flex-col min-h-[150px] print:min-h-0 print:h-auto print:overflow-visible print:avoid-break print:break-before-page">
+                    <div className="flex-1 flex flex-col min-h-[150px] print:!min-h-0 print:!h-auto print:!overflow-visible print:!avoid-break print:!break-before-page">
                       <div className="bg-[#10B981] text-white p-2 border-b border-black text-[10px] font-black uppercase flex justify-between items-center">
                         <span className="flex items-center gap-1.5"><span className="text-sm">🧘</span> Schluss / Cool-Down</span>
                         <div className="flex items-center gap-1">
