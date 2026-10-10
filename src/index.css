@@ -403,12 +403,14 @@ html.light, body.light {
     page-break-inside: auto !important;
   }
 
-  /* 5b) Bilder in den Dokument-Sektionen bleiben 1:1 auf Bildschirmgröße
-         (h-32 = 8rem). printHardening.ts erzwingt sonst img{height:auto}. */
+  /* 5b) Bilder in den Dokument-Sektionen füllen die Breite – wie im
+         Bearbeitungsmodus (.print-img-full). printHardening.ts erzwingt
+         sonst img{height:auto}, daher hier explizit volle Breite. */
   .print-page img {
-    height: 8rem !important;
-    width: auto !important;
-    object-fit: cover !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    object-fit: contain !important;
   }
 
   /* 6) Bilder 1:1 wie am Bildschirm. Nur in der Bearbeiten-Karte
