@@ -356,3 +356,5 @@ html.light, body.light {
   .text-xs { font-size: 10px !important; } .text-sm { font-size: 12px !important; }
   input, select, textarea { font-size: 12px !important; padding: 0.4rem 0.6rem !important; }
 }
+
+@media print { .page-break-force{break-before:page!important;page-break-before:always!important;visibility:hidden!important;height:0!important;display:block!important;} }
