@@ -770,7 +770,13 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
   // XPS Drill Category Editor State
   const [activeDrillCategory, setActiveDrillCategory] = useState<string | null>(null);
   const [showDocumentPreview, setShowDocumentPreview] = useState(false);
-  const [viewMode, setViewMode] = useState<'document' | 'edit'>('edit');
+  const [viewMode, setViewMode] = useState<'document' | 'edit'>(() => {
+    // Druck-Deep-Link (?print=true) startet direkt in der maßgeblichen Dokument-Ansicht.
+    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('print') === 'true') {
+      return 'document';
+    }
+    return 'edit';
+  });
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [drillEditContent, setDrillEditContent] = useState({
     title: '',
@@ -2978,6 +2984,28 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
     }
   };
 
+  // Druckt IMMER die maßgebliche Dokument-Ansicht (nicht die Bearbeiten-Karte).
+  const printInDocumentView = () => {
+    const previousMode = viewMode;
+    flushSync(() => {
+      setViewMode('document');
+      setIsEditing(false);
+    });
+    preparePrintDom();
+    if (previousMode !== 'document') {
+      window.addEventListener('afterprint', () => { try { setViewMode(previousMode); } catch { /* ignore */ } }, { once: true });
+    }
+    try {
+      window.focus();
+      window.print();
+      setNotification(null);
+    } catch (e) {
+      console.error("Print failed:", e);
+      setNotification("Drucken fehlgeschlagen. Bitte aktualisieren Sie die Seite (Strg+Shift+R) und versuchen Sie es erneut.");
+      setTimeout(() => setNotification(null), 8000);
+    }
+  };
+
   const handlePrint = () => {
     if (!localSession) {
       setNotification("Keine Trainingseinheit ausgewählt. Bitte links eine Einheit anklicken.");
@@ -3000,33 +3028,15 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
         setTimeout(() => setNotification(null), 4000);
         return;
       }
-      // Popup blockiert -> direkt aus der App heraus drucken
-      preparePrintDom();
-      try {
-        window.focus();
-        window.print();
-        setNotification(null);
-      } catch (printErr) {
-        console.error("Print failed", printErr);
-        setNotification("Drucken blockiert. Bitte öffnen Sie die App in einem eigenen Tab (Pfeil oben rechts) und drucken Sie erneut.");
-        setTimeout(() => setNotification(null), 8000);
-      }
+      // Popup blockiert -> direkt aus der App heraus drucken (Dokument-Ansicht)
+      printInDocumentView();
       return;
     }
 
     // DOM vorbereiten und SYNCHRON im User-Gesture drucken.
     // Ein setTimeout() verwirft die User-Aktivation -> Chrome öffnet die
     // Druckvorschau dann nicht bzw. hängt auf "wird vorbereitet".
-    preparePrintDom();
-    try {
-      window.focus();
-      window.print();
-      setNotification(null);
-    } catch (e) {
-      console.error("Print failed:", e);
-      setNotification("Drucken fehlgeschlagen. Bitte aktualisieren Sie die Seite (Strg+Shift+R) und versuchen Sie es erneut.");
-      setTimeout(() => setNotification(null), 8000);
-    }
+    printInDocumentView();
   };
 
   const handleExportDocx = async () => {
@@ -3870,7 +3880,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
           </div>
 
           {/* ERWÄRMUNG */}
-          <div className="mb-6 border-2 border-[#10B981] rounded-xl overflow-hidden print:avoid-break">
+          <div className="mb-6 border-2 border-[#10B981] rounded-xl overflow-hidden print-page">
             <div className="bg-[#10B981] text-white px-4 py-2 flex items-center justify-between print:bg-[#10B981]">
               <h2 className="text-sm font-black uppercase tracking-wider flex items-center gap-2">⚽ Aufwärmen / Aktivierung</h2>
               <span className="text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded">{localSession.content.warmupDuration || '—'}</span>
@@ -3888,7 +3898,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
           </div>
 
           {/* HAUPTTEIL 1 */}
-          <div className="mb-6 border-2 border-[#F59E0B] rounded-xl overflow-hidden print:avoid-break print-section-break">
+          <div className="mb-6 border-2 border-[#F59E0B] rounded-xl overflow-hidden print-page">
             <div className="bg-[#F59E0B] text-white px-4 py-2 flex items-center justify-between print:bg-[#F59E0B]">
               <h2 className="text-sm font-black uppercase tracking-wider flex items-center gap-2">🏃 Hauptteil 1 — Technik / Taktik</h2>
               <span className="text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded">{localSession.content.main1Duration || '—'}</span>
@@ -3906,7 +3916,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
           </div>
 
           {/* HAUPTTEIL 2 */}
-          <div className="mb-6 border-2 border-[#EF4444] rounded-xl overflow-hidden print:avoid-break print-section-break">
+          <div className="mb-6 border-2 border-[#EF4444] rounded-xl overflow-hidden print-page">
             <div className="bg-[#EF4444] text-white px-4 py-2 flex items-center justify-between print:bg-[#EF4444]">
               <h2 className="text-sm font-black uppercase tracking-wider flex items-center gap-2">⚡ Hauptteil 2 — Intensität / Spiel</h2>
               <span className="text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded">{localSession.content.main2Duration || '—'}</span>
@@ -3924,7 +3934,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
           </div>
 
           {/* SCHLUSS */}
-          <div className="mb-6 border-2 border-[#10B981] rounded-xl overflow-hidden print:avoid-break print-section-break">
+          <div className="mb-6 border-2 border-[#10B981] rounded-xl overflow-hidden print-page print-page-last">
             <div className="bg-[#10B981] text-white px-4 py-2 flex items-center justify-between print:bg-[#10B981]">
               <h2 className="text-sm font-black uppercase tracking-wider flex items-center gap-2">🧘 Schluss / Cool-Down</h2>
               <span className="text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded">{localSession.content.closingDuration || '—'}</span>
@@ -4431,7 +4441,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
               }
             }}
           >
-            <div id="training-plan-card" className="max-w-6xl mx-auto bg-white text-slate-900 print:!shadow-none print:!max-w-full print:!w-full print:!border-none print:!mx-0 print:!overflow-visible print:!h-auto">
+            <div id="training-plan-card" className="max-w-6xl mx-auto bg-white text-slate-900 print-block print:!shadow-none print:!max-w-full print:!w-full print:!border-none print:!mx-0 print:!overflow-visible print:!h-auto">
               
               {/* Top Header Row - Responsive Columns */}
               <div className="grid grid-cols-2 sm:grid-cols-4 border-b-2 border-black bg-white text-[10px] font-black uppercase text-slate-900">
@@ -4658,7 +4668,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
               )}
 
               {/* Main Content Area - Split Layout */}
-              <div className="flex flex-col lg:flex-row flex-1 min-h-[600px] print:!h-auto print:!min-h-0 print:!overflow-visible print:!flex-col">
+              <div className="flex flex-col lg:flex-row flex-1 min-h-[600px] print-flow print:!h-auto print:!min-h-0 print:!overflow-visible print:!flex-col">
                 {/* Leftest Column: Alle Einheiten (vergangene + kommende) */}
                 <div className="w-full lg:w-32 xl:w-36 shrink-0 border-b-2 lg:border-b-0 lg:border-r-2 border-black flex flex-col bg-white print:hidden">
                   {renderAllSessionsColumn()}
@@ -4850,7 +4860,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                 </div>
 
                 {/* Right Column: Content Sections */}
-                <div className="flex-1 flex flex-col print:!overflow-visible print:!h-auto print:!w-full print-section-break">
+                <div className="flex-1 flex flex-col print-flow print-block print:!overflow-visible print:!h-auto print:!w-full">
                   {/* Intensity Bar — Wert kommt automatisch aus der Belastungsstufe */}
                   <div className="bg-yellow-400 text-slate-900 border-b-2 border-black p-2 flex justify-center items-center gap-4 text-[10px] font-black uppercase">
                     <span className="text-slate-900 font-black" title="Automatisch aus der Belastungsstufe (grünes Belastungsdiagramm).">Intensität:</span>
@@ -4863,8 +4873,8 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                   </div>
 
                   {/* Content Sections */}
-                  <div className="flex-1 flex flex-col print:!overflow-visible print:!h-auto text-slate-900 print-section-break">
-                    <div className="flex-1 border-b-2 border-black flex flex-col min-h-[150px] print:min-h-0 print:h-auto print:overflow-visible print:avoid-break">
+                  <div className="flex-1 flex flex-col print-flow print-block print:!overflow-visible print:!h-auto text-slate-900">
+                    <div className="flex-1 border-b-2 border-black flex flex-col min-h-[150px] print-page print:min-h-0 print:h-auto print:overflow-visible">
                       <div className="bg-[#10B981] text-white p-2 border-b border-black text-[10px] font-black uppercase flex justify-between items-center">
                         <span className="flex items-center gap-1.5"><span className="text-sm">⚽</span> Erwärmung / Aktivierung</span>
                         <div className="flex items-center gap-1">
@@ -4883,7 +4893,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                         </div>
                       </div>
                       <div className="bg-slate-100 text-slate-900 p-1 border-b border-black text-[9px] font-black uppercase text-center">Aktivierung</div>
-                      <div className="flex-1 flex flex-col sm:flex-row min-h-0 print:h-auto print:min-h-0 print:overflow-visible">
+                      <div className="flex-1 flex flex-col sm:flex-row min-h-0 print-flow print:h-auto print:min-h-0 print:overflow-visible">
                         {isEditing ? (
                           <textarea 
                             value={localSession.content.warmup || ''}
@@ -4897,7 +4907,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                         ) : (
                           <div className="flex-1 p-4 font-bold text-sm text-slate-900 bg-white whitespace-pre-wrap w-full">{localSession.content.warmup}</div>
                         )}
-                        <div className="flex gap-1 p-1 overflow-x-auto border-t sm:border-t-0 sm:border-l border-black bg-slate-50 w-full sm:min-w-[120px] sm:max-w-[400px] print:flex-wrap print:overflow-visible print:max-w-none print:w-auto print:border-none print:bg-white shrink-0">
+                        <div className="flex gap-1 p-1 overflow-x-auto border-t sm:border-t-0 sm:border-l border-black bg-slate-50 w-full sm:min-w-[120px] sm:max-w-[400px] print-img-row print:flex-wrap print:overflow-visible print:max-w-none print:w-auto print:border-none print:bg-white shrink-0">
                           {(localSession.content.warmupImages || []).map((img, idx) => (
                             <ImageUpload 
                               key={idx}
@@ -4913,7 +4923,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                               }}
                               currentImage={img}
                               isEditing={isEditing}
-                              className="w-32 h-full flex-shrink-0 print:w-40 print:h-40 print:m-1"
+                              className="w-32 h-full flex-shrink-0 print-img-full"
                             />
                           ))}
                           {isEditing && (
@@ -4928,7 +4938,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                       </div>
                     </div>
 
-                    <div className="flex-1 border-b-2 border-black flex flex-col min-h-[150px] print:!min-h-0 print:!h-auto print:!overflow-visible print:!avoid-break print-section-break">
+                    <div className="flex-1 border-b-2 border-black flex flex-col min-h-[150px] print-page print:!min-h-0 print:!h-auto print:!overflow-visible">
                       <div className="bg-[#F59E0B] text-white p-2 border-b border-black text-[10px] font-black uppercase flex justify-between items-center">
                         <span className="flex items-center gap-1.5"><span className="text-sm">🏃</span> Hauptteil 1 — Technik / Taktik</span>
                         <div className="flex items-center gap-1">
@@ -4946,7 +4956,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                           )}
                         </div>
                       </div>
-                      <div className="flex-1 flex flex-col sm:flex-row min-h-0 print:h-auto print:min-h-0 print:overflow-visible">
+                      <div className="flex-1 flex flex-col sm:flex-row min-h-0 print-flow print:h-auto print:min-h-0 print:overflow-visible">
                         {isEditing ? (
                           <textarea 
                             value={localSession.content.main1 || ''}
@@ -4960,7 +4970,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                         ) : (
                           <div className="flex-1 p-4 font-bold text-sm text-slate-900 bg-white whitespace-pre-wrap w-full">{localSession.content.main1}</div>
                         )}
-                        <div className="flex gap-1 p-1 overflow-x-auto border-t sm:border-t-0 sm:border-l border-black bg-slate-50 w-full sm:min-w-[120px] sm:max-w-[400px] print:flex-wrap print:overflow-visible print:max-w-none print:w-auto print:border-none print:bg-white shrink-0">
+                        <div className="flex gap-1 p-1 overflow-x-auto border-t sm:border-t-0 sm:border-l border-black bg-slate-50 w-full sm:min-w-[120px] sm:max-w-[400px] print-img-row print:flex-wrap print:overflow-visible print:max-w-none print:w-auto print:border-none print:bg-white shrink-0">
                           {(localSession.content.main1Images || []).map((img, idx) => (
                             <ImageUpload 
                               key={idx}
@@ -4976,7 +4986,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                               }}
                               currentImage={img}
                               isEditing={isEditing}
-                              className="w-32 h-full flex-shrink-0 print:w-40 print:h-40 print:m-1"
+                              className="w-32 h-full flex-shrink-0 print-img-full"
                             />
                           ))}
                           {isEditing && (
@@ -4991,7 +5001,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                       </div>
                     </div>
 
-                    <div className="flex-1 border-b-2 border-black flex flex-col min-h-[150px] print:!min-h-0 print:!h-auto print:!overflow-visible print:!avoid-break print-section-break">
+                    <div className="flex-1 border-b-2 border-black flex flex-col min-h-[150px] print-page print:!min-h-0 print:!h-auto print:!overflow-visible">
                       <div className="bg-[#EF4444] text-white p-2 border-b border-black text-[10px] font-black uppercase flex justify-between items-center">
                         <span className="flex items-center gap-1.5"><span className="text-sm">⚡</span> Hauptteil 2 — Intensität / Spiel</span>
                         <div className="flex items-center gap-1">
@@ -5009,7 +5019,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                           )}
                         </div>
                       </div>
-                      <div className="flex-1 flex flex-col sm:flex-row min-h-0 print:h-auto print:min-h-0 print:overflow-visible">
+                      <div className="flex-1 flex flex-col sm:flex-row min-h-0 print-flow print:h-auto print:min-h-0 print:overflow-visible">
                         {isEditing ? (
                           <textarea 
                             value={localSession.content.main2 || ''}
@@ -5023,7 +5033,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                         ) : (
                           <div className="flex-1 p-4 font-bold text-sm text-slate-900 bg-white whitespace-pre-wrap w-full">{localSession.content.main2}</div>
                         )}
-                        <div className="flex gap-1 p-1 overflow-x-auto border-t sm:border-t-0 sm:border-l border-black bg-slate-50 w-full sm:min-w-[120px] sm:max-w-[400px] print:flex-wrap print:overflow-visible print:max-w-none print:w-auto print:border-none print:bg-white shrink-0">
+                        <div className="flex gap-1 p-1 overflow-x-auto border-t sm:border-t-0 sm:border-l border-black bg-slate-50 w-full sm:min-w-[120px] sm:max-w-[400px] print-img-row print:flex-wrap print:overflow-visible print:max-w-none print:w-auto print:border-none print:bg-white shrink-0">
                           {(localSession.content.main2Images || []).map((img, idx) => (
                             <ImageUpload 
                               key={idx}
@@ -5039,7 +5049,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                               }}
                               currentImage={img}
                               isEditing={isEditing}
-                              className="w-32 h-full flex-shrink-0 print:w-40 print:h-40 print:m-1"
+                              className="w-32 h-full flex-shrink-0 print-img-full"
                             />
                           ))}
                           {isEditing && (
@@ -5054,7 +5064,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                       </div>
                     </div>
 
-                    <div className="flex-1 flex flex-col min-h-[150px] print:!min-h-0 print:!h-auto print:!overflow-visible print:!avoid-break print-section-break">
+                    <div className="flex-1 flex flex-col min-h-[150px] print-page print-page-last print:!min-h-0 print:!h-auto print:!overflow-visible">
                       <div className="bg-[#10B981] text-white p-2 border-b border-black text-[10px] font-black uppercase flex justify-between items-center">
                         <span className="flex items-center gap-1.5"><span className="text-sm">🧘</span> Schluss / Cool-Down</span>
                         <div className="flex items-center gap-1">
@@ -5072,7 +5082,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                           )}
                         </div>
                       </div>
-                      <div className="flex-1 flex flex-col sm:flex-row min-h-0 print:h-auto print:min-h-0 print:overflow-visible">
+                      <div className="flex-1 flex flex-col sm:flex-row min-h-0 print-flow print:h-auto print:min-h-0 print:overflow-visible">
                         {isEditing ? (
                           <textarea 
                             value={localSession.content.closing || ''}
@@ -5086,7 +5096,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                         ) : (
                           <div className="flex-1 p-4 font-bold text-sm text-slate-900 bg-white whitespace-pre-wrap w-full">{localSession.content.closing}</div>
                         )}
-                        <div className="flex gap-1 p-1 overflow-x-auto border-t sm:border-t-0 sm:border-l border-black bg-slate-50 w-full sm:min-w-[120px] sm:max-w-[400px] print:flex-wrap print:overflow-visible print:max-w-none print:w-auto print:border-none print:bg-white shrink-0">
+                        <div className="flex gap-1 p-1 overflow-x-auto border-t sm:border-t-0 sm:border-l border-black bg-slate-50 w-full sm:min-w-[120px] sm:max-w-[400px] print-img-row print:flex-wrap print:overflow-visible print:max-w-none print:w-auto print:border-none print:bg-white shrink-0">
                           {(localSession.content.closingImages || []).map((img, idx) => (
                             <ImageUpload 
                               key={idx}
@@ -5102,7 +5112,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
                               }}
                               currentImage={img}
                               isEditing={isEditing}
-                              className="w-32 h-full flex-shrink-0 print:w-40 print:h-40 print:m-1"
+                              className="w-32 h-full flex-shrink-0 print-img-full"
                             />
                           ))}
                           {isEditing && (
@@ -5890,7 +5900,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
       {/* VOLLBILD-VORSCHAU — Kompletter Trainingsplan als Dokument     */}
       {/* ═══════════════════════════════════════════════════════════════ */}
       {showDocumentPreview && localSession && (
-        <div className="fixed inset-0 z-[200] bg-white overflow-y-auto print:static print:z-auto print:overflow-visible" onClick={() => setShowDocumentPreview(false)}>
+        <div className="fixed inset-0 z-[200] bg-white overflow-y-auto print-block print:static print:z-auto print:overflow-visible" onClick={() => setShowDocumentPreview(false)}>
           <div className="max-w-4xl mx-auto p-6 print:p-0" onClick={e => e.stopPropagation()}>
             {/* Close + Print Buttons */}
             <div className="sticky top-0 z-10 bg-white border-b-2 border-black pb-3 mb-6 flex justify-between items-center print:hidden">
@@ -5961,7 +5971,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
             </div>
 
             {/* TRAINING SECTION: ERWÄRMUNG */}
-            <div className="mb-6 border-2 border-[#10B981] rounded-xl overflow-hidden">
+            <div className="mb-6 border-2 border-[#10B981] rounded-xl overflow-hidden print-page">
               <div className="bg-[#10B981] text-white px-4 py-2 flex items-center justify-between">
                 <h2 className="text-sm font-black uppercase tracking-wider flex items-center gap-2">⚽ Aufwärmen / Aktivierung</h2>
                 <span className="text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded">{localSession.content.warmupDuration || '—'}</span>
@@ -5979,7 +5989,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
             </div>
 
             {/* TRAINING SECTION: HAUPTTEIL 1 */}
-            <div className="mb-6 border-2 border-[#F59E0B] rounded-xl overflow-hidden">
+            <div className="mb-6 border-2 border-[#F59E0B] rounded-xl overflow-hidden print-page">
               <div className="bg-[#F59E0B] text-white px-4 py-2 flex items-center justify-between">
                 <h2 className="text-sm font-black uppercase tracking-wider flex items-center gap-2">🏃 Hauptteil 1 — Technik / Taktik</h2>
                 <span className="text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded">{localSession.content.main1Duration || '—'}</span>
@@ -5997,7 +6007,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
             </div>
 
             {/* TRAINING SECTION: HAUPTTEIL 2 */}
-            <div className="mb-6 border-2 border-[#EF4444] rounded-xl overflow-hidden">
+            <div className="mb-6 border-2 border-[#EF4444] rounded-xl overflow-hidden print-page">
               <div className="bg-[#EF4444] text-white px-4 py-2 flex items-center justify-between">
                 <h2 className="text-sm font-black uppercase tracking-wider flex items-center gap-2">⚡ Hauptteil 2 — Intensität / Spiel</h2>
                 <span className="text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded">{localSession.content.main2Duration || '—'}</span>
@@ -6015,7 +6025,7 @@ const dateBase = new Date(KW_START_DATES[weekIndex % KW_START_DATES.length] || K
             </div>
 
             {/* TRAINING SECTION: SCHLUSS */}
-            <div className="mb-6 border-2 border-[#10B981] rounded-xl overflow-hidden">
+            <div className="mb-6 border-2 border-[#10B981] rounded-xl overflow-hidden print-page print-page-last">
               <div className="bg-[#10B981] text-white px-4 py-2 flex items-center justify-between">
                 <h2 className="text-sm font-black uppercase tracking-wider flex items-center gap-2">🧘 Schluss / Cool-Down</h2>
                 <span className="text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded">{localSession.content.closingDuration || '—'}</span>

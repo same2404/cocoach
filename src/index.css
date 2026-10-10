@@ -312,41 +312,6 @@ html.light, body.light {
   .wow-table-row:hover { background: rgba(0,212,255,0.04) !important; border-bottom-color: rgba(0,212,255,0.12); }
 }
 
-@media print {
-  @page { size: A4; margin: 1.2cm !important; }
-  html, body, #root { zoom: 1 !important; transform: none !important; height: auto !important; min-height: 0 !important; overflow: visible !important; background: white !important; }
-  body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; font-size: 11pt !important; color: black !important; background: white !important; }
-  body::before, body::after { display: none !important; }
-  .print-hidden, .print\:hidden { display: none !important; }
-  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; border-color: black !important; }
-  #training-plan-card { border: 3px solid black !important; width: 100% !important; max-width: 100% !important; height: auto !important; margin: 0 !important; padding: 0 !important; background: white !important; overflow: visible !important; display: block !important; page-break-inside: auto !important; break-inside: auto !important; }
-  .player-list-print-grid { display: grid !important; grid-template-columns: repeat(3, 1fr) !important; align-content: start !important; gap: 4px !important; padding: 8px !important; background-color: white !important; border: none !important; height: auto !important; max-height: none !important; overflow: visible !important; }
-  .player-list-print-grid > div { padding: 4px 8px !important; border: 1.5px solid black !important; display: flex !important; align-items: center !important; justify-content: space-between !important; font-size: 10pt !important; height: 36px !important; box-sizing: border-box !important; background: white !important; break-inside: avoid !important; page-break-inside: avoid !important; }
-  .player-list-print-grid .bg-green-500 { background-color: #22c55e !important; color: white !important; }
-  .player-list-print-grid .bg-yellow-400 { background-color: #facc15 !important; color: black !important; }
-  .player-list-print-grid .bg-red-600 { background-color: #dc2626 !important; color: white !important; }
-  .print\:avoid-break { break-inside: avoid !important; page-break-inside: avoid !important; }
-  .print\:avoid-break, .print\:avoid-break * { break-inside: avoid !important; page-break-inside: avoid !important; }
-  .print\:break-before-page, .print\:break-before-page * { break-before: page !important; page-break-before: always !important; }
-  /* Animations/Transitions stoppen -> Druckvorschau hängt sonst auf "wird vorbereitet" */
-  *, *::before, *::after {
-    animation: none !important;
-    animation-play-state: paused !important;
-    transition: none !important;
-    transition-duration: 0s !important;
-    will-change: auto !important;
-  }
-  /* Scroll-Container im Druck entfalten, sonst werden Übungsseiten abgeschnitten */
-  [class*="overflow-hidden"], [class*="overflow-auto"],
-  [class*="overflow-y"], [class*="overflow-x"] {
-    overflow: visible !important;
-    max-height: none !important;
-  }
-  img, svg, canvas, video { max-width: 100% !important; height: auto !important; }
-  body { background-color: white !important; color: black !important; }
-  #runs-pdf-report { display: block !important; width: 100% !important; }
-}
-
 @media (max-width: 1024px) {
   table { display: block !important; width: 100% !important; overflow-x: auto !important; }
   table th, table td { padding: 0.5rem !important; font-size: 11px !important; white-space: nowrap !important; }
@@ -357,11 +322,130 @@ html.light, body.light {
   input, select, textarea { font-size: 12px !important; padding: 0.4rem 0.6rem !important; }
 }
 
-@media print { .page-break-force{break-before:page!important;page-break-before:always!important;visibility:hidden!important;height:0!important;display:block!important;} }
-
+/* ─────────────────────────────────────────────────────────────────────────
+   DRUCK / PDF
+   Ziel: Jede Sektion des Plans = genau eine A4-Seite (Hochformat).
+   Die komplette Höhen-/Scroll-/Flex-Kette wird aufgelöst, damit der Inhalt
+   über mehrere Seiten fließen kann (kein "alles auf eine Seite" mehr) und
+   die Bilder die volle Seitenbreite füllen.
+   ───────────────────────────────────────────────────────────────────────── */
 @media print {
-  .print-section-break {
+  @page { size: A4 portrait; margin: 10mm; }
+
+  /* 1) Höhen- und Scrollkette komplett auflösen */
+  html, body, #root {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    zoom: 1 !important;
+    transform: none !important;
+    background: #fff !important;
+  }
+  body {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    font-size: 11pt !important;
+    color: #000 !important;
+    background: #fff !important;
+  }
+  body::before, body::after { display: none !important; }
+  *, *::before, *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    animation: none !important;
+    animation-play-state: paused !important;
+    transition: none !important;
+    transition-duration: 0s !important;
+    will-change: auto !important;
+  }
+
+  /* 2) Nur-Bildschirm-Elemente ausblenden */
+  .print-hidden, .print\:hidden { display: none !important; }
+
+  /* 3) Screen-Overlays, fixes/stickiges Verhalten und feste Höhen neutralisieren */
+  .fixed, .sticky { position: static !important; }
+  [class~="h-screen"], [class~="min-h-screen"], [class~="h-full"],
+  [class~="min-h-full"], [class~="max-h-screen"],
+  [class*="overflow-hidden"], [class*="overflow-auto"],
+  [class*="overflow-y"], [class*="overflow-x"] {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  /* 4) Seiten-Container (Flex/Grid) auf Block umstellen – sonst greifen Umbrüche nicht */
+  /*    Flex-Items dürfen nicht über ihre min-content-Breite aufblähen, sonst
+        entstehen riesige Bilder (100 % einer 3000px-Spalte) und eine
+        Seitenlawine im PDF. min-width:0 begrenzt alles auf die Seitenbreite. */
+  html, body, #root, main,
+  [class*="flex"], [class*="grid"],
+  .print-flow, .print-block, .print-page {
+    min-width: 0 !important;
+  }
+  .print-flow { display: block !important; }
+  .print-block {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    float: none !important;
+  }
+
+  /* 5) Jede Sektion beginnt auf einer neuen A4-Seite.
+        Ist eine Sektion länger als eine Seite, fließt sie auf der
+        Folgenseite weiter (kein break-inside:avoid -> keine Lücken). */
+  .print-page {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
     break-before: page !important;
     page-break-before: always !important;
+    break-inside: auto !important;
+    page-break-inside: auto !important;
   }
+
+  /* 6) Bilder füllen die Seitenbreite (Breite 100 %, Höhe automatisch) */
+  .print-page img,
+  .print-img-full img,
+  .print-img-full {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    object-fit: contain !important;
+  }
+  .print-img-row {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+  }
+  img, svg, canvas, video {
+    max-width: 100% !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Hilfsklassen */
+  .print\:avoid-break, .print-avoid-break, tr, li {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+  .player-list-print-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    align-content: start !important;
+    gap: 4px !important;
+    padding: 8px !important;
+    background: #fff !important;
+    border: none !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  .player-list-print-grid > div { padding: 4px 8px !important; border: 1.5px solid #000 !important; display: flex !important; align-items: center !important; justify-content: space-between !important; font-size: 10pt !important; height: 36px !important; box-sizing: border-box !important; background: #fff !important; break-inside: avoid !important; page-break-inside: avoid !important; }
+  .player-list-print-grid .bg-green-500 { background-color: #22c55e !important; color: white !important; }
+  .player-list-print-grid .bg-yellow-400 { background-color: #facc15 !important; color: black !important; }
+  .player-list-print-grid .bg-red-600 { background-color: #dc2626 !important; color: white !important; }
+  #runs-pdf-report { display: block !important; width: 100% !important; }
 }
