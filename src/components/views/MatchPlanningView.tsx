@@ -81,6 +81,8 @@ export const MatchPlanningView: React.FC<MatchPlanningViewProps> = ({
   stammspielerMatches,
   stammspielerMinutes
 }) => {
+  // U23 – Einsatzzeiten A-Kader: eigene Rot/Weiß-Regel (siehe Spieler-Tabelle).
+  const isU23 = title.toUpperCase().includes('U23');
   const [selectedMatchId, setSelectedMatchId] = useState<string | number>(matches[0]?.id || '');
   const [viewMode, setViewMode] = useState<'list' | 'detail' | 'table'>(title.includes('Test') ? 'table' : 'list');
   const [showOpponentModal, setShowOpponentModal] = useState(false);
@@ -1281,10 +1283,15 @@ export const MatchPlanningView: React.FC<MatchPlanningViewProps> = ({
                             const details = record?.details?.[selectedMatchId] || { start: '', end: '', notes: '' };
                             const minutes = record?.minutes?.[selectedMatchId] || record?.matchMinutes?.[selectedMatchId] || 0;
                             const totalMinutes = calculateTotalMinutes(player.id);
+                            const status = getStammspielerStatus(player.id);
+                            // U23-Liste: > 50 % Einsätze in der ersten Mannschaft => rot, sonst weiß.
+                            const u23Red = isU23 && status.pct > 50;
 
                             return (
-                              <tr key={player.id} className="hover:bg-[#F9FAFB] transition-colors text-[#1A1A1A] bg-white">
-                                <td className="p-3 border-r border-[#DADADA] font-black uppercase text-xs text-[#1A1A1A]">
+                              <tr key={player.id} className={isU23
+                                ? `transition-colors ${u23Red ? 'bg-red-50 text-red-700' : 'bg-white text-[#1A1A1A]'}`
+                                : 'hover:bg-[#F9FAFB] transition-colors text-[#1A1A1A] bg-white'}>
+                                <td className={`p-3 border-r border-[#DADADA] font-black uppercase text-xs ${u23Red ? 'text-red-700' : 'text-[#1A1A1A]'}`}>
                                   {player.lastName} {player.firstName ? `(${player.firstName.charAt(0)}.)` : ''}
                                 </td>
                                 <td className="p-3 border-r border-[#DADADA] text-center text-xs font-black text-[#1A1A1A]">
@@ -1325,14 +1332,16 @@ export const MatchPlanningView: React.FC<MatchPlanningViewProps> = ({
                                   </span>
                                 </td>
                                 <td className="p-3 border-r border-[#DADADA] text-center">
-                                  {(() => {
-                                    const status = getStammspielerStatus(player.id);
-                                    return (
-                                      <span title={`${status.label} · ${status.pct.toFixed(1)}% Einsätze`} className={`px-2.5 py-1 rounded-lg font-black text-[10px] uppercase inline-flex items-center border ${status.cls}`}>
-                                        {status.pct.toFixed(0)}% {status.label}
-                                      </span>
-                                    );
-                                  })()}
+                                  <span
+                                    title={`${status.label} · ${status.pct.toFixed(1)}% Einsätze`}
+                                    className={`px-2.5 py-1 rounded-lg font-black text-[10px] uppercase inline-flex items-center border ${
+                                      isU23
+                                        ? (u23Red ? 'bg-red-600 text-white border-red-600' : 'bg-white text-[#4A4A4A] border-[#DADADA]')
+                                        : status.cls
+                                    }`}
+                                  >
+                                    {isU23 && !u23Red ? `${status.pct.toFixed(0)}%` : `${status.pct.toFixed(0)}% ${status.label}`}
+                                  </span>
                                 </td>
                                 <td className="p-2.5">
                                   <EditableField 

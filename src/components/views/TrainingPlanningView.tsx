@@ -770,13 +770,9 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
   // XPS Drill Category Editor State
   const [activeDrillCategory, setActiveDrillCategory] = useState<string | null>(null);
   const [showDocumentPreview, setShowDocumentPreview] = useState(false);
-  const [viewMode, setViewMode] = useState<'document' | 'edit'>(() => {
-    // Druck-Deep-Link (?print=true) startet direkt in der maßgeblichen Dokument-Ansicht.
-    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('print') === 'true') {
-      return 'document';
-    }
-    return 'edit';
-  });
+  // Standard ist der Bearbeitungsmodus – dieser wird auch gedruckt
+  // (genau so, wie die Trainingsplanung beim Öffnen am Bildschirm aussieht).
+  const [viewMode, setViewMode] = useState<'document' | 'edit'>('edit');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [drillEditContent, setDrillEditContent] = useState({
     title: '',
@@ -2984,15 +2980,14 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
     }
   };
 
-  // Druckt IMMER die maßgebliche Dokument-Ansicht (nicht die Bearbeiten-Karte).
-  const printInDocumentView = () => {
+  // Druckt IMMER den Bearbeitungsmodus (genau wie am Bildschirm sichtbar).
+  const printInEditView = () => {
     const previousMode = viewMode;
     flushSync(() => {
-      setViewMode('document');
-      setIsEditing(false);
+      setViewMode('edit');
     });
     preparePrintDom();
-    if (previousMode !== 'document') {
+    if (previousMode !== 'edit') {
       window.addEventListener('afterprint', () => { try { setViewMode(previousMode); } catch { /* ignore */ } }, { once: true });
     }
     try {
@@ -3028,15 +3023,15 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
         setTimeout(() => setNotification(null), 4000);
         return;
       }
-      // Popup blockiert -> direkt aus der App heraus drucken (Dokument-Ansicht)
-      printInDocumentView();
+      // Popup blockiert -> direkt aus der App heraus drucken (Bearbeitungsmodus)
+      printInEditView();
       return;
     }
 
     // DOM vorbereiten und SYNCHRON im User-Gesture drucken.
     // Ein setTimeout() verwirft die User-Aktivation -> Chrome öffnet die
     // Druckvorschau dann nicht bzw. hängt auf "wird vorbereitet".
-    printInDocumentView();
+    printInEditView();
   };
 
   const handleExportDocx = async () => {
