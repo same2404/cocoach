@@ -148,6 +148,30 @@ const matchTrackerPlayerByContent = (content: string, roster: any[]): any | null
   });
   if (byLastName.length === 1) return byLastName[0];
 
+  if (byLastName.length > 1) {
+    const disamb = byLastName.filter(p => {
+      const fn = toNameKey(p.firstName);
+      const init = fn ? fn.charAt(0) : '';
+      if (fn && fn.length >= 2 && hay.includes(fn)) return true;
+      if (init && (hay.includes(init + ' ') || hay.includes('(' + init + ')'))) return true;
+      return false;
+    });
+    if (disamb.length === 1) return disamb[0];
+  }
+
+  // Prefer disambiguation if first name/initial also matches
+  if (byLastName.length > 1) {
+    const disamb = byLastName.filter(p => {
+      const fn = toNameKey(p.firstName);
+      const init = fn ? fn.charAt(0) : '';
+      if (fn && fn.length >= 2 && hay.includes(fn)) return true;
+      if (init && hay.includes(init + ' ' + toNameKey(p.lastName))) return true;
+      if (init && hay.includes(toNameKey(p.lastName) + ' (' + init + ')')) return true;
+      return false;
+    });
+    if (disamb.length === 1) return disamb[0];
+  }
+
   // 3) Unique first-name match.
   const byFirstName = roster.filter(p => {
     const fn = toNameKey(p.firstName);
@@ -719,13 +743,12 @@ export const PlayerPortalView: React.FC<PlayerPortalViewProps> = ({
         
         const decoded = await parseAndDecryptBinFile(file, initialSelectedPlayer);
         
-        // Resolve the real owner of this file: id/name from the decoded file first,
-        // selected player ONLY as a true last resort (never overriding a file name).
+        // Resolve the real owner of this file: file name/content first, then selected player only as last resort.
+        const contentSearchDecoded = `${decoded.name || ''} ${decoded.fileName || file.name}`;
         const matchedPlayer =
-          (decoded.spielerId && players.find(p => String(p.id) === String(decoded.spielerId))) ||
-          matchTrackerPlayerByName(decoded.name, players) ||
-          matchTrackerPlayerByContent(decoded.name, players) ||
+          matchTrackerPlayerByContent(contentSearchDecoded, players) ||
           matchTrackerPlayerByFileName(file.name, players) ||
+          matchTrackerPlayerByName(decoded.name, players) ||
           initialSelectedPlayer ||
           onlyPlayers[0];
 
