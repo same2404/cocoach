@@ -152,6 +152,68 @@ const KEY_TO_TAB: Record<string, string> = {
   'u23Minutes': 'U23 – Einsatzzeiten A‑Kader',
 };
 
+// --- Dubletten-Prüfung für Personendaten (Spieler / Funktionäre) ---
+// Verhindert, dass dieselbe Person doppelt angelegt wird (gleicher/ähnlicher Name,
+// Tippfehler, vertauschte Vor-/Nachnamen, Titel wie Dr./Prof., Initialen).
+const DUP_TITLES = ['dr', 'prof', 'jr', 'sr', 'dipl', 'med', 'rechtsanwalt'];
+function normalizePersonName(s: any): string {
+  return String(s || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[.,;:()\[\]{}"']/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+function personNameTokens(p: any): string[] {
+  let first = normalizePersonName(p.firstName || '');
+  let last = normalizePersonName(p.lastName || '');
+  if ((!first || !last) && p.name) {
+    const parts = String(p.name).split(',').map((x: string) => x.trim());
+    if (parts.length === 2 && parts[0] && parts[1]) { last = normalizePersonName(parts[0]); first = normalizePersonName(parts[1]); }
+  }
+  return [...first.split(' '), ...last.split(' ')].filter(Boolean).filter((t) => !DUP_TITLES.includes(t));
+}
+function levenshtein(a: string, b: string): number {
+  a = a || ''; b = b || '';
+  const m = a.length, n = b.length;
+  if (!m) return n; if (!n) return m;
+  const d: number[][] = Array.from({ length: m + 1 }, (_, i) => [i, ...Array(n).fill(0)]);
+  for (let j = 0; j <= n; j++) d[0][j] = j;
+  for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  return d[m][n];
+}
+function comparePersons(a: any, b: any): { level: 'strong' | 'weak' | null; reason: string } {
+  const aT = personNameTokens(a), bT = personNameTokens(b);
+  const aFull = aT.join(' '), bFull = bT.join(' ');
+  if (!aT.length || !bT.length) return { level: null, reason: '' };
+  const aSet = new Set(aT), bSet = new Set(bT);
+  if (aSet.size === bSet.size && [...aSet].every((x) => bSet.has(x))) return { level: 'strong', reason: 'identischer Name' };
+  const aLast = normalizePersonName(a.lastName || ''), bLast = normalizePersonName(b.lastName || '');
+  const aFirst = normalizePersonName(a.firstName || ''), bFirst = normalizePersonName(b.firstName || '');
+  if (aLast && aLast === bLast) {
+    if (aFirst && aFirst === bFirst) return { level: 'strong', reason: 'gleicher Vor- und Nachname' };
+    const dF = levenshtein(aFirst, bFirst);
+    if (aFirst[0] && aFirst[0] === bFirst[0] && (aFirst.length === 1 || bFirst.length === 1)) return { level: 'weak', reason: 'Initiale + Nachname' };
+    if (dF <= 2) return { level: 'weak', reason: 'Vorname ähnlich' };
+  }
+  const dFull = levenshtein(aFull, bFull);
+  if (dFull <= 2 && Math.abs(aFull.length - bFull.length) <= 3) return { level: 'weak', reason: 'Name sehr ähnlich' };
+  return { level: null, reason: '' };
+}
+function findSimilarPersons(candidate: any, all: any[], excludeId?: any): { person: any; level: 'strong' | 'weak'; reason: string }[] {
+  const out: { person: any; level: 'strong' | 'weak'; reason: string }[] = [];
+  for (const p of all || []) {
+    if (excludeId !== undefined && String(p.id) === String(excludeId)) continue;
+    const m = comparePersons(candidate, p);
+    if (m.level) out.push({ person: p, level: m.level, reason: m.reason });
+  }
+  return out.sort((x, y) => (x.level === y.level ? 0 : x.level === 'strong' ? -1 : 1));
+}
+function personDisplayName(p: any): string {
+  return (p?.name || `${p?.firstName || ''} ${p?.lastName || ''}`).trim() || '(ohne Namen)';
+}
+
 const App: React.FC = () => {
   const { activeClub, isDemo, isReadOnly, getCollectionPath } = useClub();
   const { license, loading: licenseLoading, error: licenseError, showLicenseModal, setShowLicenseModal, validateLicense, hasFeature, tier, daysRemaining, logout: licenseLogout } = useLicense();
@@ -1317,6 +1379,13 @@ const App: React.FC = () => {
 
   const selectedPlayer = allProfiles.find(p => p.id === selectedPlayerId) || allProfiles[0];
   const handleUpdatePlayer = async (updatedPlayer: Spieler) => {
+    // Dubletten-Schutz: Umbenennen darf nicht auf eine andere existierende Person kollidieren.
+    const editDup = findSimilarPersons(updatedPlayer, players, updatedPlayer.id).find(d => d.level === 'strong');
+    if (editDup) {
+      setSaveStatus('idle');
+      setToast({ message: `⚠️ Nicht gespeichert: "${personDisplayName(editDup.person)}" existiert bereits als eigene Person.`, id: Date.now() });
+      return;
+    }
     setSaveStatus('saving');
     try {
       await savePlayerFirestore(String(updatedPlayer.id), updatedPlayer);
@@ -1439,6 +1508,14 @@ const App: React.FC = () => {
 
   const handleAddPlayer = async (newPlayer: Spieler) => {
     console.log('Adding player:', newPlayer);
+    // Dubletten-Schutz: keine zweite Person mit gleichem/ähnlichem Namen anlegen.
+    const duplicates = findSimilarPersons(newPlayer, players);
+    const hardDup = duplicates.find(d => d.level === 'strong');
+    if (hardDup) {
+      setSaveStatus('idle');
+      setToast({ message: `⚠️ Nicht gespeichert: "${personDisplayName(hardDup.person)}" existiert bereits. Bitte den bestehenden Eintrag bearbeiten.`, id: Date.now() });
+      return;
+    }
     setSaveStatus('saving');
     try {
       const weekday = newPlayer.geburtsdatum ? getWeekdayLabel(newPlayer.geburtsdatum) : '';
@@ -1475,7 +1552,12 @@ const App: React.FC = () => {
                           newPlayer.category === 'staff' ? 'Teammanagement / Funktionär' : 
                           newPlayer.category === 'medical' ? 'Medizinische Abteilung (Physio / Arzt)' : 'Person';
       
-      setToast({ message: `${categoryLabel} erfolgreich hinzugefügt`, id: Date.now() });
+      const softDup = duplicates[0];
+      if (softDup) {
+        setToast({ message: `⚠️ Hinzugefügt – ähnlicher Eintrag "${personDisplayName(softDup.person)}" vorhanden. Bitte prüfen.`, id: Date.now() });
+      } else {
+        setToast({ message: `${categoryLabel} erfolgreich hinzugefügt`, id: Date.now() });
+      }
       setTimeout(() => setSaveStatus('idle'), 2000);
     } catch (error) {
       setSaveStatus('idle');

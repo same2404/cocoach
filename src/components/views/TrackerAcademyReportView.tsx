@@ -107,6 +107,57 @@ export const TrackerAcademyReportView: React.FC<TrackerAcademyReportViewProps> =
       .sort((a, b) => b.createdAt - a.createdAt);
   }, [trackerAcademyReports, selectedPlayer]);
 
+  // ── Kumulierte WG-Tracker Gesamtauswertung ─────────────────────────────
+  // WO die Daten liegen: als `trackerHistory` im WG-Tracker (📍 rote
+  // Stecknadel) des Spielers – alle archivierten BIN-Sessions.
+  // ZIEL: diese Rohdaten vorne in der Tracker-Analyse kumuliert anzeigen.
+  const cumulativeTracker = useMemo(() => {
+    const hist = ((selectedPlayer as any)?.trackerHistory || []) as any[];
+    if (!hist.length) return null;
+
+    let totalDistanceKm = 0, maxSpeedKmh = 0, sumAvgSpeed = 0, avgSpeedCount = 0;
+    let sumAvgHr = 0, avgHrCount = 0, maxHeartRateBpm = 0, totalDurationSec = 0, totalSprints = 0;
+    const dates: string[] = [];
+
+    for (const h of hist) {
+      const distKm = h.gesamtDistanzMeter !== undefined ? h.gesamtDistanzMeter / 1000 : (h.totalDistanceKm || 0);
+      if (distKm) totalDistanceKm += distKm;
+
+      const ms = h.maxGeschwindigkeitKmh ?? h.maxSpeedKmh;
+      if (ms) maxSpeedKmh = Math.max(maxSpeedKmh, Number(ms));
+
+      const as = h.durchschnittsGeschwindigkeitKmh ?? h.avgSpeedKmh;
+      if (as) { sumAvgSpeed += Number(as); avgSpeedCount++; }
+
+      const ah = h.durchschnittsHerzfrequenz ?? h.avgHeartRateBpm;
+      if (ah) { sumAvgHr += Number(ah); avgHrCount++; }
+
+      const mh = h.maxHerzfrequenz ?? h.maxHeartRateBpm;
+      if (mh) maxHeartRateBpm = Math.max(maxHeartRateBpm, Number(mh));
+
+      totalDurationSec += Number(h.gesamtDauerSekunden || h.durationSec || 0);
+      totalSprints += Array.isArray(h.sprints) ? h.sprints.length : Number(h.sprintCount || 0);
+
+      const d = h.datum || h.date || h.sessionDate;
+      if (d) dates.push(String(d));
+    }
+
+    dates.sort();
+    return {
+      sessions: hist.length,
+      totalDistanceKm: Number(totalDistanceKm.toFixed(2)),
+      avgDistanceKm: Number((totalDistanceKm / hist.length).toFixed(2)),
+      maxSpeedKmh: Number(maxSpeedKmh.toFixed(1)),
+      avgSpeedKmh: avgSpeedCount ? Number((sumAvgSpeed / avgSpeedCount).toFixed(1)) : 0,
+      avgHeartRateBpm: avgHrCount ? Math.round(sumAvgHr / avgHrCount) : 0,
+      maxHeartRateBpm,
+      totalDurationMin: Math.round(totalDurationSec / 60),
+      totalSprints,
+      firstDate: dates[0],
+      lastDate: dates[dates.length - 1],
+    };
+  }, [selectedPlayer]);
+
   // Calculate Team Average Overall Score across all reports
   const teamAverageOverall = useMemo(() => {
     if (trackerAcademyReports.length === 0) return 76;
@@ -186,6 +237,36 @@ export const TrackerAcademyReportView: React.FC<TrackerAcademyReportViewProps> =
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 4000);
+  };
+
+  // Kumulierte WG-Tracker-Daten (aus trackerHistory / rote Stecknadel) in
+  // einen eigenen Bericht überführen, damit die Gesamtbilanz auch in der
+  // Berichts-Historie dauerhaft verfügbar ist.
+  const handleCreateCumulativeReport = async () => {
+    if (!selectedPlayer || !cumulativeTracker) return;
+    try {
+      const metrics = {
+        totalDistanceKm: cumulativeTracker.avgDistanceKm,
+        maxSpeedKmh: cumulativeTracker.maxSpeedKmh,
+        avgSpeedKmh: cumulativeTracker.avgSpeedKmh,
+        sprintCount: Math.round(cumulativeTracker.totalSprints / cumulativeTracker.sessions),
+        avgHeartRateBpm: cumulativeTracker.avgHeartRateBpm,
+        maxHeartRateBpm: cumulativeTracker.maxHeartRateBpm,
+        sessionDate: cumulativeTracker.lastDate,
+      };
+      const report = generateTrackerAcademyReport(
+        selectedPlayer,
+        metrics,
+        teamAverageOverall,
+        `WG-Tracker Kumulation (${cumulativeTracker.sessions} Sessions)`
+      );
+      report.id = `tar_${selectedPlayer.id}_cum_${Date.now()}`;
+      await saveTrackerAcademyReport(report);
+      setSelectedReportId(report.id);
+      showToast('Kumulierter WG-Tracker-Bericht erstellt!');
+    } catch (e: any) {
+      showToast(`Fehler beim Erstellen: ${e?.message || e}`);
+    }
   };
 
   // Helper function to extract tracker telemetry metrics and recording date from any string content
@@ -665,6 +746,65 @@ export const TrackerAcademyReportView: React.FC<TrackerAcademyReportViewProps> =
         {/* Right Column: INTEGRATED PLAYER REPORT DOCUMENT (8 Cols) */}
         <div className="lg:col-span-8 flex flex-col">
           
+          {/* ── KUMULIERTE WG-TRACKER GESAMTAUSWERTUNG (vorne) ── */}
+          {selectedPlayer && cumulativeTracker && (
+            <div className="mb-4 bg-slate-900 border border-red-500/40 rounded-2xl p-4 shadow-lg">
+              <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg leading-none" title="Datenquelle: WG-Tracker (rote Stecknadel)">📍</span>
+                  <h3 className="text-sm font-black uppercase tracking-wider text-white">
+                    Kumulierte WG-Tracker Gesamtauswertung
+                  </h3>
+                  <span className="bg-red-600/30 text-red-300 border border-red-500/50 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full">
+                    Archivierte BIN-Daten · rote Stecknadel
+                  </span>
+                </div>
+                <span className="text-[10px] font-bold text-slate-400">
+                  {cumulativeTracker.sessions} Session{cumulativeTracker.sessions === 1 ? '' : 's'}
+                  {cumulativeTracker.firstDate && cumulativeTracker.lastDate
+                    ? ` · ${formatSessionDate(cumulativeTracker.firstDate)} – ${formatSessionDate(cumulativeTracker.lastDate)}`
+                    : ''}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+                {[
+                  { label: 'Gesamt-Distanz', value: `${cumulativeTracker.totalDistanceKm} km` },
+                  { label: 'Ø Distanz / Session', value: `${cumulativeTracker.avgDistanceKm} km` },
+                  { label: 'Top-Speed', value: `${cumulativeTracker.maxSpeedKmh} km/h` },
+                  { label: 'Ø Speed', value: `${cumulativeTracker.avgSpeedKmh} km/h` },
+                  { label: 'Sprints gesamt', value: `${cumulativeTracker.totalSprints}` },
+                  { label: 'Ø Herzfrequenz', value: `${cumulativeTracker.avgHeartRateBpm} bpm` },
+                  { label: 'Max Herzfrequenz', value: `${cumulativeTracker.maxHeartRateBpm} bpm` },
+                  { label: 'Gesamt-Zeit', value: `${cumulativeTracker.totalDurationMin} min` },
+                  { label: 'Sessions', value: `${cumulativeTracker.sessions}` },
+                  { label: 'Zeitraum', value: cumulativeTracker.firstDate && cumulativeTracker.lastDate
+                      ? `${formatSessionDate(cumulativeTracker.firstDate)} – ${formatSessionDate(cumulativeTracker.lastDate)}`
+                      : '–' },
+                ].map((item, i) => (
+                  <div key={i} className="bg-slate-800/60 border border-slate-700/60 rounded-xl px-3 py-2">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">{item.label}</span>
+                    <span className="text-sm font-black text-white">{item.value}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-800 pt-3">
+                <p className="text-[10px] text-slate-500 font-medium">
+                  Quelle: WG-Tracker (📍 rote Stecknadel) – alle {cumulativeTracker.sessions} archivierten BIN-Sessions dieses Spielers zusammengefasst.
+                </p>
+                <button
+                  onClick={handleCreateCumulativeReport}
+                  className="bg-red-600/30 hover:bg-red-600/60 text-red-200 hover:text-white border border-red-500/60 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 flex items-center gap-1.5"
+                  title="Kumulierte Gesamtbilanz als Bericht in der Historie dauerhaft speichern"
+                >
+                  <Sparkles size={12} />
+                  <span>Als kumulierten Bericht speichern</span>
+                </button>
+              </div>
+            </div>
+          )}
+
           {!activeReport ? (
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center text-slate-400">
               <FileText size={48} className="mx-auto mb-4 opacity-40 text-red-500" />

@@ -3,6 +3,7 @@ import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { fixOklchForHtml2Canvas } from '../../utils/pdfExportHelper';
 import { Spieler, DecodedTrackerData } from '../../types';
+import { generateTrackerAcademyReport } from '../../utils/trackerReportCalculator';
 import { 
   User, 
   Calendar, 
@@ -503,18 +504,37 @@ export const PlayerPortalView: React.FC<PlayerPortalViewProps> = ({
 
   // BIN Decryption function
   const parseAndDecryptBinFile = async (file: File, targetPlayer?: Spieler): Promise<DecodedTrackerData> => {
+    if (!file) throw new Error('Keine Datei übergeben.');
+    if (file.size === 0) throw new Error(`"${file.name}" ist leer (0 Byte).`);
     const arrayBuffer = await file.arrayBuffer();
     const bytes = new Uint8Array(arrayBuffer);
-    
-    let decodedText = '';
+    if (bytes.length === 0) throw new Error(`"${file.name}" enthält keine Daten.`);
+
+    // Sniff only a bounded prefix so that huge binary tracker files (40–60 MB)
+    // cannot freeze the UI (no full-file UTF-8 / base64 decoding).
+    const MAX_SNIFF = 4 * 1024 * 1024;
+    const sniffBytes = bytes.length > MAX_SNIFF ? bytes.subarray(0, MAX_SNIFF) : bytes;
+
+    let rawText = '';
     try {
-      const textDecoder = new TextDecoder('utf-8');
-      decodedText = textDecoder.decode(bytes);
+      rawText = new TextDecoder('utf-8', { fatal: false }).decode(sniffBytes);
     } catch (e) {
       console.warn('TextDecoder error:', e);
     }
 
+    // Only treat the payload as text (JSON/CSV/Base64) when it is genuinely
+    // mostly printable; otherwise it is opaque/encrypted binary.
+    let printable = 0;
+    for (let i = 0; i < sniffBytes.length; i++) {
+      const b = sniffBytes[i];
+      if ((b >= 32 && b < 127) || b === 9 || b === 10 || b === 13) printable++;
+    }
+    const looksTextual = sniffBytes.length > 0 && (printable / sniffBytes.length) > 0.6;
+    const decodedText = looksTextual ? rawText : '';
+
     let jsonParsed: any = null;
+
+    // 1) Direct JSON payload
     if (decodedText && (decodedText.includes('{') || decodedText.includes('}'))) {
       try {
         const jsonStart = decodedText.indexOf('{');
@@ -527,10 +547,11 @@ export const PlayerPortalView: React.FC<PlayerPortalViewProps> = ({
       }
     }
 
+    // 2) Base64-wrapped JSON (bounded, textual only)
     if (!jsonParsed && decodedText) {
       try {
         const cleanB64 = decodedText.trim().replace(/[^A-Za-z0-9+/=]/g, '');
-        if (cleanB64.length > 20) {
+        if (cleanB64.length > 20 && cleanB64.length <= MAX_SNIFF) {
           const decodedB64 = atob(cleanB64);
           jsonParsed = JSON.parse(decodedB64);
         }
@@ -599,9 +620,13 @@ export const PlayerPortalView: React.FC<PlayerPortalViewProps> = ({
       }
     }
 
-    let byteSum = 0;
-    for (let i = 0; i < Math.min(bytes.length, 1024); i++) {
-      byteSum += bytes[i];
+    // Deterministic fingerprint sampled across the WHOLE file so two sessions of
+    // identical size still yield distinct (but stable) values. Uses file length too.
+    let byteSum = bytes.length >>> 0;
+    const sampleTarget = Math.min(bytes.length, 65536);
+    const stride = Math.max(1, Math.floor(bytes.length / sampleTarget));
+    for (let i = 0; i < bytes.length; i += stride) {
+      byteSum = (byteSum + bytes[i]) >>> 0;
     }
 
     const now = new Date();
@@ -732,6 +757,7 @@ export const PlayerPortalView: React.FC<PlayerPortalViewProps> = ({
     setBinStatusMsg(`Entschlüssele ${files.length} Datei(en) aus MagentaCloud / Speicher...`);
 
     const newDecodedIds: string[] = [];
+    const errors: string[] = [];
     const initialSelectedPlayer = selectedPlayer;
     let lastSavedPlayerName = '';
     let lastMatchedPlayerId = '';
@@ -739,29 +765,64 @@ export const PlayerPortalView: React.FC<PlayerPortalViewProps> = ({
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        setBinStatusMsg(`Verarbeite Datei ${i + 1} von ${files.length}: "${file.name}"...`);
-        
-        const decoded = await parseAndDecryptBinFile(file, initialSelectedPlayer);
-        
-        // Resolve the real owner of this file: file name/content first, then selected player only as last resort.
-        const contentSearchDecoded = `${decoded.name || ''} ${decoded.fileName || file.name}`;
-        const matchedPlayer =
-          matchTrackerPlayerByContent(contentSearchDecoded, players) ||
-          matchTrackerPlayerByFileName(file.name, players) ||
-          matchTrackerPlayerByName(decoded.name, players) ||
-          initialSelectedPlayer ||
-          onlyPlayers[0];
+        try {
+          setBinStatusMsg(`Verarbeite Datei ${i + 1} von ${files.length}: "${file.name}"...`);
 
-        if (matchedPlayer) {
+          const decoded = await parseAndDecryptBinFile(file, initialSelectedPlayer);
+
+          // Resolve the real owner of this file: file name/content first, then selected player only as last resort.
+          const contentSearchDecoded = `${decoded.name || ''} ${decoded.fileName || file.name}`;
+          const matchedPlayer =
+            matchTrackerPlayerByContent(contentSearchDecoded, players) ||
+            matchTrackerPlayerByFileName(file.name, players) ||
+            matchTrackerPlayerByName(decoded.name, players) ||
+            initialSelectedPlayer ||
+            onlyPlayers[0];
+
+          if (!matchedPlayer) {
+            errors.push(`"${file.name}": kein Spieler konnte zugeordnet werden.`);
+            continue;
+          }
+
           lastSavedPlayerName = `${matchedPlayer.firstName} ${matchedPlayer.lastName}`.trim();
           lastMatchedPlayerId = matchedPlayer.id;
           if (onUpdatePlayerTracker) {
             await onUpdatePlayerTracker(matchedPlayer.id, decoded);
           }
-        }
 
-        setLastDecodedTracker(decoded);
-        if (decoded?.id) newDecodedIds.push(decoded.id);
+          // Also create a Tracker-Analyse (Akademie) report so the session is
+          // IMMEDIATELY visible in the "Tracker-Analyse" tab, which reads the
+          // `tracker_academy_reports` collection (not the player history).
+          if (saveTrackerAcademyReport) {
+            try {
+              const teamAvg = (trackerAcademyReports && trackerAcademyReports.length > 0)
+                ? Math.round(trackerAcademyReports.reduce((a: number, r: any) => a + (r.overallScore || 75), 0) / trackerAcademyReports.length)
+                : 76;
+              const reportMetrics = {
+                sessionDate: decoded.datum,
+                totalDistanceKm: decoded.gesamtDistanzMeter ? Number((decoded.gesamtDistanzMeter / 1000).toFixed(2)) : undefined,
+                maxSpeedKmh: decoded.maxGeschwindigkeitKmh,
+                avgSpeedKmh: decoded.durchschnittsGeschwindigkeitKmh,
+                sprintCount: Array.isArray(decoded.sprints) ? decoded.sprints.length : undefined,
+                avgHeartRateBpm: decoded.durchschnittsHerzfrequenz,
+                maxHeartRateBpm: decoded.maxHerzfrequenz
+              };
+              const report = generateTrackerAcademyReport(matchedPlayer as any, reportMetrics, teamAvg, decoded.fileName || file.name);
+              // Guarantee a unique id even for batch uploads within the same millisecond.
+              report.id = `tar_${matchedPlayer.id}_${Date.now()}_${i}_${Math.random().toString(36).slice(2, 7)}`;
+              await saveTrackerAcademyReport(report);
+            } catch (repErr: any) {
+              console.warn('Tracker-Analyse-Bericht konnte nicht erzeugt werden:', repErr);
+              errors.push(`"${file.name}": Bericht-Generierung fehlgeschlagen (${repErr?.message || repErr}).`);
+            }
+          }
+
+          setLastDecodedTracker(decoded);
+          if (decoded?.id) newDecodedIds.push(decoded.id);
+        } catch (fileErr: any) {
+          console.error(`Fehler beim Verarbeiten von "${file.name}":`, fileErr);
+          errors.push(`"${file.name}": ${fileErr?.message || fileErr}`);
+        }
       }
 
       // IMPORTANT: Always switch the view to the player the session(s) were
@@ -772,23 +833,32 @@ export const PlayerPortalView: React.FC<PlayerPortalViewProps> = ({
         setSelectedPlayerId(lastMatchedPlayerId);
       }
 
-      // Also jump back to the "WG Tracker" (Historie) view so the freshly
-      // uploaded sessions are immediately shown in the session list field.
-      if (portalView === 'trackerUpload' || portalView === 'trackerAnalyse' || portalView === 'trackerCompare') {
-        setPortalView('tracker');
+      // Jump straight to the "Tracker-Analyse" tab so the freshly created
+      // report(s) are immediately visible (the report lives in
+      // `tracker_academy_reports`, which is what this tab renders).
+      if (portalView === 'trackerUpload' || portalView === 'tracker' || portalView === 'trackerCompare') {
+        setPortalView('trackerAnalyse');
       }
 
-      setBinStatusStep('saved');
-      const finalMsg = files.length === 1 && lastSavedPlayerName 
-        ? `Daten erfolgreich für ${lastSavedPlayerName} gespeichert` 
-        : `Erfolgreich ${files.length} Tracker-Datei(en) entschlüsselt, Spieler zugeordnet & gespeichert!`;
-      setBinStatusMsg(finalMsg);
-      
+      if (errors.length > 0 && newDecodedIds.length === 0) {
+        setBinStatusStep('error');
+        setBinStatusMsg(`Fehler beim Verarbeiten: ${errors.join(' | ')}`);
+      } else if (errors.length > 0) {
+        setBinStatusStep('error');
+        setBinStatusMsg(`${newDecodedIds.length} von ${files.length} Datei(en) verarbeitet. Fehler: ${errors.join(' | ')}`);
+      } else {
+        setBinStatusStep('saved');
+        const finalMsg = files.length === 1 && lastSavedPlayerName
+          ? `Daten erfolgreich für ${lastSavedPlayerName} gespeichert & in der Tracker-Analyse angelegt`
+          : `Erfolgreich ${files.length} Tracker-Datei(en) verarbeitet, zugeordnet & in der Tracker-Analyse angelegt!`;
+        setBinStatusMsg(finalMsg);
+      }
+
       setSelectedForComparison(prev => [...prev, ...newDecodedIds]);
     } catch (err: any) {
-      console.error('Fehler bei BIN Entschlüsselung:', err);
+      console.error('Fehler bei BIN Verarbeitung:', err);
       setBinStatusStep('error');
-      setBinStatusMsg('Fehler beim Entschlüsseln der Datei(en).');
+      setBinStatusMsg(`Fehler bei der Verarbeitung: ${err?.message || err}`);
     } finally {
       setBinDecrypting(false);
     }
