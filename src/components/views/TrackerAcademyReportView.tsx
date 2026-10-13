@@ -117,6 +117,8 @@ export const TrackerAcademyReportView: React.FC<TrackerAcademyReportViewProps> =
 
     let totalDistanceKm = 0, maxSpeedKmh = 0, sumAvgSpeed = 0, avgSpeedCount = 0;
     let sumAvgHr = 0, avgHrCount = 0, maxHeartRateBpm = 0, totalDurationSec = 0, totalSprints = 0;
+    let zone1Min = 0, zone2Min = 0, zone3Min = 0, zone4Min = 0, zonesCount = 0;
+    let totalSprintDistanceM = 0, sprintDistanceCount = 0;
     const dates: string[] = [];
 
     for (const h of hist) {
@@ -138,6 +140,20 @@ export const TrackerAcademyReportView: React.FC<TrackerAcademyReportViewProps> =
       totalDurationSec += Number(h.gesamtDauerSekunden || h.durationSec || 0);
       totalSprints += Array.isArray(h.sprints) ? h.sprints.length : Number(h.sprintCount || 0);
 
+      // Kumulierte Belastungszonen (Minuten)
+      const z = h.belastungsZonen;
+      if (z && typeof z === 'object') {
+        zonesCount++;
+        zone1Min += Number(z.zone1LockerMin || 0);
+        zone2Min += Number(z.zone2NormalMin || 0);
+        zone3Min += Number(z.zone3IntensivMin || 0);
+        zone4Min += Number(z.zone4SehrIntensivMin || 0);
+      }
+
+      // Kumulierte Sprint-Distanz (Meter)
+      const sd = h.sprintDistanceM ?? h.sprintDistance;
+      if (sd !== undefined) { totalSprintDistanceM += Number(sd); sprintDistanceCount++; }
+
       const d = h.datum || h.date || h.sessionDate;
       if (d) dates.push(String(d));
     }
@@ -153,6 +169,14 @@ export const TrackerAcademyReportView: React.FC<TrackerAcademyReportViewProps> =
       maxHeartRateBpm,
       totalDurationMin: Math.round(totalDurationSec / 60),
       totalSprints,
+      zone1Min: Math.round(zone1Min),
+      zone2Min: Math.round(zone2Min),
+      zone3Min: Math.round(zone3Min),
+      zone4Min: Math.round(zone4Min),
+      totalZoneMin: Math.round(zone1Min + zone2Min + zone3Min + zone4Min),
+      hasZones: zonesCount > 0,
+      totalSprintDistanceM: Math.round(totalSprintDistanceM),
+      hasSprintDistance: sprintDistanceCount > 0,
       firstDate: dates[0],
       lastDate: dates[dates.length - 1],
     };
@@ -777,6 +801,7 @@ export const TrackerAcademyReportView: React.FC<TrackerAcademyReportViewProps> =
                   { label: 'Ø Herzfrequenz', value: `${cumulativeTracker.avgHeartRateBpm} bpm` },
                   { label: 'Max Herzfrequenz', value: `${cumulativeTracker.maxHeartRateBpm} bpm` },
                   { label: 'Gesamt-Zeit', value: `${cumulativeTracker.totalDurationMin} min` },
+                  { label: 'Sprint-Distanz', value: cumulativeTracker.totalSprintDistanceM > 0 ? `${(cumulativeTracker.totalSprintDistanceM / 1000).toFixed(2)} km` : '–' },
                   { label: 'Sessions', value: `${cumulativeTracker.sessions}` },
                   { label: 'Zeitraum', value: cumulativeTracker.firstDate && cumulativeTracker.lastDate
                       ? `${formatSessionDate(cumulativeTracker.firstDate)} – ${formatSessionDate(cumulativeTracker.lastDate)}`
@@ -788,6 +813,43 @@ export const TrackerAcademyReportView: React.FC<TrackerAcademyReportViewProps> =
                   </div>
                 ))}
               </div>
+
+              {/* Kumulierte Belastungszonen (Zone 1-4) */}
+              {cumulativeTracker.hasZones && cumulativeTracker.totalZoneMin > 0 && (
+                <div className="mt-3 bg-slate-800/40 border border-slate-700/60 rounded-xl p-3">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-300">
+                      Kumulierte Belastungszonen
+                    </span>
+                    <span className="text-[10px] font-bold text-slate-400">
+                      Gesamt: {cumulativeTracker.totalZoneMin} min
+                    </span>
+                  </div>
+                  {/* Proportionaler Zonen-Balken */}
+                  <div className="w-full h-2.5 rounded-full overflow-hidden flex border border-slate-700">
+                    <div className="bg-sky-500" style={{ width: `${(cumulativeTracker.zone1Min / cumulativeTracker.totalZoneMin) * 100}%` }} title={`Zone 1: ${cumulativeTracker.zone1Min} min`} />
+                    <div className="bg-emerald-500" style={{ width: `${(cumulativeTracker.zone2Min / cumulativeTracker.totalZoneMin) * 100}%` }} title={`Zone 2: ${cumulativeTracker.zone2Min} min`} />
+                    <div className="bg-amber-500" style={{ width: `${(cumulativeTracker.zone3Min / cumulativeTracker.totalZoneMin) * 100}%` }} title={`Zone 3: ${cumulativeTracker.zone3Min} min`} />
+                    <div className="bg-rose-500" style={{ width: `${(cumulativeTracker.zone4Min / cumulativeTracker.totalZoneMin) * 100}%` }} title={`Zone 4: ${cumulativeTracker.zone4Min} min`} />
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">
+                    {[
+                      { label: 'Zone 1 · Locker', value: `${cumulativeTracker.zone1Min} min`, dot: 'bg-sky-500' },
+                      { label: 'Zone 2 · Normal', value: `${cumulativeTracker.zone2Min} min`, dot: 'bg-emerald-500' },
+                      { label: 'Zone 3 · Intensiv', value: `${cumulativeTracker.zone3Min} min`, dot: 'bg-amber-500' },
+                      { label: 'Zone 4 · Sehr intensiv', value: `${cumulativeTracker.zone4Min} min`, dot: 'bg-rose-500' },
+                    ].map((item, i) => (
+                      <div key={i} className="bg-slate-900/60 border border-slate-700/60 rounded-lg px-3 py-2 flex items-center gap-2">
+                        <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${item.dot}`} />
+                        <div className="min-w-0">
+                          <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block truncate">{item.label}</span>
+                          <span className="text-sm font-black text-white">{item.value}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-800 pt-3">
                 <p className="text-[10px] text-slate-500 font-medium">
