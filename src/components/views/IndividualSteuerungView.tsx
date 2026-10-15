@@ -15,6 +15,16 @@ import {
   Users
 } from 'lucide-react';
 
+const INDIVIDUAL_FIELDS: { key: string; label: string }[] = [
+  { key: 'ek', label: 'Erster Kontakt' },
+  { key: 'o', label: 'Offene Stellung' },
+  { key: 't', label: 'Torschuss' },
+  { key: 'p', label: 'Passspiel' },
+  { key: 's', label: 'Standards' },
+  { key: 'a', label: 'Athletik' },
+  { key: 'w', label: 'Technik' },
+];
+
 interface IndividualSteuerungViewProps {
   players: Player[];
   individualTrainingData: any[];
@@ -249,7 +259,7 @@ export const IndividualSteuerungView: React.FC<IndividualSteuerungViewProps> = (
       {/* ----------------- TABLE CONTAINER ----------------- */}
       <div className="flex-1 bg-[#121824] border border-[#334155] rounded-2xl shadow-lg overflow-hidden flex flex-col">
         <div className="overflow-x-auto custom-scrollbar flex-1">
-          <table className="w-full border-collapse text-left text-xs min-w-[1000px]">
+          <table className="w-full border-collapse text-left text-xs min-w-[1320px]">
             <thead className="sticky top-0 bg-[#0A0E17] text-white z-20 border-b border-[#334155]">
               <tr>
                 <th className="p-3 border-r border-[#334155] text-center w-12 text-slate-500 font-black uppercase">Nr</th>
@@ -261,13 +271,9 @@ export const IndividualSteuerungView: React.FC<IndividualSteuerungViewProps> = (
                 <th className="p-3 border-r border-[#334155] text-left font-black uppercase text-slate-500">Saisonziele</th>
                 <th className="p-3 border-r border-[#334155] text-left font-black uppercase text-slate-500">Status / Fortschritt</th>
                 <th className="p-3 border-r border-[#334155] text-center w-24 font-black uppercase">Intensität</th>
-                <th className="p-2 border-r border-[#334155] text-center w-9 text-slate-500 font-black">EK</th>
-                <th className="p-2 border-r border-[#334155] text-center w-9 text-slate-500 font-black">O</th>
-                <th className="p-2 border-r border-[#334155] text-center w-9 text-slate-500 font-black">T</th>
-                <th className="p-2 border-r border-[#334155] text-center w-9 text-slate-500 font-black">P</th>
-                <th className="p-2 border-r border-[#334155] text-center w-9 text-slate-500 font-black">S</th>
-                <th className="p-2 border-r border-[#334155] text-center w-9 text-slate-500 font-black">A</th>
-                <th className="p-2 border-r border-[#334155] text-center w-9 text-slate-500 font-black">W</th>
+                {INDIVIDUAL_FIELDS.map(f => (
+                  <th key={f.key} className="p-2 border-r border-[#334155] text-center w-20 align-bottom text-slate-500 font-black text-[10px] leading-tight">{f.label}</th>
+                ))}
                 {isEditing && <th className="p-3 border-r border-[#334155] text-center w-12 text-[#FB7185] font-black uppercase">Aktion</th>}
               </tr>
             </thead>

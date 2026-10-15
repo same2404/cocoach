@@ -255,13 +255,46 @@ export const MatchPlanningView: React.FC<MatchPlanningViewProps> = ({
     }
 
     if (pct > 50 || hasStreak3) {
-      return { label: 'Stammspieler', cls: 'bg-red-50 text-red-700 border-red-300', pct };
+      return { label: 'Stammspieler', cls: 'bg-red-50 text-red-700 border-red-300', pct, playedGames, totalGames };
     }
     if (pct >= 40) {
-      return { label: 'Grenzbereich', cls: 'bg-amber-50 text-amber-700 border-amber-300', pct };
+      return { label: 'Grenzbereich', cls: 'bg-amber-50 text-amber-700 border-amber-300', pct, playedGames, totalGames };
     }
-    return { label: 'Kein Stammspieler', cls: 'bg-emerald-50 text-emerald-700 border-emerald-300', pct };
+    return { label: 'Kein Stammspieler', cls: 'bg-emerald-50 text-emerald-700 border-emerald-300', pct, playedGames, totalGames };
   };
+
+  // U23-Liste: Ampelfarben nach Einsaetzen.
+  //  rot    = ueber 50 % Einsatzquote (darf nicht mehr fuer U23 priorisiert werden)
+  //  gelb   = mindestens 5 Spiele, aber unter 50 %
+  //  gruen  = weniger als 5 Spiele und unter 50 %
+  const u23Info = useMemo(() => {
+    const map: Record<string, { playedGames: number; totalGames: number; pct: number; tone: 'green' | 'yellow' | 'red' }> = {};
+    if (!isU23) return map;
+    players.filter(isPlayer).forEach(player => {
+      const s = getStammspielerStatus(player.id);
+      const tone: 'green' | 'yellow' | 'red' = s.pct > 50 ? 'red' : (s.playedGames >= 5 ? 'yellow' : 'green');
+      map[player.id] = { playedGames: s.playedGames, totalGames: s.totalGames, pct: s.pct, tone };
+    });
+    return map;
+  }, [players, isU23, appearancesByPlayer, stammspielerPlayedMatches, stammspielerMinuteList]);
+
+  // U23-Liste: positionsunabhaengig nach wenigsten Einsaetzen sortieren;
+  // rote Spieler (ueber 50 %) rutschen ans Ende. Gleichstand -> niedrigere Quote zuerst.
+  const displayedPlayers = useMemo(() => {
+    const base = players.filter(isPlayer);
+    if (!isU23) return base;
+    return [...base].sort((a, b) => {
+      const ia = u23Info[a.id];
+      const ib = u23Info[b.id];
+      const ra = ia?.tone === 'red' ? 1 : 0;
+      const rb = ib?.tone === 'red' ? 1 : 0;
+      if (ra !== rb) return ra - rb;
+      const pa = ia?.playedGames ?? 0;
+      const pb = ib?.playedGames ?? 0;
+      if (pa !== pb) return pa - pb;
+      return (ia?.pct ?? 0) - (ib?.pct ?? 0);
+    });
+  }, [players, isU23, u23Info]);
 
   const matchStats = useMemo(() => {
     let played = 0;
@@ -1278,18 +1311,33 @@ export const MatchPlanningView: React.FC<MatchPlanningViewProps> = ({
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-[#DADADA]">
-                          {players.filter(isPlayer).map(player => {
+                          {displayedPlayers.map(player => {
                             const record = matchMinutes.find(r => r.playerId === player.id);
                             const details = record?.details?.[selectedMatchId] || { start: '', end: '', notes: '' };
                             const minutes = record?.minutes?.[selectedMatchId] || record?.matchMinutes?.[selectedMatchId] || 0;
                             const totalMinutes = calculateTotalMinutes(player.id);
                             const status = getStammspielerStatus(player.id);
-                            // U23-Liste: > 50 % Einsätze in der ersten Mannschaft => rot, sonst weiß.
-                            const u23Red = isU23 && status.pct > 50;
+                            // U23-Liste: Ampelfarbe + Quote (rot über 50 %, gelb ab 5 Spielen, sonst grün).
+                            const u23 = isU23 ? u23Info[player.id] : undefined;
+                            const u23Tone = u23?.tone;
+                            const u23Red = u23Tone === 'red';
+                            const u23RowCls = u23Tone === 'red'
+                              ? 'bg-red-50 text-red-700'
+                              : u23Tone === 'yellow'
+                                ? 'bg-amber-50 text-amber-800'
+                                : u23Tone === 'green'
+                                  ? 'bg-emerald-50 text-emerald-800'
+                                  : 'bg-white text-[#1A1A1A]';
+                            const u23PillCls = u23Tone === 'red'
+                              ? 'bg-red-600 text-white border-red-600'
+                              : u23Tone === 'yellow'
+                                ? 'bg-amber-100 text-amber-800 border-amber-300'
+                                : 'bg-emerald-100 text-emerald-800 border-emerald-300';
+                            const u23Dot = u23Tone === 'red' ? '🔴' : u23Tone === 'yellow' ? '🟡' : '🟢';
 
                             return (
                               <tr key={player.id} className={isU23
-                                ? `transition-colors ${u23Red ? 'bg-red-50 text-red-700' : 'bg-white text-[#1A1A1A]'}`
+                                ? `transition-colors ${u23RowCls}`
                                 : 'hover:bg-[#F9FAFB] transition-colors text-[#1A1A1A] bg-white'}>
                                 <td className={`p-3 border-r border-[#DADADA] font-black uppercase text-xs ${u23Red ? 'text-red-700' : 'text-[#1A1A1A]'}`}>
                                   {player.lastName} {player.firstName ? `(${player.firstName.charAt(0)}.)` : ''}
@@ -1332,16 +1380,25 @@ export const MatchPlanningView: React.FC<MatchPlanningViewProps> = ({
                                   </span>
                                 </td>
                                 <td className="p-3 border-r border-[#DADADA] text-center">
-                                  <span
-                                    title={`${status.label} · ${status.pct.toFixed(1)}% Einsätze`}
-                                    className={`px-2.5 py-1 rounded-lg font-black text-[10px] uppercase inline-flex items-center border ${
-                                      isU23
-                                        ? (u23Red ? 'bg-red-600 text-white border-red-600' : 'bg-white text-[#4A4A4A] border-[#DADADA]')
-                                        : status.cls
-                                    }`}
-                                  >
-                                    {isU23 && !u23Red ? `${status.pct.toFixed(0)}%` : `${status.pct.toFixed(0)}% ${status.label}`}
-                                  </span>
+                                  {isU23 ? (
+                                    <span
+                                      title={`${u23?.playedGames ?? 0} von ${u23?.totalGames ?? 0} Spielen eingesetzt · ${(u23?.pct ?? 0).toFixed(1)}%`}
+                                      className={`px-2.5 py-1 rounded-lg font-black text-[10px] uppercase inline-flex items-center gap-1 border ${
+                                        u23Tone === 'red' ? 'bg-red-600 text-white border-red-600'
+                                        : u23Tone === 'yellow' ? 'bg-amber-100 text-amber-800 border-amber-300'
+                                        : 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                      }`}
+                                    >
+                                      <span>{u23?.playedGames ?? 0} von {u23?.totalGames ?? 0} Spielen · {(u23?.pct ?? 0).toFixed(0)}%</span>
+                                    </span>
+                                  ) : (
+                                    <span
+                                      title={`${status.label} · ${status.pct.toFixed(1)}% Einsätze`}
+                                      className={`px-2.5 py-1 rounded-lg font-black text-[10px] uppercase inline-flex items-center border ${status.cls}`}
+                                    >
+                                      {status.pct.toFixed(0)}% {status.label}
+                                    </span>
+                                  )}
                                 </td>
                                 <td className="p-2.5">
                                   <EditableField 
