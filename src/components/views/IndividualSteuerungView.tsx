@@ -23,6 +23,7 @@ const INDIVIDUAL_FIELDS: { key: string; label: string }[] = [
   { key: 's', label: 'Standards' },
   { key: 'a', label: 'Athletik' },
   { key: 'w', label: 'Technik' },
+  { key: 'hs', label: 'Handlungsschnelligkeit' },
 ];
 
 interface IndividualSteuerungViewProps {
@@ -259,7 +260,7 @@ export const IndividualSteuerungView: React.FC<IndividualSteuerungViewProps> = (
       {/* ----------------- TABLE CONTAINER ----------------- */}
       <div className="flex-1 bg-[#121824] border border-[#334155] rounded-2xl shadow-lg overflow-hidden flex flex-col">
         <div className="overflow-x-auto custom-scrollbar flex-1">
-          <table className="w-full border-collapse text-left text-xs min-w-[1320px]">
+          <table className="w-full border-collapse text-left text-xs min-w-[1420px]">
             <thead className="sticky top-0 bg-[#0A0E17] text-white z-20 border-b border-[#334155]">
               <tr>
                 <th className="p-3 border-r border-[#334155] text-center w-12 text-slate-500 font-black uppercase">Nr</th>
@@ -317,7 +318,7 @@ export const IndividualSteuerungView: React.FC<IndividualSteuerungViewProps> = (
                       onChange={(e) => setNewPlayer({ ...newPlayer, position: e.target.value })}
                     />
                   </td>
-                  <td colSpan={12} className="p-2 border-r border-[#334155]">
+                  <td colSpan={15} className="p-2 border-r border-[#334155]">
                     <div className="flex items-center justify-between">
                       <select 
                         className="bg-[#0A0E17] text-white border border-[#334155] rounded font-bold uppercase focus:outline-none text-[10px] px-2 py-1 cursor-pointer"
@@ -351,7 +352,7 @@ export const IndividualSteuerungView: React.FC<IndividualSteuerungViewProps> = (
                 return (
                   <React.Fragment key={category}>
                     <tr className="bg-[#0A1628] text-white">
-                      <td colSpan={isEditing ? 17 : 16} className="px-4 py-2.5 font-black uppercase text-xs tracking-widest border-y border-[#334155] text-[#F59E0B] border-l-4 border-l-[#F59E0B]">
+                      <td colSpan={isEditing ? 18 : 17} className="px-4 py-2.5 font-black uppercase text-xs tracking-widest border-y border-[#334155] text-[#F59E0B] border-l-4 border-l-[#F59E0B]">
                         {category === 'player' ? '⚽ Spielerkader' : category === 'staff' ? '📋 Trainerteam' : '🛡️ Funktionäre'}
                       </td>
                     </tr>
@@ -369,7 +370,8 @@ export const IndividualSteuerungView: React.FC<IndividualSteuerungViewProps> = (
                         p: '',
                         s: '',
                         a: '',
-                        w: ''
+                        w: '',
+                        hs: ''
                       };
 
                       const currentAmpel = getPlayerAmpelStatus(player);
@@ -500,7 +502,7 @@ export const IndividualSteuerungView: React.FC<IndividualSteuerungViewProps> = (
                               <option value="Pause">Pause</option>
                             </select>
                           </td>
-                          {['ek', 'o', 't', 'p', 's', 'a', 'w'].map(field => (
+                          {INDIVIDUAL_FIELDS.map(({ key: field }) => (
                             <td key={field} className="p-1 border-r border-[#334155]">
                               <input 
                                 type="text"

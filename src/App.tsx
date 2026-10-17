@@ -1715,7 +1715,7 @@ const App: React.FC = () => {
         status: '',
         load: 'Normal',
         targetDate: '',
-        ek: '', o: '', t: '', p: '', s: '', a: '', w: '', notes: '', 
+        ek: '', o: '', t: '', p: '', s: '', a: '', w: '', hs: '', notes: '', 
         [field]: value 
       } as any);
     }
@@ -2554,7 +2554,7 @@ saveSpieler(updatedPlayer as Spieler);
                 status: '',
                 load: 'Normal',
                 targetDate: selectedIndividualDate,
-                ek: '', o: '', t: '', p: '', s: '', a: '', w: ''
+                ek: '', o: '', t: '', p: '', s: '', a: '', w: '', hs: ''
               };
               
               saveIndividualTraining({ ...record, [field]: val })

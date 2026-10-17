@@ -17,7 +17,7 @@ import {
   ChevronUp,
   Award
 } from 'lucide-react';
-import { TEN_DAY_ACTIV_PLAN, TEN_DAY_ACTIV_RULES, TenDayPlanUnit } from '../data/tenDayPlan';
+import { TEN_DAY_ACTIV_PLAN, TEN_DAY_ACTIV_RULES, TEN_DAY_ACTIV_PLAN_WINTER, TEN_DAY_ACTIV_RULES_WINTER, TenDayPlanUnit } from '../data/tenDayPlan';
 
 interface TenDayPlanSectionProps {
   onSyncWithRunTable?: (plan: TenDayPlanUnit[]) => void;
@@ -28,6 +28,13 @@ export const TenDayPlanSection: React.FC<TenDayPlanSectionProps> = ({
   onSyncWithRunTable,
   isEditing = false 
 }) => {
+  const [season, setSeason] = useState<'sommer' | 'winter'>('sommer');
+
+  const activePlan = season === 'winter' ? TEN_DAY_ACTIV_PLAN_WINTER : TEN_DAY_ACTIV_PLAN;
+  const activeRules = season === 'winter' ? TEN_DAY_ACTIV_RULES_WINTER : TEN_DAY_ACTIV_RULES;
+  const planDateRange = season === 'winter' ? '11.01.–30.01.2027' : '17.06.–03.07.2026';
+  const storageKey = season === 'winter' ? 'fc_auggen_10_day_plan_completed_winter' : 'fc_auggen_10_day_plan_completed';
+
   const [completedDays, setCompletedDays] = useState<Record<number, boolean>>(() => {
     try {
       const saved = localStorage.getItem('fc_auggen_10_day_plan_completed');
@@ -42,11 +49,23 @@ export const TenDayPlanSection: React.FC<TenDayPlanSectionProps> = ({
 
   useEffect(() => {
     try {
-      localStorage.setItem('fc_auggen_10_day_plan_completed', JSON.stringify(completedDays));
+      localStorage.setItem(storageKey, JSON.stringify(completedDays));
     } catch (e) {
       console.error(e);
     }
-  }, [completedDays]);
+  }, [completedDays, storageKey]);
+
+  const handleSeasonChange = (next: 'sommer' | 'winter') => {
+    if (next === season) return;
+    setSeason(next);
+    try {
+      const key = next === 'winter' ? 'fc_auggen_10_day_plan_completed_winter' : 'fc_auggen_10_day_plan_completed';
+      const saved = localStorage.getItem(key);
+      setCompletedDays(saved ? JSON.parse(saved) : {});
+    } catch (e) {
+      setCompletedDays({});
+    }
+  };
 
   const toggleDayCompletion = (dayId: number) => {
     setCompletedDays(prev => ({
@@ -61,14 +80,14 @@ export const TenDayPlanSection: React.FC<TenDayPlanSectionProps> = ({
 
   const handleSyncClick = () => {
     if (onSyncWithRunTable) {
-      onSyncWithRunTable(TEN_DAY_ACTIV_PLAN);
+      onSyncWithRunTable(activePlan);
       setSyncSuccessToast('10-Tage-Plan wurde erfolgreich in die Lauf-Tabelle übernommen!');
       setTimeout(() => setSyncSuccessToast(null), 3500);
     }
   };
 
   const completedCount = Object.values(completedDays).filter(Boolean).length;
-  const progressPercent = Math.round((completedCount / TEN_DAY_ACTIV_PLAN.length) * 100);
+  const progressPercent = Math.round((completedCount / activePlan.length) * 100);
 
   const getIntensityBadgeColor = (type: string) => {
     switch (type) {
@@ -105,12 +124,32 @@ export const TenDayPlanSection: React.FC<TenDayPlanSectionProps> = ({
             </span>
             <span className="bg-[#202020] text-[#F5F5F5] font-bold text-[10px] uppercase tracking-wider px-2.5 py-0.5 rounded-md border border-[#2A2A2A] flex items-center gap-1">
               <Calendar size={12} className="text-[#FFD54F]" />
-              17.06.2026 – 03.07.2026
+              {planDateRange}
             </span>
           </div>
 
+          {/* Sommer / Winter Umschalter */}
+          <div className="flex items-center gap-1 bg-[#0F0F0F] border border-[#2A2A2A] rounded-xl p-1 mb-2 w-fit">
+            <button
+              onClick={() => handleSeasonChange('sommer')}
+              className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                season === 'sommer' ? 'bg-[#FFD54F] text-[#0F0F0F]' : 'text-[#C7C7C7] hover:text-[#F5F5F5]'
+              }`}
+            >
+              Sommer
+            </button>
+            <button
+              onClick={() => handleSeasonChange('winter')}
+              className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                season === 'winter' ? 'bg-[#FFD54F] text-[#0F0F0F]' : 'text-[#C7C7C7] hover:text-[#F5F5F5]'
+              }`}
+            >
+              Winter
+            </button>
+          </div>
+
           <h2 className="text-xl sm:text-2xl font-black uppercase tracking-wide text-[#F5F5F5] flex items-center gap-2">
-            <span>10-Tage-Aktiv Plan</span>
+            <span>10-Tage-Aktiv Plan · {season === 'winter' ? 'Winter' : 'Sommer'}</span>
             <span className="text-xs font-black text-[#FF4C4C] bg-[#FF4C4C]/10 px-2 py-0.5 rounded border border-[#FF4C4C]/30">
               Verbindlich abarbeiten
             </span>
@@ -126,7 +165,7 @@ export const TenDayPlanSection: React.FC<TenDayPlanSectionProps> = ({
           <div className="bg-[#202020] border border-[#2A2A2A] rounded-xl p-2.5 px-3 min-w-[150px]">
             <div className="flex items-center justify-between gap-2 text-[10px] font-black uppercase text-[#F5F5F5] mb-1">
               <span>Fortschritt</span>
-              <span className="text-[#FFD54F] font-mono text-xs">{completedCount} / 10 ({progressPercent}%)</span>
+              <span className="text-[#FFD54F] font-mono text-xs">{completedCount} / {activePlan.length} ({progressPercent}%)</span>
             </div>
             <div className="w-full bg-[#0F0F0F] h-2 rounded-full overflow-hidden border border-[#2A2A2A]">
               <div 
@@ -162,7 +201,7 @@ export const TenDayPlanSection: React.FC<TenDayPlanSectionProps> = ({
         <div className="mt-5 space-y-6">
           {/* 10 Days Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-            {TEN_DAY_ACTIV_PLAN.map((unit) => {
+            {activePlan.map((unit) => {
               const isDone = !!completedDays[unit.id];
               return (
                 <div 
@@ -261,7 +300,7 @@ export const TenDayPlanSection: React.FC<TenDayPlanSectionProps> = ({
                   <span>1. Reihenfolge</span>
                 </div>
                 <p className="text-[#C7C7C7] text-[11px]">
-                  {TEN_DAY_ACTIV_RULES.reihenfolge}
+                  {activeRules.reihenfolge}
                 </p>
               </div>
 
@@ -272,7 +311,7 @@ export const TenDayPlanSection: React.FC<TenDayPlanSectionProps> = ({
                   <span>2. Ruhetage</span>
                 </div>
                 <p className="text-[#C7C7C7] text-[11px]">
-                  {TEN_DAY_ACTIV_RULES.ruhetage}
+                  {activeRules.ruhetage}
                 </p>
               </div>
 
@@ -283,7 +322,7 @@ export const TenDayPlanSection: React.FC<TenDayPlanSectionProps> = ({
                   <span>3. Verletzungsprophylaxe</span>
                 </div>
                 <p className="text-[#C7C7C7] text-[11px]">
-                  {TEN_DAY_ACTIV_RULES.verletzungsprophylaxe}
+                  {activeRules.verletzungsprophylaxe}
                 </p>
               </div>
 
@@ -294,7 +333,7 @@ export const TenDayPlanSection: React.FC<TenDayPlanSectionProps> = ({
                   <span>4. Datenübermittlung</span>
                 </div>
                 <p className="text-[#C7C7C7] text-[11px]">
-                  {TEN_DAY_ACTIV_RULES.datenuebermittlung}
+                  {activeRules.datenuebermittlung}
                 </p>
               </div>
             </div>

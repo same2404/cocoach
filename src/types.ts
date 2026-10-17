@@ -751,6 +751,7 @@ export interface IndividualTrainingRecord {
   s: string;
   a: string;
   w: string;
+  hs: string;
   notes: string;
 }
 
