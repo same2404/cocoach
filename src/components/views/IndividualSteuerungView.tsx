@@ -85,6 +85,14 @@ export const IndividualSteuerungView: React.FC<IndividualSteuerungViewProps> = (
     return { green, yellow, red, total: sortedPlayers.length };
   }, [sortedPlayers, individualTrainingData, selectedIndividualDate]);
 
+  const getIndividualTrainingTotal = (playerId: string) => {
+    if (!individualTrainingData || !Array.isArray(individualTrainingData)) return 0;
+    return individualTrainingData.filter((record: any) => 
+      record.playerId === playerId && 
+      (record.completed === true || record.absolviert === true || record.done === true || record.status === 'Absolviert' || record.status === 'Erledigt')
+    ).length;
+  };
+
   const filteredPlayers = sortedPlayers.filter(p => {
     const matchesSearch = p.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) || 
       p.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -265,6 +273,7 @@ export const IndividualSteuerungView: React.FC<IndividualSteuerungViewProps> = (
               <tr>
                 <th className="p-3 border-r border-[#334155] text-center w-12 text-slate-500 font-black uppercase">Nr</th>
                 <th className="p-3 border-r border-[#334155] text-left w-52 font-black uppercase">Spieler</th>
+                <th className="p-3 border-r border-[#334155] text-center w-32 font-black uppercase text-[#F59E0B] bg-[#1E293B]">Gesamt-Einheiten</th>
                 <th className="p-3 border-r border-[#334155] text-center w-16 font-black uppercase text-[#F59E0B]">Pos</th>
                 <th className="p-3 border-r border-[#334155] text-center w-40 font-black uppercase">Belastungs-Ampel</th>
                 <th className="p-3 border-r border-[#334155] text-left w-32 font-black uppercase text-slate-500">Datum</th>
@@ -352,7 +361,7 @@ export const IndividualSteuerungView: React.FC<IndividualSteuerungViewProps> = (
                 return (
                   <React.Fragment key={category}>
                     <tr className="bg-[#0A1628] text-white">
-                      <td colSpan={isEditing ? 18 : 17} className="px-4 py-2.5 font-black uppercase text-xs tracking-widest border-y border-[#334155] text-[#F59E0B] border-l-4 border-l-[#F59E0B]">
+                      <td colSpan={isEditing ? 19 : 18} className="px-4 py-2.5 font-black uppercase text-xs tracking-widest border-y border-[#334155] text-[#F59E0B] border-l-4 border-l-[#F59E0B]">
                         {category === 'player' ? '⚽ Spielerkader' : category === 'staff' ? '📋 Trainerteam' : '🛡️ Funktionäre'}
                       </td>
                     </tr>
@@ -399,6 +408,14 @@ export const IndividualSteuerungView: React.FC<IndividualSteuerungViewProps> = (
                                 />
                               </div>
                             </div>
+                          </td>
+                          <td className="p-2 border-r border-[#334155] text-center bg-[#1E293B]/40">
+                            <span 
+                              className="inline-flex items-center justify-center px-3 py-1 rounded-md bg-amber-500/20 text-amber-400 border border-amber-400/70 font-extrabold text-sm min-w-[44px] shadow-[0_0_0_1px_rgba(245,158,11,0.15)]"
+                              title="Kumulierte Gesamtzahl der Individualtrainings-Einheiten"
+                            >
+                              {getTotalUnits(player.id)}
+                            </span>
                           </td>
                           <td className="p-2.5 border-r border-[#334155] text-center text-[#F59E0B] font-black text-xs">{player.position}</td>
                           
