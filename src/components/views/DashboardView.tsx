@@ -31,7 +31,9 @@ import {
   ShieldCheck,
   BarChart3,
   Check,
-  Loader2
+  Loader2,
+  Filter,
+  ArrowUpDown
 } from 'lucide-react';
 
 interface DashboardViewProps {
@@ -157,7 +159,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     }
   });
 
-  // State for editing Module 2 (Letztes Spiel - Kurzanalyse) with localStorage persistence
+  // State for editing Module 2 (Letztes Liga-Spiel - Kurzanalyse) with localStorage persistence
   const [isEditingLastMatch, setIsEditingLastMatch] = useState(false);
   const [customLastMatchData, setCustomLastMatchData] = useState<{
     result?: string;
@@ -1048,7 +1050,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
 
-          {/* MODULE 2: Letztes Spiel – Kurz-Analyse */}
+          {/* MODULE 2: Letztes Liga-Spiel – Kurz-Analyse */}
           <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-5 shadow-lg flex flex-col justify-between relative overflow-hidden group hover:border-slate-700 transition-all">
             <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none" />
             <div>
@@ -1058,7 +1060,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <Trophy size={18} />
                   </div>
                   <div>
-                    <h3 className="font-black uppercase text-sm tracking-wider text-emerald-400">2. Letztes Spiel – Kurz-Analyse</h3>
+                    <h3 className="font-black uppercase text-sm tracking-wider text-emerald-400">2. Letztes Liga-Spiel – Kurz-Analyse</h3>
                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{lastTestMatch.competition} • {lastTestMatch.fullDateTime}</p>
                   </div>
                 </div>

@@ -32,7 +32,10 @@ export const TenDayPlanSection: React.FC<TenDayPlanSectionProps> = ({
 
   const activePlan = season === 'winter' ? TEN_DAY_ACTIV_PLAN_WINTER : TEN_DAY_ACTIV_PLAN;
   const activeRules = season === 'winter' ? TEN_DAY_ACTIV_RULES_WINTER : TEN_DAY_ACTIV_RULES;
-  const planDateRange = season === 'winter' ? '11.01.–30.01.2027' : '17.06.–03.07.2026';
+  const planDateRange = season === 'winter' ? '11.01.–30.01.2027' : '17.06.–07.07.2026';
+  const planTitle = season === 'winter' ? '10-Tage-Aktiv Plan' : 'Aktiv-Plan';
+  const baseUnits = activePlan.filter((u) => !u.zusatz);
+  const extraUnits = activePlan.filter((u) => u.zusatz);
   const storageKey = season === 'winter' ? 'fc_auggen_10_day_plan_completed_winter' : 'fc_auggen_10_day_plan_completed';
 
   const [completedDays, setCompletedDays] = useState<Record<number, boolean>>(() => {
@@ -101,6 +104,83 @@ export const TenDayPlanSection: React.FC<TenDayPlanSectionProps> = ({
     }
   };
 
+  const renderUnit = (unit: TenDayPlanUnit) => {
+    const isDone = !!completedDays[unit.id];
+    return (
+      <div
+        key={unit.id}
+        onClick={() => toggleDayCompletion(unit.id)}
+        className={`border rounded-xl p-3 flex flex-col justify-between transition-all cursor-pointer group relative overflow-hidden ${
+          isDone
+            ? 'bg-[#FFD54F]/10 border-[#FFD54F] shadow-md'
+            : 'bg-[#202020] border-[#2A2A2A] hover:border-[#FFD54F]'
+        }`}
+      >
+        {/* Top Day Header */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="font-black text-xs uppercase tracking-wider text-[#FFD54F] flex items-center gap-1">
+              <Calendar size={12} className="text-[#888888]" />
+              {unit.tag} • {unit.date}
+            </span>
+            <button
+              type="button"
+              className="text-[#888888] hover:text-[#F5F5F5] transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleDayCompletion(unit.id);
+              }}
+            >
+              {isDone ? (
+                <CheckSquare size={18} className="text-[#FFD54F] fill-[#FFD54F]" />
+              ) : (
+                <Square size={18} className="text-[#888888] group-hover:text-[#F5F5F5]" />
+              )}
+            </button>
+          </div>
+
+          <h4 className={`font-black text-sm uppercase tracking-tight mb-1.5 ${isDone ? 'line-through text-[#888888]' : 'text-[#F5F5F5]'}`}>
+            {unit.title}
+          </h4>
+
+          {/* Type & Intensity Badges */}
+          <div className="flex flex-wrap gap-1 mb-2">
+            <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded border ${getIntensityBadgeColor(unit.type)}`}>
+              {unit.type}
+            </span>
+            <span className="bg-[#1A1A1A] text-[#F5F5F5] text-[9px] font-bold px-1.5 py-0.5 rounded border border-[#2A2A2A]">
+              {unit.intensity}
+            </span>
+            {unit.zusatz && (
+              <span className="bg-[#FFD54F] text-[#0F0F0F] text-[9px] font-black uppercase px-1.5 py-0.5 rounded border border-[#FFD54F]">
+                Zusatz
+              </span>
+            )}
+          </div>
+
+          {/* Content Details */}
+          <p className="text-[11px] text-[#F5F5F5] font-medium leading-relaxed mb-2 bg-[#1A1A1A] p-2 rounded-lg border border-[#2A2A2A]">
+            <strong className="font-bold block text-[9px] uppercase tracking-wider text-[#C7C7C7] mb-0.5">Inhalt:</strong>
+            {unit.content}
+          </p>
+        </div>
+
+        {/* Goal / Why Footer */}
+        <div className="pt-2 border-t border-[#2A2A2A] mt-1">
+          <p className="text-[10px] text-[#C7C7C7] font-medium italic flex items-start gap-1">
+            <Target size={12} className="text-[#FFD54F] shrink-0 mt-0.5" />
+            <span>{unit.goal}</span>
+          </p>
+          <div className="mt-2 flex items-center justify-between text-[9px] font-black uppercase">
+            <span className={isDone ? 'text-[#FFD54F] font-bold' : 'text-[#888888]'}>
+              {isDone ? '[ x ] erledigt' : '[  ] ausstehend'}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="bg-[#1A1A1A] border border-[#2A2A2A] text-[#F5F5F5] rounded-2xl p-4 sm:p-6 shadow-xl mb-6 relative overflow-hidden">
       {/* Background Accent Lines */}
@@ -149,7 +229,7 @@ export const TenDayPlanSection: React.FC<TenDayPlanSectionProps> = ({
           </div>
 
           <h2 className="text-xl sm:text-2xl font-black uppercase tracking-wide text-[#F5F5F5] flex items-center gap-2">
-            <span>10-Tage-Aktiv Plan · {season === 'winter' ? 'Winter' : 'Sommer'}</span>
+            <span>{planTitle} · {season === 'winter' ? 'Winter' : 'Sommer'}</span>
             <span className="text-xs font-black text-[#FF4C4C] bg-[#FF4C4C]/10 px-2 py-0.5 rounded border border-[#FF4C4C]/30">
               Verbindlich abarbeiten
             </span>
@@ -199,80 +279,30 @@ export const TenDayPlanSection: React.FC<TenDayPlanSectionProps> = ({
       {/* Main Content Area */}
       {isExpanded && (
         <div className="mt-5 space-y-6">
-          {/* 10 Days Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-            {activePlan.map((unit) => {
-              const isDone = !!completedDays[unit.id];
-              return (
-                <div 
-                  key={unit.id}
-                  onClick={() => toggleDayCompletion(unit.id)}
-                  className={`border rounded-xl p-3 flex flex-col justify-between transition-all cursor-pointer group relative overflow-hidden ${
-                    isDone 
-                      ? 'bg-[#FFD54F]/10 border-[#FFD54F] shadow-md' 
-                      : 'bg-[#202020] border-[#2A2A2A] hover:border-[#FFD54F]'
-                  }`}
-                >
-                  {/* Top Day Header */}
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-black text-xs uppercase tracking-wider text-[#FFD54F] flex items-center gap-1">
-                        <Calendar size={12} className="text-[#888888]" />
-                        {unit.tag} • {unit.date}
-                      </span>
-                      <button 
-                        type="button" 
-                        className="text-[#888888] hover:text-[#F5F5F5] transition-colors"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleDayCompletion(unit.id);
-                        }}
-                      >
-                        {isDone ? (
-                          <CheckSquare size={18} className="text-[#FFD54F] fill-[#FFD54F]" />
-                        ) : (
-                          <Square size={18} className="text-[#888888] group-hover:text-[#F5F5F5]" />
-                        )}
-                      </button>
-                    </div>
-
-                    <h4 className={`font-black text-sm uppercase tracking-tight mb-1.5 ${isDone ? 'line-through text-[#888888]' : 'text-[#F5F5F5]'}`}>
-                      {unit.title}
-                    </h4>
-
-                    {/* Type & Intensity Badges */}
-                    <div className="flex flex-wrap gap-1 mb-2">
-                      <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded border ${getIntensityBadgeColor(unit.type)}`}>
-                        {unit.type}
-                      </span>
-                      <span className="bg-[#1A1A1A] text-[#F5F5F5] text-[9px] font-bold px-1.5 py-0.5 rounded border border-[#2A2A2A]">
-                        {unit.intensity}
-                      </span>
-                    </div>
-
-                    {/* Content Details */}
-                    <p className="text-[11px] text-[#F5F5F5] font-medium leading-relaxed mb-2 bg-[#1A1A1A] p-2 rounded-lg border border-[#2A2A2A]">
-                      <strong className="font-bold block text-[9px] uppercase tracking-wider text-[#C7C7C7] mb-0.5">Inhalt:</strong>
-                      {unit.content}
-                    </p>
-                  </div>
-
-                  {/* Goal / Why Footer */}
-                  <div className="pt-2 border-t border-[#2A2A2A] mt-1">
-                    <p className="text-[10px] text-[#C7C7C7] font-medium italic flex items-start gap-1">
-                      <Target size={12} className="text-[#FFD54F] shrink-0 mt-0.5" />
-                      <span>{unit.goal}</span>
-                    </p>
-                    <div className="mt-2 flex items-center justify-between text-[9px] font-black uppercase">
-                      <span className={isDone ? 'text-[#FFD54F] font-bold' : 'text-[#888888]'}>
-                        {isDone ? '[ x ] erledigt' : '[  ] ausstehend'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+          {/* 10-Tage-Programm */}
+          <div>
+            <h3 className="text-xs font-black uppercase tracking-wider text-[#C7C7C7] mb-2">
+              10-Tage-Programm ({baseUnits.length} Einheiten)
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+              {baseUnits.map((unit) => renderUnit(unit))}
+            </div>
           </div>
+
+          {/* Zusatzeinheiten bis Trainingsstart */}
+          {extraUnits.length > 0 && (
+            <div>
+              <h3 className="text-xs font-black uppercase tracking-wider text-[#C7C7C7] mb-2 flex items-center gap-2">
+                <span>Zusatzeinheiten bis Trainingsstart ({extraUnits.length} Einheiten)</span>
+                <span className="bg-[#FFD54F] text-[#0F0F0F] text-[9px] font-black uppercase px-1.5 py-0.5 rounded border border-[#FFD54F]">
+                  Zusatz
+                </span>
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                {extraUnits.map((unit) => renderUnit(unit))}
+              </div>
+            </div>
+          )}
 
           {/* Rahmenbedingungen & Vorgaben Section */}
           <div className="bg-[#202020] border border-[#2A2A2A] rounded-xl p-4 sm:p-5 space-y-4">
@@ -336,6 +366,19 @@ export const TenDayPlanSection: React.FC<TenDayPlanSectionProps> = ({
                   {activeRules.datenuebermittlung}
                 </p>
               </div>
+
+              {/* Rule 5 */}
+              {'kontrolle' in activeRules && (activeRules as { kontrolle?: string }).kontrolle && (
+                <div className="bg-[#1A1A1A] p-3 rounded-lg border border-[#2A2A2A] space-y-1">
+                  <div className="flex items-center gap-1.5 text-[#F5F5F5] font-black uppercase text-[11px]">
+                    <Award size={14} className="text-[#FFD54F]" />
+                    <span>5. Kontrolle vor Trainingsstart</span>
+                  </div>
+                  <p className="text-[#C7C7C7] text-[11px]">
+                    {(activeRules as { kontrolle?: string }).kontrolle}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>

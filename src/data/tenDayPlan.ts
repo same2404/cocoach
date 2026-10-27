@@ -8,6 +8,10 @@ export interface TenDayPlanUnit {
   goal: string;
   type: 'Dauerlauf' | 'Intervall leicht' | 'Fahrtspiel' | 'Intervall intensiv' | 'Intervall' | 'Sprints / Explosivität';
   intensity: 'Niedrig (60-70%)' | 'Leicht (70-80%)' | 'Wechselnd (70-85%)' | 'Intensiv (80-90%)' | 'Maximal (90-100%)';
+  /** Zusatzeinheit nach dem 10-Tage-Programm (bis Trainingsstart) */
+  zusatz?: boolean;
+  /** Fester Spaltenname in der Läufe-Tabelle (überschreibt "Tag: Titel") */
+  name?: string;
 }
 
 export const TEN_DAY_ACTIV_PLAN: TenDayPlanUnit[] = [
@@ -120,6 +124,69 @@ export const TEN_DAY_ACTIV_PLAN: TenDayPlanUnit[] = [
     goal: 'Antritt, Explosivität, Spritzigkeit.',
     type: 'Sprints / Explosivität',
     intensity: 'Maximal (90-100%)'
+  },
+  {
+    id: 11,
+    tag: 'Tag 11',
+    name: '4.Fahrtspiel',
+    date: '02.07.2026',
+    dateIso: '2026-07-02',
+    title: 'Fahrtspiel',
+    content: '30–40 Minuten gesamt (Wechsel zwischen locker und schnell), 4 Runden à 10 Minuten.',
+    goal: '4. Fahrtspiel der Serie, Anpassung an wechselnde Belastungen im Spiel.',
+    type: 'Fahrtspiel',
+    intensity: 'Wechselnd (70-85%)',
+    zusatz: true
+  },
+  {
+    id: 12,
+    tag: 'Tag 12',
+    name: '4.Intervall',
+    date: '04.07.2026',
+    dateIso: '2026-07-04',
+    title: 'Intervall',
+    content: 'Locker einlaufen 25 min, 4 Serien à 400 m (80–90%), Pause: 2–3 Minuten gehen/traben, 20 min locker Auslaufen.',
+    goal: 'Laktat-Toleranz & Ausdauer.',
+    type: 'Intervall',
+    intensity: 'Intensiv (80-90%)',
+    zusatz: true
+  },
+  {
+    id: 13,
+    tag: 'Tag 13',
+    name: '2.Srints',
+    date: '05.07.2026',
+    dateIso: '2026-07-05',
+    title: 'Sprints / Explosivität',
+    content: 'Lockeres Einlaufen 20 min, 2 Serien à 6–10 × 10–30 m (volle Pause zwischen den Läufen), 25 min locker Auslaufen.',
+    goal: 'Antritt, Explosivität, Spritzigkeit – letzte Kontrolle vor Trainingsstart.',
+    type: 'Sprints / Explosivität',
+    intensity: 'Maximal (90-100%)',
+    zusatz: true
+  },
+  {
+    id: 14,
+    tag: 'Tag 14',
+    date: '06.07.2026',
+    dateIso: '2026-07-06',
+    title: 'Start Vorbereitung (Teamtraining)',
+    content: 'Einlaufen 20 min, 6–8 × 10–30 m (volle Pause zwischen den Läufen), 25 min locker Auslaufen – im Teamtraining 18:00–20:30 integriert.',
+    goal: 'Direkt mit Intensität in die Vorbereitung starten (Start Vorbereitung mit Besprechung).',
+    type: 'Sprints / Explosivität',
+    intensity: 'Maximal (90-100%)',
+    zusatz: true
+  },
+  {
+    id: 15,
+    tag: 'Tag 15',
+    date: '07.07.2026',
+    dateIso: '2026-07-07',
+    title: 'Teamtraining',
+    content: 'Locker einlaufen 25 min, 4–6 × 400 m (80–90%), 20 min locker Auslaufen – im Teamtraining 19:00–20:45 integriert.',
+    goal: 'Spielnahe Ausdauer im Teamtraining halten.',
+    type: 'Intervall',
+    intensity: 'Intensiv (80-90%)',
+    zusatz: true
   }
 ];
 
@@ -127,7 +194,8 @@ export const TEN_DAY_ACTIV_RULES = {
   reihenfolge: 'Reihenfolge der Einheiten einhalten',
   ruhetage: 'Zwischen intensiven Tagen immer mindestens 1 Ruhetag',
   verletzungsprophylaxe: 'Locker heißt wirklich locker, Intensiv heißt sauber & mit Qualität (nicht völlig erschöpfen).',
-  datenuebermittlung: 'Tracking über die Adidas Running App und Übermittlung an Co-Trainer/Athletik Klaus.'
+  datenuebermittlung: 'Tracking über die Adidas Running App und Übermittlung an Co-Trainer/Athletik Klaus.',
+  kontrolle: 'Kontrolle vor Trainingsstart (05.07.2026): alle Einheiten durchgeführt, Körper belastbar, keine akuten Beschwerden.'
 };
 
 // Wintervorbereitung / Eigenvorbereitung vor Trainingsstart (11.01. - 31.01.27)
@@ -248,5 +316,6 @@ export const TEN_DAY_ACTIV_RULES_WINTER = {
   reihenfolge: 'Reihenfolge der Einheiten einhalten – Einheiten nacheinander absolvieren (nicht tauschen).',
   ruhetage: 'Zwischen intensiven Tagen immer mindestens 1 Ruhetag.',
   verletzungsprophylaxe: 'Vor jeder Einheit 5–10 Minuten aufwärmen; zusätzlich 2–3x/Woche Core-Stabi und Sprunggelenk-/Knie-Stabilisation; nach der Belastung ausgiebig dehnen!',
-  datenuebermittlung: 'Kontrolle vor Trainingsstart (31.01.27): alle Einheiten durchgeführt, Körper belastbar, keine akuten Beschwerden.'
+  datenuebermittlung: 'Tracking über die Adidas Running App und Übermittlung an Co-Trainer/Athletik Klaus.',
+  kontrolle: 'Jeder Spieler bestätigt zum 31.01.27: alle Einheiten durchgeführt, Körper fühlt sich belastbar an, keine akuten Beschwerden.'
 };

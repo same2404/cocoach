@@ -117,7 +117,7 @@ export const RunsSWView: React.FC<RunsSWViewProps> = ({
     plan.forEach((unit, i) => {
       onUpdateRunMeta({
         id: `run_${i}`,
-        name: `${unit.tag}: ${unit.title}`,
+        name: unit.name || `${unit.tag}: ${unit.title}`,
         date: unit.dateIso,
         content: `${unit.content} | Ziel: ${unit.goal}`
       });
