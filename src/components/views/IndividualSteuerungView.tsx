@@ -175,8 +175,7 @@ export const IndividualSteuerungView: React.FC<IndividualSteuerungViewProps> = (
 
   return (
     <div className="flex flex-col h-full bg-[#0A0E17] text-white p-3 sm:p-6 rounded-2xl border border-[#334155] shadow-xl min-h-screen space-y-5">
-      {/* U23-Spielberechtigung Priorität (Ganz oben in Individuelle Steuerung) */}
-      
+
 
       {/* ----------------- TOP HEADER / CONTROL BAR ----------------- */}
       <div className="bg-[#121824] border border-[#334155] rounded-2xl p-5 shadow-lg">
