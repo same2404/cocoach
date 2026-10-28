@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Player } from '../../types';
 import { sortPlayers } from '../../utils/playerSorting';
 import { 
@@ -12,7 +12,8 @@ import {
   CheckCircle2,
   AlertTriangle,
   XCircle,
-  Users
+  Users,
+  ShieldCheck
 } from 'lucide-react';
 
 const INDIVIDUAL_FIELDS: { key: string; label: string }[] = [
@@ -38,6 +39,128 @@ interface IndividualSteuerungViewProps {
   onAddPlayerDirect?: (player: any) => void;
   isEditing?: boolean;
 }
+
+const U23EligibilityOverview: React.FC<{ players: Player[] }> = ({ players }) => {
+  const [filter, setFilter] = useState<'all' | 'eligible'>('all');
+  const [sortBy, setSortBy] = useState<'eligibleFirst' | 'notEligibleFirst' | 'alphabetical'>('eligibleFirst');
+
+  const getU23Eligibility = (player: Player) => {
+    const status = (player as any).status || '';
+    const age = (player as any).age || (player as any).alter || 0;
+    const suspended = status === 'Gesperrt' || (player as any).isSuspended || (player as any).gesperrt;
+    
+    if (suspended) {
+      return { eligible: false, reason: 'Sperre' };
+    }
+    if (age > 23) {
+      return { eligible: false, reason: 'Altersgrenze überschritten' };
+    }
+    if ((player as any).festgespielt || status === 'Festgespielt') {
+      return { eligible: false, reason: 'Festgespielt' };
+    }
+    if (status === 'U23' || (age >= 16 && age <= 23)) {
+      return { eligible: true, reason: '' };
+    }
+    return { eligible: false, reason: 'Andere Spielberechtigungsbeschränkung' };
+  };
+
+  const squadList = useMemo(() => players.filter(p => p.category === 'player'), [players]);
+  
+  const processedList = useMemo(() => {
+    let list = squadList.map(p => {
+      const eligibility = getU23Eligibility(p);
+      return { player: p, ...eligibility };
+    });
+    
+    if (filter === 'eligible') {
+      list = list.filter(item => item.eligible);
+    }
+    
+    list.sort((a, b) => {
+      if (sortBy === 'eligibleFirst') {
+        if (a.eligible !== b.eligible) return a.eligible ? -1 : 1;
+      } else if (sortBy === 'notEligibleFirst') {
+        if (a.eligible !== b.eligible) return a.eligible ? 1 : -1;
+      }
+      const nameA = `${a.player.firstName || ''} ${a.player.lastName || ''}`.toLowerCase();
+      const nameB = `${b.player.firstName || ''} ${b.player.lastName || ''}`.toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
+    
+    return list;
+  }, [squadList, filter, sortBy]);
+
+  return (
+    <div className="bg-[#121824] border border-[#334155] rounded-2xl p-5 shadow-lg mb-5 relative overflow-hidden">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-4">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+            <ShieldCheck size={18} />
+          </div>
+          <div>
+            <h3 className="font-black uppercase text-sm tracking-wider text-emerald-400">U23-Spielberechtigung</h3>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Prioritätsübersicht im Kader</p>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1 bg-[#0A0E17] border border-[#334155] rounded-lg p-1">
+            <button
+              onClick={() => setFilter('all')}
+              className={`px-3 py-1 rounded-md text-[10px] font-black uppercase transition-all ${filter === 'all' ? 'bg-[#334155] text-white' : 'text-slate-400 hover:text-white'}`}
+            >
+              Alle Spieler
+            </button>
+            <button
+              onClick={() => setFilter('eligible')}
+              className={`px-3 py-1 rounded-md text-[10px] font-black uppercase transition-all ${filter === 'eligible' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'}`}
+            >
+              Nur U23 spielberechtigt
+            </button>
+          </div>
+          <div className="flex items-center gap-1 bg-[#0A0E17] border border-[#334155] rounded-lg p-1">
+            <button
+              onClick={() => setSortBy('eligibleFirst')}
+              className={`px-2.5 py-1 rounded-md text-[10px] font-black uppercase transition-all ${sortBy === 'eligibleFirst' ? 'bg-[#334155] text-white' : 'text-slate-400 hover:text-white'}`}
+            >
+              Berechtigt zuerst
+            </button>
+            <button
+              onClick={() => setSortBy('alphabetical')}
+              className={`px-2.5 py-1 rounded-md text-[10px] font-black uppercase transition-all ${sortBy === 'alphabetical' ? 'bg-[#334155] text-white' : 'text-slate-400 hover:text-white'}`}
+            >
+              A-Z
+            </button>
+          </div>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-52 overflow-y-auto custom-scrollbar">
+        {processedList.map(item => (
+          <div key={item.player.id} className="flex items-center justify-between bg-[#0A0E17] border border-[#334155] rounded-lg p-2.5">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="w-6 h-6 flex items-center justify-center bg-[#121824] text-white border border-[#334155] text-[10px] font-black rounded">
+                #{(item.player as any).number || '-'}
+              </span>
+              <div className="min-w-0">
+                <div className="text-xs font-black text-white truncate">{item.player.firstName} {item.player.lastName}</div>
+                <div className="text-[9px] text-slate-500">{(item.player as any).position}</div>
+              </div>
+            </div>
+            <div className="text-right">
+              {item.eligible ? (
+                <div className="text-emerald-400 font-black text-[10px] uppercase">✅ U23 spielberechtigt</div>
+              ) : (
+                <div>
+                  <div className="text-rose-400 font-black text-[10px] uppercase">❌ Nicht spielberechtigt</div>
+                  {item.reason && <div className="text-[9px] text-rose-300">{item.reason}</div>}
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 export const IndividualSteuerungView: React.FC<IndividualSteuerungViewProps> = ({
   players,
@@ -85,13 +208,52 @@ export const IndividualSteuerungView: React.FC<IndividualSteuerungViewProps> = (
     return { green, yellow, red, total: sortedPlayers.length };
   }, [sortedPlayers, individualTrainingData, selectedIndividualDate]);
 
-  const getIndividualTrainingTotal = (playerId: string) => {
-    if (!individualTrainingData || !Array.isArray(individualTrainingData)) return 0;
-    return individualTrainingData.filter((record: any) => 
-      record.playerId === playerId && 
-      (record.completed === true || record.absolviert === true || record.done === true || record.status === 'Absolviert' || record.status === 'Erledigt')
-    ).length;
-  };
+  const countByPlayerId = React.useMemo(() => {
+    const map = new Map<string, number>();
+    (individualTrainingData || []).forEach((entry: any) => {
+      const playerId = entry?.playerId;
+      if (!playerId) return;
+      map.set(playerId, (map.get(playerId) || 0) + 1);
+    });
+    return map;
+  }, [individualTrainingData]);
+
+  const getEntryCount = (playerId: string) => countByPlayerId.get(playerId) ?? 0;
+
+  const totalsByPlayerId = React.useMemo(() => {
+    const map = new Map<string, number>();
+    (individualTrainingData || []).forEach((entry: any) => {
+      const playerId = entry?.playerId;
+      if (!playerId) return;
+
+      let val = 0;
+
+      if (typeof entry.units === 'number' && !isNaN(entry.units)) {
+        val = entry.units;
+      } else if (typeof entry.einheiten === 'number' && !isNaN(entry.einheiten)) {
+        val = entry.einheiten;
+      } else if (typeof entry.anzahl === 'number' && !isNaN(entry.anzahl)) {
+        val = entry.anzahl;
+      } else if (typeof entry.count === 'number' && !isNaN(entry.count)) {
+        val = entry.count;
+      } else {
+        const fieldValues = [entry.ek, entry.o, entry.t, entry.p, entry.s, entry.a, entry.w, entry.hs];
+        const numericValues = fieldValues.filter(v => typeof v === 'number' && !isNaN(v) && v > 0);
+        if (numericValues.length > 0) {
+          val = numericValues.reduce((sum, v) => sum + v, 0);
+        }
+      }
+
+      if (val <= 0) {
+        val = 1;
+      }
+
+      map.set(playerId, (map.get(playerId) || 0) + val);
+    });
+    return map;
+  }, [individualTrainingData]);
+
+  const getTotalUnits = (playerId: string) => totalsByPlayerId.get(playerId) ?? 0;
 
   const filteredPlayers = sortedPlayers.filter(p => {
     const matchesSearch = p.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -135,6 +297,9 @@ export const IndividualSteuerungView: React.FC<IndividualSteuerungViewProps> = (
 
   return (
     <div className="flex flex-col h-full bg-[#0A0E17] text-white p-3 sm:p-6 rounded-2xl border border-[#334155] shadow-xl min-h-screen space-y-5">
+      {/* U23-Spielberechtigung Priorität (Ganz oben in Individuelle Steuerung) */}
+      <U23EligibilityOverview players={players} />
+
       {/* ----------------- TOP HEADER / CONTROL BAR ----------------- */}
       <div className="bg-[#121824] border border-[#334155] rounded-2xl p-5 shadow-lg">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -272,8 +437,9 @@ export const IndividualSteuerungView: React.FC<IndividualSteuerungViewProps> = (
             <thead className="sticky top-0 bg-[#0A0E17] text-white z-20 border-b border-[#334155]">
               <tr>
                 <th className="p-3 border-r border-[#334155] text-center w-12 text-slate-500 font-black uppercase">Nr</th>
+                <th className="p-3 border-r border-[#334155] text-center w-20 font-black uppercase text-cyan-400 bg-[#0F172A]">Anzahl</th>
+                <th className="p-3 border-r border-[#334155] text-center w-28 font-black uppercase text-[#F59E0B] bg-[#1E293B]">Gesamt-Einheiten</th>
                 <th className="p-3 border-r border-[#334155] text-left w-52 font-black uppercase">Spieler</th>
-                <th className="p-3 border-r border-[#334155] text-center w-32 font-black uppercase text-[#F59E0B] bg-[#1E293B]">Gesamt-Einheiten</th>
                 <th className="p-3 border-r border-[#334155] text-center w-16 font-black uppercase text-[#F59E0B]">Pos</th>
                 <th className="p-3 border-r border-[#334155] text-center w-40 font-black uppercase">Belastungs-Ampel</th>
                 <th className="p-3 border-r border-[#334155] text-left w-32 font-black uppercase text-slate-500">Datum</th>
@@ -300,6 +466,8 @@ export const IndividualSteuerungView: React.FC<IndividualSteuerungViewProps> = (
                       onChange={(e) => setNewPlayer({ ...newPlayer, number: e.target.value })}
                     />
                   </td>
+                  <td className="p-2 border-r border-[#334155] bg-[#0F172A]/20"></td>
+                  <td className="p-2 border-r border-[#334155] bg-[#1E293B]/20"></td>
                   <td className="p-2 border-r border-[#334155]">
                     <div className="flex gap-1">
                       <input 
@@ -327,7 +495,7 @@ export const IndividualSteuerungView: React.FC<IndividualSteuerungViewProps> = (
                       onChange={(e) => setNewPlayer({ ...newPlayer, position: e.target.value })}
                     />
                   </td>
-                  <td colSpan={15} className="p-2 border-r border-[#334155]">
+                  <td colSpan={16} className="p-2 border-r border-[#334155]">
                     <div className="flex items-center justify-between">
                       <select 
                         className="bg-[#0A0E17] text-white border border-[#334155] rounded font-bold uppercase focus:outline-none text-[10px] px-2 py-1 cursor-pointer"
@@ -361,7 +529,7 @@ export const IndividualSteuerungView: React.FC<IndividualSteuerungViewProps> = (
                 return (
                   <React.Fragment key={category}>
                     <tr className="bg-[#0A1628] text-white">
-                      <td colSpan={isEditing ? 19 : 18} className="px-4 py-2.5 font-black uppercase text-xs tracking-widest border-y border-[#334155] text-[#F59E0B] border-l-4 border-l-[#F59E0B]">
+                      <td colSpan={isEditing ? 20 : 19} className="px-4 py-2.5 font-black uppercase text-xs tracking-widest border-y border-[#334155] text-[#F59E0B] border-l-4 border-l-[#F59E0B]">
                         {category === 'player' ? '⚽ Spielerkader' : category === 'staff' ? '📋 Trainerteam' : '🛡️ Funktionäre'}
                       </td>
                     </tr>
@@ -393,6 +561,24 @@ export const IndividualSteuerungView: React.FC<IndividualSteuerungViewProps> = (
                       return (
                         <tr key={player.id} className="hover:bg-[#0A1628] transition-colors border-b border-[#334155] bg-[#121824] text-white">
                           <td className="p-2.5 border-r border-[#334155] text-center text-slate-500 font-mono font-bold">{pIdx + 1}</td>
+                          
+                          {/* ANZAHL */}
+                          <td className="p-2 border-r border-[#334155] text-center bg-[#0F172A]/40">
+                            <span className="inline-flex items-center justify-center px-2 py-1 rounded-md bg-cyan-500/15 text-cyan-400 border border-cyan-400/60 font-extrabold text-sm min-w-[36px]">
+                              {getEntryCount(player.id)}
+                            </span>
+                          </td>
+
+                          {/* GESAMT-EINHEITEN */}
+                          <td className="p-2 border-r border-[#334155] text-center bg-[#1E293B]/40">
+                            <span 
+                              className="inline-flex items-center justify-center px-2.5 py-1 rounded-md bg-amber-500/20 text-amber-400 border border-amber-400/70 font-extrabold text-sm min-w-[44px]"
+                              title="Summe aller erfassten Individualtraining-Einheiten"
+                            >
+                              {getTotalUnits(player.id)}
+                            </span>
+                          </td>
+
                           <td className="p-2.5 border-r border-[#334155]">
                             <div className="flex items-center gap-2">
                               <span className="w-6 h-6 flex items-center justify-center bg-[#0A0E17] text-white border border-[#334155] text-[10px] font-black shrink-0 rounded-lg">
@@ -408,14 +594,6 @@ export const IndividualSteuerungView: React.FC<IndividualSteuerungViewProps> = (
                                 />
                               </div>
                             </div>
-                          </td>
-                          <td className="p-2 border-r border-[#334155] text-center bg-[#1E293B]/40">
-                            <span 
-                              className="inline-flex items-center justify-center px-3 py-1 rounded-md bg-amber-500/20 text-amber-400 border border-amber-400/70 font-extrabold text-sm min-w-[44px] shadow-[0_0_0_1px_rgba(245,158,11,0.15)]"
-                              title="Kumulierte Gesamtzahl der Individualtrainings-Einheiten"
-                            >
-                              {getTotalUnits(player.id)}
-                            </span>
                           </td>
                           <td className="p-2.5 border-r border-[#334155] text-center text-[#F59E0B] font-black text-xs">{player.position}</td>
                           
