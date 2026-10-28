@@ -40,128 +40,6 @@ interface IndividualSteuerungViewProps {
   isEditing?: boolean;
 }
 
-const U23EligibilityOverview: React.FC<{ players: Player[] }> = ({ players }) => {
-  const [filter, setFilter] = useState<'all' | 'eligible'>('all');
-  const [sortBy, setSortBy] = useState<'eligibleFirst' | 'notEligibleFirst' | 'alphabetical'>('eligibleFirst');
-
-  const getU23Eligibility = (player: Player) => {
-    const status = (player as any).status || '';
-    const age = (player as any).age || (player as any).alter || 0;
-    const suspended = status === 'Gesperrt' || (player as any).isSuspended || (player as any).gesperrt;
-    
-    if (suspended) {
-      return { eligible: false, reason: 'Sperre' };
-    }
-    if (age > 23) {
-      return { eligible: false, reason: 'Altersgrenze überschritten' };
-    }
-    if ((player as any).festgespielt || status === 'Festgespielt') {
-      return { eligible: false, reason: 'Festgespielt' };
-    }
-    if (status === 'U23' || (age >= 16 && age <= 23)) {
-      return { eligible: true, reason: '' };
-    }
-    return { eligible: false, reason: 'Andere Spielberechtigungsbeschränkung' };
-  };
-
-  const squadList = useMemo(() => players.filter(p => p.category === 'player'), [players]);
-  
-  const processedList = useMemo(() => {
-    let list = squadList.map(p => {
-      const eligibility = getU23Eligibility(p);
-      return { player: p, ...eligibility };
-    });
-    
-    if (filter === 'eligible') {
-      list = list.filter(item => item.eligible);
-    }
-    
-    list.sort((a, b) => {
-      if (sortBy === 'eligibleFirst') {
-        if (a.eligible !== b.eligible) return a.eligible ? -1 : 1;
-      } else if (sortBy === 'notEligibleFirst') {
-        if (a.eligible !== b.eligible) return a.eligible ? 1 : -1;
-      }
-      const nameA = `${a.player.firstName || ''} ${a.player.lastName || ''}`.toLowerCase();
-      const nameB = `${b.player.firstName || ''} ${b.player.lastName || ''}`.toLowerCase();
-      return nameA.localeCompare(nameB);
-    });
-    
-    return list;
-  }, [squadList, filter, sortBy]);
-
-  return (
-    <div className="bg-[#121824] border border-[#334155] rounded-2xl p-5 shadow-lg mb-5 relative overflow-hidden">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-4">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-            <ShieldCheck size={18} />
-          </div>
-          <div>
-            <h3 className="font-black uppercase text-sm tracking-wider text-emerald-400">U23-Spielberechtigung</h3>
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Prioritätsübersicht im Kader</p>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1 bg-[#0A0E17] border border-[#334155] rounded-lg p-1">
-            <button
-              onClick={() => setFilter('all')}
-              className={`px-3 py-1 rounded-md text-[10px] font-black uppercase transition-all ${filter === 'all' ? 'bg-[#334155] text-white' : 'text-slate-400 hover:text-white'}`}
-            >
-              Alle Spieler
-            </button>
-            <button
-              onClick={() => setFilter('eligible')}
-              className={`px-3 py-1 rounded-md text-[10px] font-black uppercase transition-all ${filter === 'eligible' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'}`}
-            >
-              Nur U23 spielberechtigt
-            </button>
-          </div>
-          <div className="flex items-center gap-1 bg-[#0A0E17] border border-[#334155] rounded-lg p-1">
-            <button
-              onClick={() => setSortBy('eligibleFirst')}
-              className={`px-2.5 py-1 rounded-md text-[10px] font-black uppercase transition-all ${sortBy === 'eligibleFirst' ? 'bg-[#334155] text-white' : 'text-slate-400 hover:text-white'}`}
-            >
-              Berechtigt zuerst
-            </button>
-            <button
-              onClick={() => setSortBy('alphabetical')}
-              className={`px-2.5 py-1 rounded-md text-[10px] font-black uppercase transition-all ${sortBy === 'alphabetical' ? 'bg-[#334155] text-white' : 'text-slate-400 hover:text-white'}`}
-            >
-              A-Z
-            </button>
-          </div>
-        </div>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-52 overflow-y-auto custom-scrollbar">
-        {processedList.map(item => (
-          <div key={item.player.id} className="flex items-center justify-between bg-[#0A0E17] border border-[#334155] rounded-lg p-2.5">
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="w-6 h-6 flex items-center justify-center bg-[#121824] text-white border border-[#334155] text-[10px] font-black rounded">
-                #{(item.player as any).number || '-'}
-              </span>
-              <div className="min-w-0">
-                <div className="text-xs font-black text-white truncate">{item.player.firstName} {item.player.lastName}</div>
-                <div className="text-[9px] text-slate-500">{(item.player as any).position}</div>
-              </div>
-            </div>
-            <div className="text-right">
-              {item.eligible ? (
-                <div className="text-emerald-400 font-black text-[10px] uppercase">✅ U23 spielberechtigt</div>
-              ) : (
-                <div>
-                  <div className="text-rose-400 font-black text-[10px] uppercase">❌ Nicht spielberechtigt</div>
-                  {item.reason && <div className="text-[9px] text-rose-300">{item.reason}</div>}
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
 export const IndividualSteuerungView: React.FC<IndividualSteuerungViewProps> = ({
   players,
   individualTrainingData,
@@ -298,7 +176,7 @@ export const IndividualSteuerungView: React.FC<IndividualSteuerungViewProps> = (
   return (
     <div className="flex flex-col h-full bg-[#0A0E17] text-white p-3 sm:p-6 rounded-2xl border border-[#334155] shadow-xl min-h-screen space-y-5">
       {/* U23-Spielberechtigung Priorität (Ganz oben in Individuelle Steuerung) */}
-      <U23EligibilityOverview players={players} />
+      
 
       {/* ----------------- TOP HEADER / CONTROL BAR ----------------- */}
       <div className="bg-[#121824] border border-[#334155] rounded-2xl p-5 shadow-lg">
