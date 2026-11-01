@@ -532,6 +532,10 @@ export interface Player {
   einsatzzeitenGesamt?: number;
   testEinsatzzeitenGesamt?: number;
   loadAmpel?: 'Grün' | 'Gelb' | 'Rot';
+  /** Manuell überschriebene Anzahl Individual-Einheiten (leer/null = automatisch gezählt) */
+  individualUnitsCount?: number | null;
+  /** Manuell überschriebene Gesamt-Einheiten (leer/null = automatische Summe) */
+  individualUnitsTotal?: number | null;
   physioDurationOverrideDays?: number;
   physioMissingOverrideDays?: number;
   physical?: {

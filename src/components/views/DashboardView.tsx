@@ -1060,7 +1060,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <Trophy size={18} />
                   </div>
                   <div>
-                    <h3 className="font-black uppercase text-sm tracking-wider text-emerald-400">2. Letztes Liga-Spiel – Kurz-Analyse</h3>
+                    <h3 className="font-black uppercase text-sm tracking-wider text-emerald-400">2. Letztes Liga Spiel – Kurz-Analyse</h3>
                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{lastTestMatch.competition} • {lastTestMatch.fullDateTime}</p>
                   </div>
                 </div>

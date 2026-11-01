@@ -64,6 +64,29 @@ export const IndividualSteuerungView: React.FC<IndividualSteuerungViewProps> = (
 
   const sortedPlayers = sortPlayers(players).filter(p => p.category === 'player');
 
+  // Manuelle Eingaben für "Anzahl" / "Gesamt-Einheiten" (nur während des Tippens)
+  const [unitDrafts, setUnitDrafts] = React.useState<Record<string, { count?: string; total?: string }>>({});
+
+  const setUnitDraft = (playerId: string, field: 'count' | 'total', value: string | undefined) => {
+    setUnitDrafts(prev => {
+      const next = { ...prev, [playerId]: { ...prev[playerId] } };
+      if (value === undefined) delete next[playerId][field];
+      else next[playerId][field] = value;
+      if (!next[playerId].count && !next[playerId].total) delete next[playerId];
+      return next;
+    });
+  };
+
+  const saveUnitOverride = (playerId: string, field: 'individualUnitsCount' | 'individualUnitsTotal', raw: string) => {
+    const trimmed = raw.trim();
+    if (trimmed === '') {
+      onUpdatePlayer(playerId, field, null);
+      return;
+    }
+    const num = Number(trimmed.replace(',', '.'));
+    if (!isNaN(num)) onUpdatePlayer(playerId, field, Math.max(0, num));
+  };
+
   const getPlayerAmpelStatus = (player: Player): 'Grün' | 'Gelb' | 'Rot' => {
     const record = individualTrainingData.find(r => r.playerId === player.id && r.date === selectedIndividualDate);
     if (record?.loadAmpel) return record.loadAmpel;
@@ -314,8 +337,8 @@ export const IndividualSteuerungView: React.FC<IndividualSteuerungViewProps> = (
             <thead className="sticky top-0 bg-[#0A0E17] text-white z-20 border-b border-[#334155]">
               <tr>
                 <th className="p-3 border-r border-[#334155] text-center w-12 text-slate-500 font-black uppercase">Nr</th>
-                <th className="p-3 border-r border-[#334155] text-center w-20 font-black uppercase text-cyan-400 bg-[#0F172A]">Anzahl</th>
-                <th className="p-3 border-r border-[#334155] text-center w-28 font-black uppercase text-[#F59E0B] bg-[#1E293B]">Gesamt-Einheiten</th>
+                <th className="p-3 border-r border-[#334155] text-center w-24 font-black uppercase text-cyan-400 bg-[#0F172A]" title="Bearbeitbar – automatisch gezählt, manuell überschreibbar">Anzahl ✎</th>
+                <th className="p-3 border-r border-[#334155] text-center w-32 font-black uppercase text-[#F59E0B] bg-[#1E293B]" title="Bearbeitbar – automatische Summe, manuell überschreibbar">Gesamt-Einheiten ✎</th>
                 <th className="p-3 border-r border-[#334155] text-left w-52 font-black uppercase">Spieler</th>
                 <th className="p-3 border-r border-[#334155] text-center w-16 font-black uppercase text-[#F59E0B]">Pos</th>
                 <th className="p-3 border-r border-[#334155] text-center w-40 font-black uppercase">Belastungs-Ampel</th>
@@ -430,6 +453,11 @@ export const IndividualSteuerungView: React.FC<IndividualSteuerungViewProps> = (
 
                       const currentAmpel = getPlayerAmpelStatus(player);
 
+                      const manualCount = typeof player.individualUnitsCount === 'number' ? player.individualUnitsCount : null;
+                      const manualTotal = typeof player.individualUnitsTotal === 'number' ? player.individualUnitsTotal : null;
+                      const countDisplay = unitDrafts[player.id]?.count ?? String(manualCount ?? getEntryCount(player.id));
+                      const totalDisplay = unitDrafts[player.id]?.total ?? String(manualTotal ?? getTotalUnits(player.id));
+
                       const handleAmpelChange = (newAmpel: 'Grün' | 'Gelb' | 'Rot') => {
                         handleUpdateIndividualTraining(player.id, 'loadAmpel', newAmpel);
                         onUpdatePlayer(player.id, 'loadAmpel', newAmpel);
@@ -439,21 +467,72 @@ export const IndividualSteuerungView: React.FC<IndividualSteuerungViewProps> = (
                         <tr key={player.id} className="hover:bg-[#0A1628] transition-colors border-b border-[#334155] bg-[#121824] text-white">
                           <td className="p-2.5 border-r border-[#334155] text-center text-slate-500 font-mono font-bold">{pIdx + 1}</td>
                           
-                          {/* ANZAHL */}
+                          {/* ANZAHL (bearbeitbar) */}
                           <td className="p-2 border-r border-[#334155] text-center bg-[#0F172A]/40">
-                            <span className="inline-flex items-center justify-center px-2 py-1 rounded-md bg-cyan-500/15 text-cyan-400 border border-cyan-400/60 font-extrabold text-sm min-w-[36px]">
-                              {getEntryCount(player.id)}
-                            </span>
+                            <div className="flex items-center justify-center gap-1">
+                              <input
+                                type="number"
+                                min={0}
+                                inputMode="numeric"
+                                className={`w-14 text-center px-1 py-1 rounded-md bg-[#0A0E17] text-cyan-400 border font-extrabold text-sm focus:outline-none focus:border-cyan-400 ${
+                                  manualCount !== null ? 'border-cyan-400/80' : 'border-cyan-400/40'
+                                } ${!isEditing ? 'cursor-not-allowed opacity-80' : ''}`}
+                                value={countDisplay}
+                                onChange={(e) => {
+                                  setUnitDraft(player.id, 'count', e.target.value);
+                                  saveUnitOverride(player.id, 'individualUnitsCount', e.target.value);
+                                }}
+                                onBlur={() => setUnitDraft(player.id, 'count', undefined)}
+                                disabled={!isEditing}
+                                title={manualCount !== null
+                                  ? 'Manuell gesetzt – ↺ stellt die automatische Zählung wieder her'
+                                  : 'Automatisch gezählt – hier direkt überschreibbar'}
+                              />
+                              {isEditing && manualCount !== null && (
+                                <button
+                                  type="button"
+                                  onClick={() => onUpdatePlayer(player.id, 'individualUnitsCount', null)}
+                                  className="text-slate-500 hover:text-white text-xs cursor-pointer"
+                                  title="Automatische Zählung wiederherstellen"
+                                >
+                                  ↺
+                                </button>
+                              )}
+                            </div>
                           </td>
 
-                          {/* GESAMT-EINHEITEN */}
+                          {/* GESAMT-EINHEITEN (bearbeitbar) */}
                           <td className="p-2 border-r border-[#334155] text-center bg-[#1E293B]/40">
-                            <span 
-                              className="inline-flex items-center justify-center px-2.5 py-1 rounded-md bg-amber-500/20 text-amber-400 border border-amber-400/70 font-extrabold text-sm min-w-[44px]"
-                              title="Summe aller erfassten Individualtraining-Einheiten"
-                            >
-                              {getTotalUnits(player.id)}
-                            </span>
+                            <div className="flex items-center justify-center gap-1">
+                              <input
+                                type="number"
+                                min={0}
+                                inputMode="numeric"
+                                className={`w-16 text-center px-1 py-1 rounded-md bg-[#0A0E17] text-amber-400 border font-extrabold text-sm focus:outline-none focus:border-amber-400 ${
+                                  manualTotal !== null ? 'border-amber-400/90' : 'border-amber-400/60'
+                                } ${!isEditing ? 'cursor-not-allowed opacity-80' : ''}`}
+                                value={totalDisplay}
+                                onChange={(e) => {
+                                  setUnitDraft(player.id, 'total', e.target.value);
+                                  saveUnitOverride(player.id, 'individualUnitsTotal', e.target.value);
+                                }}
+                                onBlur={() => setUnitDraft(player.id, 'total', undefined)}
+                                disabled={!isEditing}
+                                title={manualTotal !== null
+                                  ? 'Manuell gesetzt – ↺ stellt die automatische Summe wieder her'
+                                  : 'Summe aller erfassten Individualtraining-Einheiten – hier direkt überschreibbar'}
+                              />
+                              {isEditing && manualTotal !== null && (
+                                <button
+                                  type="button"
+                                  onClick={() => onUpdatePlayer(player.id, 'individualUnitsTotal', null)}
+                                  className="text-slate-500 hover:text-white text-xs cursor-pointer"
+                                  title="Automatische Summe wiederherstellen"
+                                >
+                                  ↺
+                                </button>
+                              )}
+                            </div>
                           </td>
 
                           <td className="p-2.5 border-r border-[#334155]">
