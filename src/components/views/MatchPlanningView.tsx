@@ -263,31 +263,90 @@ export const MatchPlanningView: React.FC<MatchPlanningViewProps> = ({
     return { label: 'Kein Stammspieler', cls: 'bg-emerald-50 text-emerald-700 border-emerald-300', pct, playedGames, totalGames };
   };
 
-  // U23-Liste: Ampelfarben nach Einsaetzen.
-  //  rot    = ueber 50 % Einsatzquote (darf nicht mehr fuer U23 priorisiert werden)
-  //  gelb   = mindestens 5 Spiele, aber unter 50 %
-  //  gruen  = weniger als 5 Spiele und unter 50 %
+  // U23-Liste: Ampelfarben nach Einsaetzen UND letztem Spiel.
+  // Regeln (A-Kader / U23):
+  //  - Letztes Spiel nicht gespielt (Wochenende frei) -> GRUEN (einsatzbereit)
+  //  - Letztes Spiel gespielt und Quote > 50 %        -> ROT  (nicht mehr U23)
+  //  - Letztes Spiel gespielt, >= 5 Einsaetze, < 50 % -> GELB (Grenzfall)
+  //  - sonst                                          -> GRUEN (spielberechtigt)
+  const lastPlayedMatch = useMemo(() => {
+    if (stammspielerPlayedMatches.length === 0) return null;
+    return stammspielerPlayedMatches[stammspielerPlayedMatches.length - 1];
+  }, [stammspielerPlayedMatches]);
+
   const u23Info = useMemo(() => {
-    const map: Record<string, { playedGames: number; totalGames: number; pct: number; tone: 'green' | 'yellow' | 'red' }> = {};
+    const map: Record<string, {
+      playedGames: number;
+      totalGames: number;
+      pct: number;
+      tone: 'green' | 'yellow' | 'red';
+      playedLastGame: boolean;
+      manualPlayedGames: number | null;
+      manualTotalGames: number | null;
+      minutes: number;
+    }> = {};
     if (!isU23) return map;
     players.filter(isPlayer).forEach(player => {
-      const s = getStammspielerStatus(player.id);
-      const tone: 'green' | 'yellow' | 'red' = s.pct > 50 ? 'red' : (s.playedGames >= 5 ? 'yellow' : 'green');
-      map[player.id] = { playedGames: s.playedGames, totalGames: s.totalGames, pct: s.pct, tone };
+      const auto = getStammspielerStatus(player.id);
+      const rec = matchMinutes.find(r => r.playerId === player.id);
+      const manualPlayedGames = typeof rec?.manualPlayedGames === 'number' ? rec.manualPlayedGames : null;
+      const manualTotalGames = typeof rec?.manualTotalGames === 'number' ? rec.manualTotalGames : null;
+      const playedGames = manualPlayedGames ?? auto.playedGames;
+      const totalGames = manualTotalGames ?? auto.totalGames;
+      const pct = totalGames > 0 ? (playedGames / totalGames) * 100 : 0;
+      const appearanceSet = appearancesByPlayer[player.id] || new Set<string>();
+      const playedLastGame = lastPlayedMatch ? appearanceSet.has(String(lastPlayedMatch.id)) : false;
+
+      let tone: 'green' | 'yellow' | 'red';
+      if (!lastPlayedMatch || !playedLastGame) {
+        tone = 'green';                       // Wochenende frei -> einsatzbereit
+      } else if (pct > 50) {
+        tone = 'red';                         // ueber 50 % und zuletzt gespielt
+      } else if (playedGames >= 5 && pct < 50) {
+        tone = 'yellow';                      // viele Einsaetze, aber unter 50 %
+      } else {
+        tone = 'green';
+      }
+
+      const allMinutes = { ...(rec?.matchMinutes || {}), ...(rec?.minutes || {}) };
+      const minutes = Object.values(allMinutes).reduce((acc, curr) => acc + (Number(curr) || 0), 0);
+
+      map[player.id] = { playedGames, totalGames, pct, tone, playedLastGame, manualPlayedGames, manualTotalGames, minutes };
     });
     return map;
-  }, [players, isU23, appearancesByPlayer, stammspielerPlayedMatches, stammspielerMinuteList]);
+  }, [players, isU23, appearancesByPlayer, stammspielerPlayedMatches, matchMinutes, lastPlayedMatch]);
+
+  // U23: Einsaetze / Spiele gesamt manuell pflegen (nur additive Felder, keine Daten werden geloescht).
+  const setU23Manual = (playerId: string, field: 'manualPlayedGames' | 'manualTotalGames', raw: string) => {
+    const rec = matchMinutes.find(r => r.playerId === playerId) || { playerId, minutes: {}, details: {} };
+    const trimmed = raw.trim();
+    if (trimmed === '') {
+      void onSaveMinutes({ ...rec, [field]: null });
+      return;
+    }
+    const num = Number(trimmed.replace(',', '.'));
+    if (isNaN(num)) return;
+    void onSaveMinutes({ ...rec, [field]: Math.max(0, Math.round(num)) });
+  };
+
+  const u23Counts = useMemo(() => {
+    const counts = { green: 0, yellow: 0, red: 0 };
+    Object.values(u23Info).forEach(info => { counts[info.tone] += 1; });
+    return counts;
+  }, [u23Info]);
+
 
   // U23-Liste: positionsunabhaengig nach wenigsten Einsaetzen sortieren;
-  // rote Spieler (ueber 50 %) rutschen ans Ende. Gleichstand -> niedrigere Quote zuerst.
+  // erst GRUEN (einsatzbereit), dann GELB, dann ROT. Gleichstand -> niedrigere Quote zuerst.
   const displayedPlayers = useMemo(() => {
     const base = players.filter(isPlayer);
     if (!isU23) return base;
+    const rank: Record<'green' | 'yellow' | 'red', number> = { green: 0, yellow: 1, red: 2 };
     return [...base].sort((a, b) => {
       const ia = u23Info[a.id];
       const ib = u23Info[b.id];
-      const ra = ia?.tone === 'red' ? 1 : 0;
-      const rb = ib?.tone === 'red' ? 1 : 0;
+      const ra = rank[ia?.tone ?? 'green'];
+      const rb = rank[ib?.tone ?? 'green'];
       if (ra !== rb) return ra - rb;
       const pa = ia?.playedGames ?? 0;
       const pb = ib?.playedGames ?? 0;
@@ -295,6 +354,7 @@ export const MatchPlanningView: React.FC<MatchPlanningViewProps> = ({
       return (ia?.pct ?? 0) - (ib?.pct ?? 0);
     });
   }, [players, isU23, u23Info]);
+
 
   const matchStats = useMemo(() => {
     let played = 0;
@@ -842,6 +902,204 @@ export const MatchPlanningView: React.FC<MatchPlanningViewProps> = ({
             exit={{ opacity: 0, y: -10 }}
             className="space-y-6"
           >
+            {isU23 && (
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+                {/* LINKS: Übersicht / Tabelle aller Spieler */}
+                <div className="xl:col-span-2 bg-white border border-[#DADADA] rounded-2xl shadow-sm overflow-hidden">
+                  <div className="p-4 border-b border-[#DADADA] bg-[#F4F4F4] flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <h3 className="text-base font-black uppercase text-[#1A1A1A] flex items-center gap-2">
+                        <Users size={16} className="text-[#4C6FFF]" />
+                        <span>U23-Spielerübersicht · A-Kader</span>
+                      </h3>
+                      <p className="text-[10px] font-bold uppercase text-[#4A4A4A] tracking-wider mt-0.5">
+                        Einsatzzeiten &amp; Spielzahlen manuell pflegbar
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-black uppercase">
+                      <span className="px-2 py-1 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-300">🟢 {u23Counts.green} einsatzbereit</span>
+                      <span className="px-2 py-1 rounded-lg bg-amber-100 text-amber-800 border border-amber-300">🟡 {u23Counts.yellow} Grenzfall</span>
+                      <span className="px-2 py-1 rounded-lg bg-red-600 text-white border border-red-600">🔴 {u23Counts.red} nicht U23</span>
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto custom-scrollbar">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-[#F4F4F4] text-[#1A1A1A] uppercase text-[10px] font-black tracking-widest border-b border-[#DADADA]">
+                          <th className="p-3 border-r border-[#DADADA]">SPIELER</th>
+                          <th className="p-3 border-r border-[#DADADA] text-center">STATUS</th>
+                          <th className="p-3 border-r border-[#DADADA] text-center" title="Manuell pflegbar">EINSÄTZE</th>
+                          <th className="p-3 border-r border-[#DADADA] text-center" title="Manuell pflegbar">SPIELE GESAMT</th>
+                          <th className="p-3 border-r border-[#DADADA] text-center">QUOTE</th>
+                          <th className="p-3 border-r border-[#DADADA] text-center">MINUTEN</th>
+                          <th className="p-3">LETZTES SPIEL</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#DADADA]">
+                        {displayedPlayers.map(player => {
+                          const info = u23Info[player.id];
+                          const tone = info?.tone ?? 'green';
+                          const rowCls = tone === 'red'
+                            ? 'bg-red-50 text-red-700'
+                            : tone === 'yellow'
+                              ? 'bg-amber-50 text-amber-800'
+                              : 'bg-emerald-50/60 text-emerald-900';
+                          const pillCls = tone === 'red'
+                            ? 'bg-red-600 text-white border-red-600'
+                            : tone === 'yellow'
+                              ? 'bg-amber-100 text-amber-800 border-amber-300'
+                              : 'bg-emerald-100 text-emerald-800 border-emerald-300';
+                          const toneLabel = tone === 'red' ? 'Nicht U23' : tone === 'yellow' ? 'Grenzfall' : 'Einsatzbereit';
+                          const toneDot = tone === 'red' ? '🔴' : tone === 'yellow' ? '🟡' : '🟢';
+
+                          return (
+                            <tr key={player.id} className={`${rowCls} transition-colors`}>
+                              <td className="p-3 border-r border-[#DADADA]">
+                                <div className="font-black uppercase text-xs text-[#1A1A1A]">
+                                  {player.lastName} {player.firstName ? `(${player.firstName.charAt(0)}.)` : ''}
+                                </div>
+                                <div className="text-[10px] font-bold uppercase text-[#4A4A4A]">
+                                  #{player.number || '-'} · {player.position || '-'}
+                                </div>
+                              </td>
+                              <td className="p-2.5 border-r border-[#DADADA] text-center">
+                                <span className={`px-2 py-1 rounded-lg font-black text-[10px] uppercase inline-flex items-center gap-1 border ${pillCls}`}>
+                                  <span>{toneDot}</span>
+                                  <span>{toneLabel}</span>
+                                </span>
+                              </td>
+                              <td className="p-2.5 border-r border-[#DADADA] text-center">
+                                <div className="flex items-center justify-center gap-1">
+                                  <EditableField
+                                    type="number"
+                                    className={`w-16 border bg-white p-1 text-center font-black rounded-lg text-xs focus:border-[#4C6FFF] focus:outline-none ${info?.manualPlayedGames != null ? 'border-[#4C6FFF]' : 'border-[#DADADA]'}`}
+                                    value={String(info?.playedGames ?? 0)}
+                                    onSave={(val) => setU23Manual(player.id, 'manualPlayedGames', val)}
+                                  />
+                                  {info?.manualPlayedGames != null && (
+                                    <button
+                                      onClick={() => setU23Manual(player.id, 'manualPlayedGames', '')}
+                                      className="text-[#4A4A4A] hover:text-[#1A1A1A] cursor-pointer"
+                                      title="Automatische Zählung wiederherstellen"
+                                    >
+                                      ↺
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="p-2.5 border-r border-[#DADADA] text-center">
+                                <div className="flex items-center justify-center gap-1">
+                                  <EditableField
+                                    type="number"
+                                    className={`w-16 border bg-white p-1 text-center font-black rounded-lg text-xs focus:border-[#4C6FFF] focus:outline-none ${info?.manualTotalGames != null ? 'border-[#4C6FFF]' : 'border-[#DADADA]'}`}
+                                    value={String(info?.totalGames ?? 0)}
+                                    onSave={(val) => setU23Manual(player.id, 'manualTotalGames', val)}
+                                  />
+                                  {info?.manualTotalGames != null && (
+                                    <button
+                                      onClick={() => setU23Manual(player.id, 'manualTotalGames', '')}
+                                      className="text-[#4A4A4A] hover:text-[#1A1A1A] cursor-pointer"
+                                      title="Automatische Zählung wiederherstellen"
+                                    >
+                                      ↺
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="p-2.5 border-r border-[#DADADA] text-center font-black text-xs">
+                                {(info?.pct ?? 0).toFixed(0)}%
+                              </td>
+                              <td className="p-2.5 border-r border-[#DADADA] text-center font-black text-xs">
+                                {info?.minutes ?? 0} min
+                              </td>
+                              <td className="p-2.5 text-[10px] font-black uppercase text-[#4A4A4A]">
+                                {info?.playedLastGame
+                                  ? <span className="text-emerald-700">gespielt · {lastPlayedMatch?.opponent ?? '-'}</span>
+                                  : <span className="text-[#4A4A4A]">nicht gespielt{lastPlayedMatch ? ` · ${lastPlayedMatch.opponent}` : ''}</span>}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* RECHTS: Kader-/Steuerungsbereich */}
+                <div className="space-y-4">
+                  <div className="bg-white border border-[#DADADA] rounded-2xl p-4 shadow-sm">
+                    <h3 className="text-sm font-black uppercase text-[#1A1A1A] flex items-center gap-2 mb-2">
+                      <Target size={15} className="text-[#4C6FFF]" /> Steuerung
+                    </h3>
+                    <div className="space-y-2 text-[11px] font-bold text-[#4A4A4A]">
+                      <div className="flex items-start gap-2"><span>🟢</span><span><b className="text-[#1A1A1A]">Grün:</b> einsatzbereit – letztes Spiel nicht gespielt oder Quote ≤ 50 %</span></div>
+                      <div className="flex items-start gap-2"><span>🟡</span><span><b className="text-[#1A1A1A]">Gelb:</b> Grenzfall – zuletzt gespielt, ≥ 5 Einsätze, aber unter 50 %</span></div>
+                      <div className="flex items-start gap-2"><span>🔴</span><span><b className="text-[#1A1A1A]">Rot:</b> zuletzt gespielt und über 50 % – nicht mehr U23</span></div>
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-[#DADADA] space-y-2">
+                      <button
+                        onClick={() => {
+                          if (lastPlayedMatch) setSelectedMatchId(lastPlayedMatch.id);
+                          setViewMode('detail');
+                        }}
+                        disabled={!lastPlayedMatch}
+                        className="w-full bg-[#1A1A1A] hover:bg-black disabled:opacity-40 text-[#FACC15] px-4 py-2.5 font-black uppercase text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed"
+                      >
+                        <Timer size={14} /> Einsatzzeiten erfassen
+                      </button>
+                      <button
+                        onClick={() => setViewMode('table')}
+                        className="w-full bg-[#F4F4F4] hover:bg-[#EAEAEA] text-[#1A1A1A] border border-[#DADADA] px-4 py-2.5 font-black uppercase text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <List size={14} /> Tabellen-Plan
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="bg-white border border-[#DADADA] rounded-2xl shadow-sm overflow-hidden">
+                    <div className="p-3 border-b border-[#DADADA] bg-[#F4F4F4] flex items-center justify-between">
+                      <h3 className="text-xs font-black uppercase text-[#1A1A1A] flex items-center gap-2">
+                        <Calendar size={14} className="text-[#4C6FFF]" /> Letzte Spiele
+                      </h3>
+                      {lastPlayedMatch && (
+                        <span className="text-[10px] font-black uppercase text-[#4A4A4A]">
+                          {formatDate(lastPlayedMatch.date)}
+                        </span>
+                      )}
+                    </div>
+                    <div className="divide-y divide-[#DADADA] max-h-[320px] overflow-y-auto custom-scrollbar">
+                      {[...sortedMatches].reverse().slice(0, 6).map(match => (
+                        <button
+                          key={match.id}
+                          onClick={() => {
+                            setSelectedMatchId(match.id);
+                            setViewMode('detail');
+                          }}
+                          className="w-full text-left p-3 hover:bg-[#F9FAFB] transition-colors cursor-pointer"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-black uppercase text-[#1A1A1A] truncate">{match.opponent}</span>
+                            <span className="text-[10px] font-black text-[#4A4A4A] whitespace-nowrap">{formatDate(match.date)}</span>
+                          </div>
+                          <div className="flex items-center justify-between gap-2 mt-0.5">
+                            <span className="text-[10px] font-bold uppercase text-[#4A4A4A]">{match.isHome ? 'HEIM' : 'AUSWÄRTS'}</span>
+                            <span className={`text-[10px] font-black ${match.result ? 'text-[#1A1A1A]' : 'text-[#4A4A4A]'}`}>
+                              {match.result || 'offen'}
+                            </span>
+                          </div>
+                        </button>
+                      ))}
+                      {sortedMatches.length === 0 && (
+                        <div className="p-6 text-center text-[11px] font-bold uppercase text-[#4A4A4A]">Keine Spiele angelegt</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {!isU23 && (<>
             {/* Next Match Highlight Card (Sporty High-Impact CoCoach Box) */}
             {(() => {
               const now = new Date().toISOString().split('T')[0];
@@ -988,6 +1246,7 @@ export const MatchPlanningView: React.FC<MatchPlanningViewProps> = ({
                 </motion.div>
               ))}
             </div>
+            </>)}
           </motion.div>
         ) : viewMode === 'table' ? (
           <motion.div
@@ -1293,7 +1552,7 @@ export const MatchPlanningView: React.FC<MatchPlanningViewProps> = ({
                         <span>SPIELER-EINSATZZEITEN</span>
                       </h3>
                       <div className="text-[11px] font-black uppercase text-[#4A4A4A] bg-white border border-[#DADADA] px-2.5 py-1 rounded-lg">
-                        Minuten werden automatisch berechnet
+                        {isU23 ? 'Ampel: letztes Spiel + 50%-Regel' : 'Minuten werden automatisch berechnet'}
                       </div>
                     </div>
                     
@@ -1382,14 +1641,15 @@ export const MatchPlanningView: React.FC<MatchPlanningViewProps> = ({
                                 <td className="p-3 border-r border-[#DADADA] text-center">
                                   {isU23 ? (
                                     <span
-                                      title={`${u23?.playedGames ?? 0} von ${u23?.totalGames ?? 0} Spielen eingesetzt · ${(u23?.pct ?? 0).toFixed(1)}%`}
+                                      title={`${u23?.playedGames ?? 0} von ${u23?.totalGames ?? 0} Spielen eingesetzt · ${(u23?.pct ?? 0).toFixed(1)}% · ${u23?.playedLastGame ? 'letztes Spiel gespielt' : 'letztes Spiel nicht gespielt (frei)'}`}
                                       className={`px-2.5 py-1 rounded-lg font-black text-[10px] uppercase inline-flex items-center gap-1 border ${
                                         u23Tone === 'red' ? 'bg-red-600 text-white border-red-600'
                                         : u23Tone === 'yellow' ? 'bg-amber-100 text-amber-800 border-amber-300'
                                         : 'bg-emerald-100 text-emerald-800 border-emerald-300'
                                       }`}
                                     >
-                                      <span>{u23?.playedGames ?? 0} von {u23?.totalGames ?? 0} Spielen · {(u23?.pct ?? 0).toFixed(0)}%</span>
+                                      <span>{u23Tone === 'red' ? '🔴' : u23Tone === 'yellow' ? '🟡' : '🟢'}</span>
+                                      <span>{u23?.playedGames ?? 0} von {u23?.totalGames ?? 0} · {(u23?.pct ?? 0).toFixed(0)}%</span>
                                     </span>
                                   ) : (
                                     <span

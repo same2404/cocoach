@@ -473,6 +473,10 @@ export interface MatchMinuteRecord {
   matchMinutes?: Record<string | number, number>; // for backward compatibility
   matchAvailability?: Record<string | number, 'Anwesend' | 'Verletzt' | 'Entschuldigt' | ''>;
   details?: Record<string | number, { start: string, end: string, notes: string }>; // match id -> details
+  /** U23: manuell gepflegte Anzahl Einsätze (leer = automatisch aus Minuten gezählt) */
+  manualPlayedGames?: number | null;
+  /** U23: manuell gepflegte Anzahl Spiele gesamt (leer = automatisch gezählt) */
+  manualTotalGames?: number | null;
 }
 
 export interface AttendanceRecord {
