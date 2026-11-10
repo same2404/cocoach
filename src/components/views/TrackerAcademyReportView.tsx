@@ -2,7 +2,6 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Player, TrackerAcademyReport } from '../../types';
 import { sortPlayers } from '../../utils/playerSorting';
 import { generateTrackerAcademyReport } from '../../utils/trackerReportCalculator';
-import { fixOklchForHtml2Canvas } from '../../utils/pdfExportHelper';
 import { formatSessionDate } from '../../utils/dateUtils';
 import JSZip from 'jszip';
 import { 
@@ -24,8 +23,6 @@ import {
   Target,
   Trash2 
 } from 'lucide-react';
-import html2canvas from 'html2canvas-pro';
-import { jsPDF } from 'jspdf';
 
 interface TrackerAcademyReportViewProps {
   players: Player[];
@@ -455,47 +452,61 @@ export const TrackerAcademyReportView: React.FC<TrackerAcademyReportViewProps> =
     }
   };
 
-  // PDF Export
-  const handleExportPDF = async () => {
-    if (!pdfReportRef.current) return;
-    showToast("PDF-Export wird vorbereitet...");
-    try {
-      const canvas = await html2canvas(pdfReportRef.current, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#FFFFFF',
-        logging: false,
-        onclone: (clonedDoc) => {
-          fixOklchForHtml2Canvas(clonedDoc);
-        }
-      });
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = pdfWidth;
-      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+  // PDF Export: über den System-Druckdialog (dort "Als PDF speichern").
+  // Bewusst ohne Canvas-Rasterung, weil der lange Bericht die Canvas-Grenzen
+  // überschreiten kann und der Export dann ohne Rückmeldung hängen bleibt.
+  const handleExportPDF = () => {
+    const reportNode = pdfReportRef.current;
+    if (!reportNode) return;
 
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pdfHeight;
-
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pdfHeight;
-      }
-
-      const cleanName = activeReport ? activeReport.playerName.replace(/\s+/g, '_') : 'Spielerbericht';
-      pdf.save(`Spielerbericht_${cleanName}_${new Date().toISOString().split('T')[0]}.pdf`);
-      showToast("✅ PDF erfolgreich gedruckt und heruntergeladen!");
-    } catch (err) {
-      console.error("PDF Export error:", err);
-      alert("Fehler beim Erstellen der PDF-Datei.");
+    const printWindow = window.open('', '_blank', 'width=1000,height=1200');
+    if (!printWindow) {
+      showToast('Bitte Pop-ups erlauben – dann öffnet sich der Druckdialog.');
+      return;
     }
+
+    const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
+      .map(el => el.outerHTML)
+      .join('\n');
+    const cleanName = activeReport ? activeReport.playerName.replace(/\s+/g, '_') : 'Spielerbericht';
+
+    printWindow.document.open();
+    printWindow.document.write(`<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<title>Spielerbericht ${cleanName}</title>
+${styles}
+<style>
+  @page { size: A4; margin: 8mm; }
+  html, body { background: #ffffff !important; margin: 0; padding: 0; }
+  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  button { display: none !important; }
+  .rounded-2xl { border-radius: 0 !important; }
+  .shadow-2xl { box-shadow: none !important; }
+</style>
+</head>
+<body>${reportNode.outerHTML}</body>
+</html>`);
+    printWindow.document.close();
+
+    let printed = false;
+    const triggerPrint = () => {
+      if (printed) return;
+      printed = true;
+      try {
+        printWindow.focus();
+        printWindow.print();
+        showToast('Druckdialog geöffnet – dort „Als PDF speichern“ wählen.');
+      } catch (err) {
+        console.error('PDF print error:', err);
+        showToast('Druckdialog konnte nicht geöffnet werden. Bitte Strg+P nutzen.');
+      }
+    };
+
+    printWindow.onload = () => window.setTimeout(triggerPrint, 300);
+    // Fallback: auch wenn onload nicht feuert, öffnet sich der Druckdialog.
+    window.setTimeout(triggerPrint, 1200);
   };
 
   // Helper color badges
