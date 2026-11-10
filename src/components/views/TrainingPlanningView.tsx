@@ -53,7 +53,7 @@ import {
   Loader2,
   BrainCircuit
 } from 'lucide-react';
-import html2canvas from 'html2canvas';
+import html2canvas from 'html2canvas-pro';
 import { fixOklchForHtml2Canvas } from '../../utils/pdfExportHelper';
 import { 
   Document as DocxDocument, 

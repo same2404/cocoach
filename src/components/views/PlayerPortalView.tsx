@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import html2canvas from 'html2canvas';
+import html2canvas from 'html2canvas-pro';
 import { jsPDF } from 'jspdf';
 import { fixOklchForHtml2Canvas } from '../../utils/pdfExportHelper';
 import { Spieler, DecodedTrackerData } from '../../types';

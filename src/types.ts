@@ -477,6 +477,8 @@ export interface MatchMinuteRecord {
   manualPlayedGames?: number | null;
   /** U23: manuell gepflegte Anzahl Spiele gesamt (leer = automatisch gezählt) */
   manualTotalGames?: number | null;
+  /** U23: nur aus der U23-Liste ausblenden (Spieler bleibt im Kader erhalten) */
+  u23Hidden?: boolean;
 }
 
 export interface AttendanceRecord {

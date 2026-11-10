@@ -25,7 +25,7 @@ import {
   AlertCircle,
   Loader2
 } from 'lucide-react';
-import html2canvas from 'html2canvas';
+import html2canvas from 'html2canvas-pro';
 import { jsPDF } from 'jspdf';
 import { fixOklchForHtml2Canvas } from '../../utils/pdfExportHelper';
 import { apiFetch } from '../../lib/apiClient';

@@ -1187,7 +1187,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </div>
                     {lastTestMatch.prevMatchText && (
                       <div className="flex items-start gap-1.5">
-                        <span className="text-amber-400 font-black text-[11px] shrink-0">👟 Vorheriges Testspiel:</span>
+                        <span className="text-amber-400 font-black text-[11px] shrink-0">👟 Vorheriges Liga-Spiel:</span>
                         <span className="text-slate-400 font-medium">
                           {lastTestMatch.prevMatchText}
                         </span>

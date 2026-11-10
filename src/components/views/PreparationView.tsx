@@ -19,7 +19,7 @@ import {
   MessageSquare
 } from 'lucide-react';
 import { SummerPrepUnit } from '../../types';
-import html2canvas from 'html2canvas';
+import html2canvas from 'html2canvas-pro';
 import { jsPDF } from 'jspdf';
 import { fixOklchForHtml2Canvas } from '../../utils/pdfExportHelper';
 

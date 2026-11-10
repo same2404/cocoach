@@ -160,6 +160,15 @@ export const MatchPlanningView: React.FC<MatchPlanningViewProps> = ({
   const [opponentToDelete, setOpponentToDelete] = useState<Opponent | null>(null);
   const [playerToReset, setPlayerToReset] = useState<Player | null>(null);
 
+  // U23 – Bearbeiten/Hinzufügen/Entfernen (nur Anzeige, keine Daten werden gelöscht)
+  const [u23EditPlayer, setU23EditPlayer] = useState<Player | null>(null);
+  const [u23EditForm, setU23EditForm] = useState<{ played: string; total: string }>({ played: '', total: '' });
+  const [u23RemovePlayer, setU23RemovePlayer] = useState<Player | null>(null);
+  const [u23ShowAddPicker, setU23ShowAddPicker] = useState(false);
+  const [u23EditEntry, setU23EditEntry] = useState<Player | null>(null);
+  const [u23EntryForm, setU23EntryForm] = useState<{ start: string; end: string; minutes: string; notes: string }>({ start: '', end: '', minutes: '', notes: '' });
+  const [u23EntryToClear, setU23EntryToClear] = useState<Player | null>(null);
+
   const formatDate = (dateStr: string | undefined): string => {
     if (!dateStr) return 'TBD';
     if (dateStr.includes('.')) return dateStr;
@@ -196,6 +205,17 @@ export const MatchPlanningView: React.FC<MatchPlanningViewProps> = ({
       return (Number(a.index) || 0) - (Number(b.index) || 0);
     });
   }, [matches]);
+
+  // Sobald Spiele (nach-)geladen werden, automatisch das erste Spiel auswählen.
+  // Sonst zeigt "Spiel-Details" nach dem Öffnen "Kein Spiel ausgewählt" und
+  // es sieht so aus, als könnte man dort nichts bearbeiten.
+  React.useEffect(() => {
+    if (matches.length === 0) return;
+    const stillThere = matches.some(m => m.id === selectedMatchId);
+    if (!stillThere && sortedMatches.length > 0) {
+      setSelectedMatchId(sortedMatches[0].id);
+    }
+  }, [matches, selectedMatchId, sortedMatches]);
 
   // DFB-Stammspieler-Regel:
   // Datengrundlage: Pflichtspiele (wenn uebergeben), sonst eigene Spiele/Minuten.
@@ -329,6 +349,116 @@ export const MatchPlanningView: React.FC<MatchPlanningViewProps> = ({
     void onSaveMinutes({ ...rec, [field]: Math.max(0, Math.round(num)) });
   };
 
+  // U23: Datensatz eines Spielers holen (ohne etwas anzulegen).
+  const u23RecordFor = (playerId: string): MatchMinuteRecord =>
+    matchMinutes.find(r => r.playerId === playerId) || { playerId, minutes: {}, details: {} };
+
+  // U23: Bearbeiten-Dialog für Einsätze / Spiele gesamt öffnen.
+  const openU23PlayerEdit = (player: Player) => {
+    const info = u23Info[player.id];
+    setU23EditForm({
+      played: String(info?.playedGames ?? 0),
+      total: String(info?.totalGames ?? 0),
+    });
+    setU23EditPlayer(player);
+  };
+
+  // U23: manuelle Werte aus dem Dialog speichern.
+  const saveU23PlayerEdit = async () => {
+    if (!u23EditPlayer) return;
+    const rec = u23RecordFor(u23EditPlayer.id);
+    const playedRaw = u23EditForm.played.trim();
+    const totalRaw = u23EditForm.total.trim();
+    const parsedPlayed = playedRaw === '' ? null : Math.max(0, Math.round(Number(playedRaw.replace(',', '.'))));
+    const parsedTotal = totalRaw === '' ? null : Math.max(0, Math.round(Number(totalRaw.replace(',', '.'))));
+    // Leeres Feld = wieder automatisch zählen (null), Zahl = manuell gepflegt.
+    await onSaveMinutes({
+      ...rec,
+      manualPlayedGames: parsedPlayed === null || isNaN(parsedPlayed) ? null : parsedPlayed,
+      manualTotalGames: parsedTotal === null || isNaN(parsedTotal) ? null : parsedTotal,
+    });
+    setU23EditPlayer(null);
+  };
+
+  // U23: zurück auf automatische Zählung.
+  const resetU23PlayerEdit = async () => {
+    if (!u23EditPlayer) return;
+    const rec = u23RecordFor(u23EditPlayer.id);
+    await onSaveMinutes({ ...rec, manualPlayedGames: null, manualTotalGames: null });
+    setU23EditPlayer(null);
+  };
+
+  // U23: Spieler nur aus der U23-Liste ausblenden (bleibt im Kader erhalten).
+  const setU23Hidden = async (player: Player, hidden: boolean) => {
+    const rec = u23RecordFor(player.id);
+    await onSaveMinutes({ ...rec, u23Hidden: hidden });
+  };
+
+  // U23: Minuten aus Start/Ende berechnen.
+  const minutesFromTimes = (start: string, end: string) => {
+    if (!start || !end) return 0;
+    const [sh, sm] = start.split(':').map(Number);
+    const [eh, em] = end.split(':').map(Number);
+    const diff = (eh * 60 + em) - (sh * 60 + sm);
+    return diff > 0 ? diff : 0;
+  };
+
+  // U23: Einsatz-Eintrag für das ausgewählte Spiel bearbeiten.
+  const openU23EntryEdit = (player: Player) => {
+    const rec = matchMinutes.find(r => r.playerId === player.id);
+    const details = rec?.details?.[selectedMatchId] || { start: '', end: '', notes: '' };
+    const minutes = rec?.minutes?.[selectedMatchId] ?? rec?.matchMinutes?.[selectedMatchId] ?? 0;
+    setU23EntryForm({
+      start: details.start || '',
+      end: details.end || '',
+      minutes: String(minutes || ''),
+      notes: details.notes || '',
+    });
+    setU23EditEntry(player);
+  };
+
+  // U23: Einsatz-Eintrag speichern (Start/Ende/Notiz + Minuten manuell).
+  const saveU23EntryEdit = async () => {
+    if (!u23EditEntry || !selectedMatchId) return;
+    const rec = u23RecordFor(u23EditEntry.id);
+    const details = { ...(rec.details || {}) };
+    const minutesMap = { ...(rec.matchMinutes || {}), ...(rec.minutes || {}) };
+    const computed = minutesFromTimes(u23EntryForm.start, u23EntryForm.end);
+    const manualRaw = String(u23EntryForm.minutes).trim();
+    const manual = Number(manualRaw.replace(',', '.'));
+    const minutes = manualRaw !== '' && Number.isFinite(manual) ? Math.max(0, Math.round(manual)) : computed;
+    await onSaveMinutes({
+      ...rec,
+      details: {
+        ...details,
+        [selectedMatchId]: { start: u23EntryForm.start, end: u23EntryForm.end, notes: u23EntryForm.notes },
+      },
+      minutes: { ...minutesMap, [selectedMatchId]: minutes },
+    });
+    setU23EditEntry(null);
+  };
+
+  // U23: nur den Eintrag dieses Spielers für dieses eine Spiel entfernen.
+  const clearU23Entry = async (player: Player) => {
+    if (!selectedMatchId) return;
+    const rec = u23RecordFor(player.id);
+    const details = { ...(rec.details || {}) };
+    const minutesMap = { ...(rec.matchMinutes || {}), ...(rec.minutes || {}) };
+    delete details[selectedMatchId];
+    delete minutesMap[selectedMatchId];
+    await onSaveMinutes({ ...rec, details, minutes: minutesMap });
+    setU23EntryToClear(null);
+  };
+
+  // U23: aktuell ausgeblendete Spieler (können wieder hinzugefügt werden).
+  const u23HiddenPlayers = useMemo(() => {
+    if (!isU23) return [] as Player[];
+    const hiddenIds = new Set(
+      matchMinutes.filter(r => r.u23Hidden === true).map(r => r.playerId)
+    );
+    return players.filter(isPlayer).filter(p => hiddenIds.has(p.id));
+  }, [players, isU23, matchMinutes]);
+
   const u23Counts = useMemo(() => {
     const counts = { green: 0, yellow: 0, red: 0 };
     Object.values(u23Info).forEach(info => { counts[info.tone] += 1; });
@@ -338,8 +468,12 @@ export const MatchPlanningView: React.FC<MatchPlanningViewProps> = ({
 
   // U23-Liste: positionsunabhaengig nach wenigsten Einsaetzen sortieren;
   // erst GRUEN (einsatzbereit), dann GELB, dann ROT. Gleichstand -> niedrigere Quote zuerst.
+  // Ausgeblendete Spieler (u23Hidden) erscheinen nicht in der Liste, bleiben aber im Kader.
   const displayedPlayers = useMemo(() => {
-    const base = players.filter(isPlayer);
+    const hiddenIds = isU23
+      ? new Set(matchMinutes.filter(r => r.u23Hidden === true).map(r => r.playerId))
+      : new Set<string>();
+    const base = players.filter(isPlayer).filter(p => !hiddenIds.has(p.id));
     if (!isU23) return base;
     const rank: Record<'green' | 'yellow' | 'red', number> = { green: 0, yellow: 1, red: 2 };
     return [...base].sort((a, b) => {
@@ -353,7 +487,7 @@ export const MatchPlanningView: React.FC<MatchPlanningViewProps> = ({
       if (pa !== pb) return pa - pb;
       return (ia?.pct ?? 0) - (ib?.pct ?? 0);
     });
-  }, [players, isU23, u23Info]);
+  }, [players, isU23, u23Info, matchMinutes]);
 
 
   const matchStats = useMemo(() => {
@@ -920,6 +1054,13 @@ export const MatchPlanningView: React.FC<MatchPlanningViewProps> = ({
                       <span className="px-2 py-1 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-300">🟢 {u23Counts.green} einsatzbereit</span>
                       <span className="px-2 py-1 rounded-lg bg-amber-100 text-amber-800 border border-amber-300">🟡 {u23Counts.yellow} Grenzfall</span>
                       <span className="px-2 py-1 rounded-lg bg-red-600 text-white border border-red-600">🔴 {u23Counts.red} nicht U23</span>
+                      <button
+                        onClick={() => setU23ShowAddPicker(true)}
+                        className="px-2.5 py-1 rounded-lg bg-[#1A1A1A] hover:bg-black text-[#FACC15] border border-[#1A1A1A] font-black uppercase text-[10px] flex items-center gap-1 cursor-pointer transition-colors"
+                        title="Ausgeblendete Spieler wieder zur U23-Liste hinzufügen"
+                      >
+                        <Plus size={12} className="stroke-[3]" /> Spieler hinzufügen
+                      </button>
                     </div>
                   </div>
 
@@ -933,7 +1074,8 @@ export const MatchPlanningView: React.FC<MatchPlanningViewProps> = ({
                           <th className="p-3 border-r border-[#DADADA] text-center" title="Manuell pflegbar">SPIELE GESAMT</th>
                           <th className="p-3 border-r border-[#DADADA] text-center">QUOTE</th>
                           <th className="p-3 border-r border-[#DADADA] text-center">MINUTEN</th>
-                          <th className="p-3">LETZTES SPIEL</th>
+                          <th className="p-3 border-r border-[#DADADA]">LETZTES SPIEL</th>
+                          <th className="p-3 text-center">AKTION</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[#DADADA]">
@@ -1013,10 +1155,28 @@ export const MatchPlanningView: React.FC<MatchPlanningViewProps> = ({
                               <td className="p-2.5 border-r border-[#DADADA] text-center font-black text-xs">
                                 {info?.minutes ?? 0} min
                               </td>
-                              <td className="p-2.5 text-[10px] font-black uppercase text-[#4A4A4A]">
+                              <td className="p-2.5 border-r border-[#DADADA] text-[10px] font-black uppercase text-[#4A4A4A]">
                                 {info?.playedLastGame
                                   ? <span className="text-emerald-700">gespielt · {lastPlayedMatch?.opponent ?? '-'}</span>
                                   : <span className="text-[#4A4A4A]">nicht gespielt{lastPlayedMatch ? ` · ${lastPlayedMatch.opponent}` : ''}</span>}
+                              </td>
+                              <td className="p-2.5">
+                                <div className="flex items-center justify-center gap-1.5">
+                                  <button
+                                    onClick={() => openU23PlayerEdit(player)}
+                                    className="bg-[#1A1A1A] hover:bg-black text-[#FACC15] px-2.5 py-1.5 rounded-lg font-black uppercase text-[10px] flex items-center gap-1 cursor-pointer transition-colors"
+                                    title="Einsätze und Spiele gesamt bearbeiten"
+                                  >
+                                    <Edit2 size={12} /> Bearbeiten
+                                  </button>
+                                  <button
+                                    onClick={() => setU23RemovePlayer(player)}
+                                    className="bg-white hover:bg-rose-50 text-rose-600 border border-rose-300 p-1.5 rounded-lg cursor-pointer transition-colors"
+                                    title="Nur aus der U23-Liste entfernen (bleibt im Kader)"
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           );
@@ -1566,7 +1726,8 @@ export const MatchPlanningView: React.FC<MatchPlanningViewProps> = ({
                             <th className="p-3 border-r border-[#DADADA] text-center">ENDE</th>
                             <th className="p-3 border-r border-[#DADADA] text-center text-[#1A1A1A]">MIN</th>
                             <th className="p-3 border-r border-[#DADADA] text-center">STAMMSPIELER-STATUS</th>
-                            <th className="p-3">NOTIZEN</th>
+                            <th className="p-3 border-r border-[#DADADA]">NOTIZEN</th>
+                            {isU23 && <th className="p-3 text-center">AKTION</th>}
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-[#DADADA]">
@@ -1660,7 +1821,7 @@ export const MatchPlanningView: React.FC<MatchPlanningViewProps> = ({
                                     </span>
                                   )}
                                 </td>
-                                <td className="p-2.5">
+                                <td className="p-2.5 border-r border-[#DADADA]">
                                   <EditableField 
                                     className="w-full border border-[#DADADA] bg-[#F4F4F4] text-[#1A1A1A] focus:bg-white p-1.5 font-medium text-xs rounded-lg focus:border-[#4C6FFF] focus:outline-none placeholder:text-[#4A4A4A]/50" 
                                     placeholder="Notizen zum Einsatz..."
@@ -1668,6 +1829,26 @@ export const MatchPlanningView: React.FC<MatchPlanningViewProps> = ({
                                     onSave={(val) => handleMinuteChange(player.id, 'notes', val)}
                                   />
                                 </td>
+                                {isU23 && (
+                                  <td className="p-2.5">
+                                    <div className="flex items-center justify-center gap-1.5">
+                                      <button
+                                        onClick={() => openU23EntryEdit(player)}
+                                        className="bg-[#1A1A1A] hover:bg-black text-[#FACC15] px-2.5 py-1.5 rounded-lg font-black uppercase text-[10px] flex items-center gap-1 cursor-pointer transition-colors"
+                                        title="Einsatz für dieses Spiel bearbeiten"
+                                      >
+                                        <Edit2 size={12} /> Bearbeiten
+                                      </button>
+                                      <button
+                                        onClick={() => setU23EntryToClear(player)}
+                                        className="bg-white hover:bg-rose-50 text-rose-600 border border-rose-300 p-1.5 rounded-lg cursor-pointer transition-colors"
+                                        title="Eintrag für dieses Spiel entfernen"
+                                      >
+                                        <Trash2 size={12} />
+                                      </button>
+                                    </div>
+                                  </td>
+                                )}
                               </tr>
                             );
                           })}
@@ -1876,6 +2057,263 @@ export const MatchPlanningView: React.FC<MatchPlanningViewProps> = ({
                 </button>
                 <button 
                   onClick={() => setPlayerToReset(null)}
+                  className="flex-1 bg-[#F4F4F4] hover:bg-[#DADADA] text-[#1A1A1A] py-2.5 font-bold uppercase text-xs rounded-xl transition-colors border border-[#DADADA] cursor-pointer"
+                >
+                  Abbrechen
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ----------------- U23: SPIELER BEARBEITEN (EINSÄTZE / SPIELE) ----------------- */}
+      <AnimatePresence>
+        {u23EditPlayer && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white border border-[#DADADA] shadow-2xl rounded-2xl w-full max-w-md p-6 text-[#1A1A1A]"
+            >
+              <h3 className="text-xl font-black uppercase mb-1 text-[#1A1A1A]">Spieler bearbeiten</h3>
+              <p className="font-bold text-xs text-[#4A4A4A] mb-4">
+                {u23EditPlayer.firstName} {u23EditPlayer.lastName} · manuelle Werte überschreiben die Automatik
+              </p>
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <div>
+                  <label className="text-[10px] font-black uppercase text-[#4A4A4A] tracking-wider mb-1 block">Einsätze</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={u23EditForm.played}
+                    onChange={(e) => setU23EditForm(f => ({ ...f, played: e.target.value }))}
+                    placeholder="automatisch"
+                    className="w-full border border-[#DADADA] bg-[#F4F4F4] focus:bg-white p-2 font-black rounded-lg text-xs focus:border-[#4C6FFF] focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase text-[#4A4A4A] tracking-wider mb-1 block">Spiele gesamt</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={u23EditForm.total}
+                    onChange={(e) => setU23EditForm(f => ({ ...f, total: e.target.value }))}
+                    placeholder="automatisch"
+                    className="w-full border border-[#DADADA] bg-[#F4F4F4] focus:bg-white p-2 font-black rounded-lg text-xs focus:border-[#4C6FFF] focus:outline-none"
+                  />
+                </div>
+              </div>
+              <p className="text-[10px] font-bold text-[#4A4A4A] mb-4">
+                Feld leeren = automatische Zählung aus den Einsatzzeiten.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={saveU23PlayerEdit}
+                  className="flex-1 bg-[#1A1A1A] hover:bg-black text-[#FACC15] py-2.5 font-black uppercase text-xs rounded-xl transition-colors cursor-pointer"
+                >
+                  Speichern
+                </button>
+                <button
+                  onClick={resetU23PlayerEdit}
+                  className="bg-[#F4F4F4] hover:bg-[#EAEAEA] text-[#1A1A1A] px-3 py-2.5 font-bold uppercase text-xs rounded-xl transition-colors border border-[#DADADA] cursor-pointer"
+                  title="Automatische Zählung wiederherstellen"
+                >
+                  ↺ Auto
+                </button>
+                <button
+                  onClick={() => setU23EditPlayer(null)}
+                  className="bg-[#F4F4F4] hover:bg-[#EAEAEA] text-[#1A1A1A] px-3 py-2.5 font-bold uppercase text-xs rounded-xl transition-colors border border-[#DADADA] cursor-pointer"
+                >
+                  Abbrechen
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ----------------- U23: AUS LISTE ENTFERNEN ----------------- */}
+      <AnimatePresence>
+        {u23RemovePlayer && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white border border-[#DADADA] shadow-2xl rounded-2xl w-full max-w-md p-6 text-[#1A1A1A]"
+            >
+              <h3 className="text-xl font-black uppercase mb-2 text-[#1A1A1A]">Aus U23-Liste entfernen?</h3>
+              <p className="font-bold text-xs text-[#4A4A4A] mb-6">
+                <span className="text-[#1A1A1A] font-black">{u23RemovePlayer.firstName} {u23RemovePlayer.lastName}</span> wird nur aus dieser U23-Liste ausgeblendet. Der Spieler bleibt vollständig im Kader erhalten und kann jederzeit wieder hinzugefügt werden.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={async () => {
+                    await setU23Hidden(u23RemovePlayer, true);
+                    setU23RemovePlayer(null);
+                  }}
+                  className="flex-1 bg-[#FB7185] hover:bg-rose-600 text-white py-2.5 font-black uppercase text-xs rounded-xl transition-colors shadow-xs cursor-pointer"
+                >
+                  Ja, ausblenden
+                </button>
+                <button
+                  onClick={() => setU23RemovePlayer(null)}
+                  className="flex-1 bg-[#F4F4F4] hover:bg-[#DADADA] text-[#1A1A1A] py-2.5 font-bold uppercase text-xs rounded-xl transition-colors border border-[#DADADA] cursor-pointer"
+                >
+                  Abbrechen
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ----------------- U23: SPIELER HINZUFÜGEN ----------------- */}
+      <AnimatePresence>
+        {u23ShowAddPicker && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white border border-[#DADADA] shadow-2xl rounded-2xl w-full max-w-lg p-6 text-[#1A1A1A]"
+            >
+              <h3 className="text-xl font-black uppercase mb-1 text-[#1A1A1A]">Spieler hinzufügen</h3>
+              <p className="font-bold text-xs text-[#4A4A4A] mb-4">
+                Ausgeblendete Kaderspieler wieder in die U23-Liste aufnehmen.
+              </p>
+              <div className="max-h-72 overflow-y-auto border border-[#DADADA] rounded-xl divide-y divide-[#DADADA] mb-4">
+                {u23HiddenPlayers.length === 0 ? (
+                  <p className="p-4 text-xs font-bold italic text-[#4A4A4A] text-center">
+                    Alle Kaderspieler sind bereits in der U23-Liste.
+                  </p>
+                ) : (
+                  u23HiddenPlayers.map(player => (
+                    <div key={player.id} className="flex items-center justify-between gap-3 p-2.5">
+                      <span className="text-xs font-black uppercase text-[#1A1A1A]">
+                        {player.firstName} {player.lastName}
+                        <span className="ml-2 text-[10px] font-bold text-[#4A4A4A]">{player.position}</span>
+                      </span>
+                      <button
+                        onClick={() => setU23Hidden(player, false)}
+                        className="bg-[#1A1A1A] hover:bg-black text-[#FACC15] px-3 py-1.5 rounded-lg font-black uppercase text-[10px] flex items-center gap-1 cursor-pointer transition-colors"
+                      >
+                        <Plus size={12} /> Hinzufügen
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+              <button
+                onClick={() => setU23ShowAddPicker(false)}
+                className="w-full bg-[#F4F4F4] hover:bg-[#DADADA] text-[#1A1A1A] py-2.5 font-bold uppercase text-xs rounded-xl transition-colors border border-[#DADADA] cursor-pointer"
+              >
+                Schließen
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ----------------- U23: EINSATZ BEARBEITEN ----------------- */}
+      <AnimatePresence>
+        {u23EditEntry && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white border border-[#DADADA] shadow-2xl rounded-2xl w-full max-w-md p-6 text-[#1A1A1A]"
+            >
+              <h3 className="text-xl font-black uppercase mb-1 text-[#1A1A1A]">Einsatz bearbeiten</h3>
+              <p className="font-bold text-xs text-[#4A4A4A] mb-4">
+                {u23EditEntry.firstName} {u23EditEntry.lastName} · Spiel gegen {selectedMatch?.opponent ?? '-'}
+              </p>
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div>
+                  <label className="text-[10px] font-black uppercase text-[#4A4A4A] tracking-wider mb-1 block">Start</label>
+                  <input
+                    type="time"
+                    value={u23EntryForm.start}
+                    onChange={(e) => setU23EntryForm(f => ({ ...f, start: e.target.value }))}
+                    className="w-full border border-[#DADADA] bg-[#F4F4F4] focus:bg-white p-2 font-black rounded-lg text-xs focus:border-[#4C6FFF] focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase text-[#4A4A4A] tracking-wider mb-1 block">Ende</label>
+                  <input
+                    type="time"
+                    value={u23EntryForm.end}
+                    onChange={(e) => setU23EntryForm(f => ({ ...f, end: e.target.value }))}
+                    className="w-full border border-[#DADADA] bg-[#F4F4F4] focus:bg-white p-2 font-black rounded-lg text-xs focus:border-[#4C6FFF] focus:outline-none"
+                  />
+                </div>
+              </div>
+              <div className="mb-3">
+                <label className="text-[10px] font-black uppercase text-[#4A4A4A] tracking-wider mb-1 block">Minuten (leer = aus Start/Ende)</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={u23EntryForm.minutes}
+                  onChange={(e) => setU23EntryForm(f => ({ ...f, minutes: e.target.value }))}
+                  placeholder="automatisch"
+                  className="w-full border border-[#DADADA] bg-[#F4F4F4] focus:bg-white p-2 font-black rounded-lg text-xs focus:border-[#4C6FFF] focus:outline-none"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="text-[10px] font-black uppercase text-[#4A4A4A] tracking-wider mb-1 block">Notizen</label>
+                <input
+                  type="text"
+                  value={u23EntryForm.notes}
+                  onChange={(e) => setU23EntryForm(f => ({ ...f, notes: e.target.value }))}
+                  placeholder="Notizen zum Einsatz..."
+                  className="w-full border border-[#DADADA] bg-[#F4F4F4] focus:bg-white p-2 font-medium rounded-lg text-xs focus:border-[#4C6FFF] focus:outline-none"
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={saveU23EntryEdit}
+                  className="flex-1 bg-[#1A1A1A] hover:bg-black text-[#FACC15] py-2.5 font-black uppercase text-xs rounded-xl transition-colors cursor-pointer"
+                >
+                  Speichern
+                </button>
+                <button
+                  onClick={() => setU23EditEntry(null)}
+                  className="flex-1 bg-[#F4F4F4] hover:bg-[#DADADA] text-[#1A1A1A] py-2.5 font-bold uppercase text-xs rounded-xl transition-colors border border-[#DADADA] cursor-pointer"
+                >
+                  Abbrechen
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ----------------- U23: EINSATZ ENTFERNEN ----------------- */}
+      <AnimatePresence>
+        {u23EntryToClear && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white border border-[#DADADA] shadow-2xl rounded-2xl w-full max-w-md p-6 text-[#1A1A1A]"
+            >
+              <h3 className="text-xl font-black uppercase mb-2 text-[#1A1A1A]">Eintrag entfernen?</h3>
+              <p className="font-bold text-xs text-[#4A4A4A] mb-6">
+                Einsatz von <span className="text-[#1A1A1A] font-black">{u23EntryToClear.firstName} {u23EntryToClear.lastName}</span> im Spiel gegen {selectedMatch?.opponent ?? '-'} entfernen? Andere Spiele bleiben unverändert.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => clearU23Entry(u23EntryToClear)}
+                  className="flex-1 bg-[#FB7185] hover:bg-rose-600 text-white py-2.5 font-black uppercase text-xs rounded-xl transition-colors shadow-xs cursor-pointer"
+                >
+                  Ja, entfernen
+                </button>
+                <button
+                  onClick={() => setU23EntryToClear(null)}
                   className="flex-1 bg-[#F4F4F4] hover:bg-[#DADADA] text-[#1A1A1A] py-2.5 font-bold uppercase text-xs rounded-xl transition-colors border border-[#DADADA] cursor-pointer"
                 >
                   Abbrechen
