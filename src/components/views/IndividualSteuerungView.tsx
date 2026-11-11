@@ -27,6 +27,23 @@ const INDIVIDUAL_FIELDS: { key: string; label: string }[] = [
   { key: 'hs', label: 'Handlungsschnelligkeit' },
 ];
 
+/**
+ * Die Einheiten-Felder werden als Text gespeichert (input type="text").
+ * Deshalb müssen Zahlen auch aus Strings gelesen werden – sonst erkennt die
+ * Summenbildung sie nicht und zählt pro Eintrag nur 1.
+ * "3", 3 und "3,5" werden gleichermaßen erkannt; alles andere zählt als 0.
+ */
+const parseUnitValue = (value: any): number => {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (trimmed === '') return 0;
+    const num = Number(trimmed.replace(',', '.'));
+    return Number.isFinite(num) ? num : 0;
+  }
+  return 0;
+};
+
 interface IndividualSteuerungViewProps {
   players: Player[];
   individualTrainingData: any[];
@@ -129,19 +146,19 @@ export const IndividualSteuerungView: React.FC<IndividualSteuerungViewProps> = (
 
       let val = 0;
 
-      if (typeof entry.units === 'number' && !isNaN(entry.units)) {
-        val = entry.units;
-      } else if (typeof entry.einheiten === 'number' && !isNaN(entry.einheiten)) {
-        val = entry.einheiten;
-      } else if (typeof entry.anzahl === 'number' && !isNaN(entry.anzahl)) {
-        val = entry.anzahl;
-      } else if (typeof entry.count === 'number' && !isNaN(entry.count)) {
-        val = entry.count;
+      // Bevorzugt explizit erfasste Einheiten (auch als Text gespeichert),
+      // sonst die Summe der Einzelfelder (Erster Kontakt bis Handlungsschnelligkeit).
+      const explicitValues = [entry.units, entry.einheiten, entry.anzahl, entry.count]
+        .map(parseUnitValue)
+        .filter(v => v > 0);
+      if (explicitValues.length > 0) {
+        val = explicitValues[0];
       } else {
-        const fieldValues = [entry.ek, entry.o, entry.t, entry.p, entry.s, entry.a, entry.w, entry.hs];
-        const numericValues = fieldValues.filter(v => typeof v === 'number' && !isNaN(v) && v > 0);
-        if (numericValues.length > 0) {
-          val = numericValues.reduce((sum, v) => sum + v, 0);
+        const fieldValues = [entry.ek, entry.o, entry.t, entry.p, entry.s, entry.a, entry.w, entry.hs]
+          .map(parseUnitValue)
+          .filter(v => v > 0);
+        if (fieldValues.length > 0) {
+          val = fieldValues.reduce((sum, v) => sum + v, 0);
         }
       }
 

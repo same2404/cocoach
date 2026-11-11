@@ -66,6 +66,7 @@ import AnalyticsChartsView from './AnalyticsChartsView';
 import { PdfParsedCharts } from './PlayerReportProPanels';
 import { VideoClip } from '../../types';
 import { TrackerAcademyReportView } from './TrackerAcademyReportView';
+import PersonalSeasonReport from './PersonalSeasonReport';
 import { formatSessionDate, extractSessionDate, extractSessionTime } from '../../utils/dateUtils';
 import { apiFetch } from '../../lib/apiClient';
 
@@ -269,7 +270,7 @@ export const PlayerPortalView: React.FC<PlayerPortalViewProps> = ({
   const [parsingSuccess, setParsingSuccess] = useState<string>('');
 
   // Player Data Sheet States
-  const [portalView, setPortalView] = useState<'form' | 'datenblatt' | 'vergleich' | 'tracker' | 'trackerUpload' | 'trackerCompare' | 'trackerAnalyse' | 'spielanalyse' | 'bericht' | 'video' | 'analytics' | 'diagnose'>('trackerAnalyse');
+  const [portalView, setPortalView] = useState<'form' | 'datenblatt' | 'vergleich' | 'tracker' | 'trackerUpload' | 'trackerCompare' | 'trackerAnalyse' | 'spielanalyse' | 'bericht' | 'saisonbericht' | 'video' | 'analytics' | 'diagnose'>('trackerAnalyse');
   const [editDatenblatt, setEditDatenblatt] = useState<boolean>(false);
   const [editTracker, setEditTracker] = useState<boolean>(false);
 
@@ -3024,6 +3025,17 @@ export const PlayerPortalView: React.FC<PlayerPortalViewProps> = ({
             }`}
           >
             <BarChart3 size={15} /> <span>⚽ Pro-Bericht</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setPortalView('saisonbericht')}
+            className={`flex-1 min-w-[160px] py-2.5 px-3 font-bold text-xs uppercase tracking-wider transition-all rounded-lg flex items-center justify-center gap-2 border ${
+              portalView === 'saisonbericht'
+                ? 'bg-[#06B6D4] text-[#0A0E17] font-black border-[#06B6D4] shadow-[0_0_10px_rgba(6,182,212,0.4)]'
+                : 'bg-[#1E293B]/60 text-[#94A3B8] border-[#334155]/60 hover:text-[#F8FAFC] hover:bg-[#1E293B]'
+            }`}
+          >
+            <TrendingUp size={15} /> <span>📈 Saisonbericht</span>
           </button>
           <button
             type="button"
@@ -6453,6 +6465,17 @@ export const PlayerPortalView: React.FC<PlayerPortalViewProps> = ({
       ) : portalView === 'bericht' && selectedPlayer ? (
         <div className="animate-fadeIn">
           <PlayerReportProView player={selectedPlayer as any} players={players as any} />
+        </div>
+      ) : portalView === 'saisonbericht' && selectedPlayer ? (
+        <div className="animate-fadeIn">
+          <PersonalSeasonReport
+            player={selectedPlayer as any}
+            reports={trackerAcademyReports || []}
+            competitiveMatches={competitiveMatches || []}
+            competitiveMinutes={competitiveMinutes || []}
+            testMatches={testMatches || []}
+            testMinutes={testMinutes || []}
+          />
         </div>
       ) : portalView === 'video' && selectedPlayer ? (
         <div className="space-y-6 animate-fadeIn">

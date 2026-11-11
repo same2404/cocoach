@@ -22,6 +22,26 @@ interface TrainingAttendanceViewProps {
   isEditing: boolean;
 }
 
+/**
+ * Anzeige-Deduplizierung: identische Spieler nur einmal rendern.
+ * Rein kosmetisch – Datenbestand und Firestore bleiben unverändert.
+ * Schlüssel ist die Spieler-ID; nur wenn keine ID existiert, wird auf
+ * Name + Rückennummer zurückgefallen.
+ */
+const dedupePlayersForDisplay = (list: Spieler[]): Spieler[] => {
+  const seen = new Set<string>();
+  const result: Spieler[] = [];
+  (list || []).forEach((player) => {
+    const key = String(
+      player?.id ?? `${player?.firstName || ''}|${player?.lastName || ''}|${(player as any)?.number ?? ''}`
+    );
+    if (seen.has(key)) return;
+    seen.add(key);
+    result.push(player);
+  });
+  return result;
+};
+
 const ATTENDANCE_OPTIONS = [
   { key: 'x', label: 'Anwesend', color: 'bg-white', textColor: 'bg-white text-[#000000] font-black border border-slate-300 shadow-xs' },
   { key: 'Lg', label: 'Legend (★)', color: 'bg-white', textColor: 'bg-white text-[#D97706] font-black border border-slate-300 shadow-xs' },
@@ -304,7 +324,7 @@ export const TrainingAttendanceView: React.FC<TrainingAttendanceViewProps> = ({
   };
 
   const renderTableSection = (title: string, category: string) => {
-    const filteredPlayers = sortPlayers(players.filter(p => {
+    const filteredPlayers = sortPlayers(dedupePlayersForDisplay(players).filter(p => {
       if (category === 'player') {
         const cat = (p.category || 'player').toLowerCase();
         return cat === 'player' || cat === 'spieler';
@@ -435,7 +455,7 @@ export const TrainingAttendanceView: React.FC<TrainingAttendanceViewProps> = ({
   };
 
   const renderMonthSection = (title: string, category: string) => {
-    const filteredPlayers = sortPlayers(players.filter(p => {
+    const filteredPlayers = sortPlayers(dedupePlayersForDisplay(players).filter(p => {
       if (category === 'player') {
         const cat = (p.category || 'player').toLowerCase();
         return cat === 'player' || cat === 'spieler';
