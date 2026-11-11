@@ -67,6 +67,7 @@ import { PdfParsedCharts } from './PlayerReportProPanels';
 import { VideoClip } from '../../types';
 import { TrackerAcademyReportView } from './TrackerAcademyReportView';
 import PersonalSeasonReport from './PersonalSeasonReport';
+import TeamComparisonReport from './TeamComparisonReport';
 import { formatSessionDate, extractSessionDate, extractSessionTime } from '../../utils/dateUtils';
 import { apiFetch } from '../../lib/apiClient';
 
@@ -270,7 +271,7 @@ export const PlayerPortalView: React.FC<PlayerPortalViewProps> = ({
   const [parsingSuccess, setParsingSuccess] = useState<string>('');
 
   // Player Data Sheet States
-  const [portalView, setPortalView] = useState<'form' | 'datenblatt' | 'vergleich' | 'tracker' | 'trackerUpload' | 'trackerCompare' | 'trackerAnalyse' | 'spielanalyse' | 'bericht' | 'saisonbericht' | 'video' | 'analytics' | 'diagnose'>('trackerAnalyse');
+  const [portalView, setPortalView] = useState<'form' | 'datenblatt' | 'vergleich' | 'tracker' | 'trackerUpload' | 'trackerCompare' | 'trackerAnalyse' | 'spielanalyse' | 'bericht' | 'saisonbericht' | 'teamvergleich' | 'video' | 'analytics' | 'diagnose'>('trackerAnalyse');
   const [editDatenblatt, setEditDatenblatt] = useState<boolean>(false);
   const [editTracker, setEditTracker] = useState<boolean>(false);
 
@@ -3036,6 +3037,17 @@ export const PlayerPortalView: React.FC<PlayerPortalViewProps> = ({
             }`}
           >
             <TrendingUp size={15} /> <span>📈 Saisonbericht</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setPortalView('teamvergleich')}
+            className={`flex-1 min-w-[160px] py-2.5 px-3 font-bold text-xs uppercase tracking-wider transition-all rounded-lg flex items-center justify-center gap-2 border ${
+              portalView === 'teamvergleich'
+                ? 'bg-[#8B5CF6] text-white font-black border-[#8B5CF6] shadow-[0_0_10px_rgba(139,92,246,0.4)]'
+                : 'bg-[#1E293B]/60 text-[#94A3B8] border-[#334155]/60 hover:text-[#F8FAFC] hover:bg-[#1E293B]'
+            }`}
+          >
+            <Users size={15} /> <span>👥 Teamvergleich</span>
           </button>
           <button
             type="button"
@@ -6470,6 +6482,18 @@ export const PlayerPortalView: React.FC<PlayerPortalViewProps> = ({
         <div className="animate-fadeIn">
           <PersonalSeasonReport
             player={selectedPlayer as any}
+            reports={trackerAcademyReports || []}
+            competitiveMatches={competitiveMatches || []}
+            competitiveMinutes={competitiveMinutes || []}
+            testMatches={testMatches || []}
+            testMinutes={testMinutes || []}
+          />
+        </div>
+      ) : portalView === 'teamvergleich' ? (
+        <div className="animate-fadeIn">
+          <TeamComparisonReport
+            players={players as any}
+            selectedPlayerId={selectedPlayerId}
             reports={trackerAcademyReports || []}
             competitiveMatches={competitiveMatches || []}
             competitiveMinutes={competitiveMinutes || []}
