@@ -730,6 +730,56 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
   const { activeClub } = useClub();
   const { data: sessions, addOrUpdateItem: saveSession, removeItem: deleteSession } = useLiteCollectionSync<TrainingSession>('training_sessions', 'id', 'date', 'asc', true, true);
   const { data: globalDocs, addOrUpdateItem: saveGlobalDoc, removeItem: deleteGlobalDoc } = useCollectionSync<TrainingDocumentGlobal>('training_documents_global', 'id');
+
+  // Gelöschte Trainingseinheiten dauerhaft merken (vereinsbezogen, in appState).
+  // Grund: Die automatische „Selbstheilung“ legte gelöschte Termine mit fester
+  // ID (gen_<Datum>) beim nächsten Laden wieder an. Nur DATEN werden gemerkt –
+  // vorhandene Einheiten und Inhalte bleiben unverändert.
+  // Zusätzlich lokal (localStorage) spiegeln: Firestore-Snapshots kommen asynchron,
+  // die Selbstheilung läuft aber sofort beim Laden. Ohne lokale Kopie könnten
+  // gelöschte Termine in der Zwischenzeit erneut angelegt werden.
+  const deletedDatesStorageKey = `fca_trainingplan_deleted_dates_${String((activeClub as any)?.id || 'default')}`;
+  const readLocalDeletedDates = (): string[] => {
+    try {
+      const raw = localStorage.getItem(deletedDatesStorageKey);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed.map((d: any) => String(d).slice(0, 10)).filter(Boolean) : [];
+    } catch {
+      return [];
+    }
+  };
+  const deletedDatesRef = useRef<string[]>(readLocalDeletedDates());
+  const persistDeletedDates = (values: string[]) => {
+    deletedDatesRef.current = values;
+    try { localStorage.setItem(deletedDatesStorageKey, JSON.stringify(values)); } catch { /* ignore */ }
+  };
+  const [deletedSessionDates, setDeletedSessionDates] = useSyncedState<string[]>(
+    'trainingplan_deleted_dates',
+    readLocalDeletedDates()
+  );
+  useEffect(() => {
+    const values = Array.isArray(deletedSessionDates) ? deletedSessionDates : [];
+    persistDeletedDates(values);
+  }, [deletedSessionDates, deletedDatesStorageKey]);
+
+  const isDeletedDate = (date: any): boolean => {
+    const iso = String(date || '').slice(0, 10);
+    return !!iso && deletedDatesRef.current.includes(iso);
+  };
+  const markDatesDeleted = (dates: string[]) => {
+    const clean = Array.from(new Set(dates.map(d => String(d).slice(0, 10)).filter(Boolean)));
+    if (clean.length === 0) return;
+    const merged = Array.from(new Set([...deletedDatesRef.current, ...clean]));
+    persistDeletedDates(merged);
+    setDeletedSessionDates(merged);
+  };
+  const unmarkDatesDeleted = (dates: string[]) => {
+    const clean = dates.map(d => String(d).slice(0, 10)).filter(Boolean);
+    if (clean.length === 0) return;
+    const remaining = deletedDatesRef.current.filter(d => !clean.includes(d));
+    persistDeletedDates(remaining);
+    setDeletedSessionDates(remaining);
+  };
   const [externalPersons] = useSyncedState<ExternalPerson[]>('external_persons_v1', []);
   const [lastSavedSquad, setLastSavedSquad] = useSyncedState<any[]>('last_training_squad_v1', []);
   const [isEditing, setIsEditing] = useState(true);
@@ -1116,14 +1166,17 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
   // für dieses Datum werden nur angereichert (Inhalte bleiben erhalten).
   // Früher wurde hier immer die aktuelle Session-ID weiterverwendet → alle Tage
   // überschrieben sich gegenseitig, Einheiten + Inhalte der Kollegen gingen verloren.
-  const upsertForDate = async (iso: string, tag: TagesPlan): Promise<TrainingSession | null> => {
-    const existing = sessions.find((s: any) => s.date === iso);
+  const upsertForDate = async (iso: string, tag: TagesPlan, allowDeleted = false): Promise<TrainingSession | null> => {
+    const normalizedIso = String(iso || '').slice(0, 10);
+    // Automatische Routinen dürfen bewusst gelöschte Termine NICHT wieder anlegen.
+    if (!allowDeleted && isDeletedDate(normalizedIso)) return null;
+    const existing = sessions.find((s: any) => s.date === normalizedIso);
     const stufe = BELASTUNGS_STUFEN[tag.stufe];
     const base = existing
       ? { ...existing }
       : {
-          id: `gen_${iso}`,
-          date: iso,
+          id: `gen_${normalizedIso}`,
+          date: normalizedIso,
           weekday: tag.weekday,
           group: 'FC Auggen',
           load: stufe?.label || '',
@@ -1145,8 +1198,8 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
         };
     const updated: TrainingSession = {
       ...base,
-      id: existing ? existing.id : `gen_${iso}`,
-      date: iso,
+      id: existing ? existing.id : `gen_${normalizedIso}`,
+      date: normalizedIso,
       weekday: tag.weekday,
       location: tag.stufe === 0 ? (base.location || '') : 'Rasenplatz Auggen',
       loadLevel: existing ? base.loadLevel : tag.stufe,
@@ -1180,8 +1233,9 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
     const dateBase = new Date(KW_START_DATES[weekIndex] || KW_START_DATES[0]);
     dateBase.setDate(dateBase.getDate() + dayIndex);
     const dateStr = dateBase.toISOString().split('T')[0];
-    const saved = await upsertForDate(dateStr, tag);
+    const saved = await upsertForDate(dateStr, tag, true);
     if (saved) {
+      unmarkDatesDeleted([dateStr]);
       setLocalSession(saved);
       onSelectSession(saved.id);
       const stufe = BELASTUNGS_STUFEN[tag.stufe];
@@ -1352,6 +1406,10 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
     ];
     const results: string[] = [];
     for (const t of targets) {
+      if (isDeletedDate(t.iso)) {
+        results.push(`${t.iso}: bewusst gelöscht – nicht wiederhergestellt`);
+        continue;
+      }
       const r = await restoreFromHistoryOrBackup(t.iso, t.weekday, t.src);
       results.push(`${t.iso}: ${r}`);
     }
@@ -1369,10 +1427,12 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
       targetDate.setDate(wkBase.getDate() + dayIndex);
       const targetIso = targetDate.toISOString().split('T')[0];
       const match = sessions.find((s: any) => s.date === targetIso);
+      // Bewusster Eingriff des Trainers: gelöschte Termine hier wieder aktivieren.
+      unmarkDatesDeleted([targetIso]);
       if (match) {
-        upsertForDate(targetIso, tag).catch((e: any) => setHealStatus(`Fehler beim Anlegen ${targetIso}: ${e?.message || e}`));
+        upsertForDate(targetIso, tag, true).catch((e: any) => setHealStatus(`Fehler beim Anlegen ${targetIso}: ${e?.message || e}`));
       } else {
-        upsertForDate(targetIso, tag).catch((e: any) => setHealStatus(`Fehler beim Anlegen ${targetIso}: ${e?.message || e}`));
+        upsertForDate(targetIso, tag, true).catch((e: any) => setHealStatus(`Fehler beim Anlegen ${targetIso}: ${e?.message || e}`));
       }
       synced++;
     });
@@ -1540,8 +1600,9 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
     const dateStr = new Date(wkBase);
     dateStr.setDate(wkBase.getDate() + dayIndex);
     const iso = dateStr.toISOString().split('T')[0];
-    const saved = await upsertForDate(iso, tag);
+    const saved = await upsertForDate(iso, tag, true);
     if (saved) {
+      unmarkDatesDeleted([iso]);
       setLocalSession(saved);
       onSelectSession(saved.id);
       const stufe = BELASTUNGS_STUFEN[tag.stufe];
@@ -1566,10 +1627,11 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
         dateStr.setDate(wkBase.getDate() + dayIndex);
         const iso = dateStr.toISOString().split('T')[0];
         const existing = sessions.find((s: any) => s.date === iso);
+        unmarkDatesDeleted([iso]);
         if (existing) {
           saveSession(existing);
         } else if (localSession) {
-          upsertForDate(iso, tag).catch((e: any) => setHealStatus(`Fehler beim Anlegen ${iso}: ${e?.message || e}`));
+          upsertForDate(iso, tag, true).catch((e: any) => setHealStatus(`Fehler beim Anlegen ${iso}: ${e?.message || e}`));
         }
         synced++;
       });
@@ -2005,6 +2067,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
     if (seedRef) return;
     seedRunRef.current = true;
     const missingDate = '2026-09-01';
+    if (isDeletedDate(missingDate)) return;
     const exists = sessions.some(s => s.date === missingDate);
     if (exists) return;
     const today = new Date(missingDate + 'T00:00:00');
@@ -2242,7 +2305,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
       // Falls sie NICHT existiert, wird sie deterministisch angelegt – erscheint dann zwischen
       // Fr 04.09.2026 und Do 10.09.2026 in der Einheitenliste.
       const has0809 = sessions.some((s: any) => s.date === '2026-09-08');
-      if (!has0809) {
+      if (!has0809 && !isDeletedDate('2026-09-08')) {
         try {
           await upsertForDate('2026-09-08', { weekday: 'Dienstag', stufe: 8, dauer: '90 Min', schwerpunkt: 'Pressing & Gegenpressing', uhrzeit: '18:45', inhalt: '' });
           setHealStatus('Einheit Di., 08.09.2026 wurde angelegt: Pressing & Gegenpressing · Stufe 8 · 90 Min.');
@@ -2748,6 +2811,9 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
     
     const inheritedPlayers = getPlayersFromLastSession();
 
+    // Gelöschte Termine merken, damit die automatische Heilung sie nicht erneut anlegt.
+    markDatesDeleted(sessions.map(s => String(s.date || '')).filter(Boolean));
+
     // Delete all existing sessions
     for (const session of sessions) {
       deleteSession(session.id);
@@ -2794,6 +2860,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
       remarksImages: []
     };
 
+    unmarkDatesDeleted([dateStr]);
     saveSession(newSession);
     onSelectSession(newSession.id);
     setNotification('Alle Einheiten gelöscht. Start-Einheit (06.07.2026) erstellt.');
@@ -2831,12 +2898,22 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
     }
   };
 
-  const confirmDelete = () => {
-    if (selectedSessionId) {
-      deleteSession(selectedSessionId);
+  const confirmDelete = async () => {
+    if (!selectedSessionId) return;
+    // Datum merken, damit die automatische „Selbstheilung“ die Einheit nicht
+    // beim nächsten Laden mit derselben ID (gen_<Datum>) wieder anlegt.
+    const target = sessions.find(s => s.id === selectedSessionId);
+    if (target?.date) markDatesDeleted([String(target.date).slice(0, 10)]);
+    setShowDeleteConfirm(false);
+    try {
+      await deleteSession(selectedSessionId);
       onSelectSession(null);
-      setShowDeleteConfirm(false);
+      setNotification('Einheit gelöscht und dauerhaft entfernt.');
+    } catch (e: any) {
+      console.error('Fehler beim Löschen der Trainingseinheit:', e);
+      setNotification(`Einheit konnte nicht gelöscht werden: ${e?.message || e}`);
     }
+    setTimeout(() => setNotification(null), 4000);
   };
 
   const handleShareImage = async () => {
@@ -4125,6 +4202,18 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
               <span className="text-[8px] font-black uppercase text-slate-400">
                 Sessions: {sessions.length}
               </span>
+              <button
+                onClick={() => {
+                  persistDeletedDates([]);
+                  setDeletedSessionDates([]);
+                  setNotification('Löschliste zurückgesetzt – gelöschte Termine können wieder neu angelegt werden.');
+                  setTimeout(() => setNotification(null), 3500);
+                }}
+                className="px-2 py-0.5 rounded text-[7px] font-black uppercase border bg-slate-600 text-white border-slate-500 hover:bg-slate-500 cursor-pointer"
+                title="Merkt gelöschte Termine dauerhaft gegen automatische Wiederherstellung. Reset nur, wenn ein gelöschter Termin bewusst wieder angelegt werden soll."
+              >
+                Löschliste ({deletedSessionDates.length}) zurücksetzen
+              </button>
               <button
                 onClick={() => {
                   healCurrentWeek(true).then((created) => {
