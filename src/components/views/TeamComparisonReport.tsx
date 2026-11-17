@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { Users, TrendingUp, Activity, Timer, Zap, Shield } from 'lucide-react';
+import React, { useMemo, useRef, useState } from 'react';
+import { Users, TrendingUp, Activity, Timer, Zap, Shield, Printer, CheckCircle2 } from 'lucide-react';
 
 /**
  * Mannschaftsvergleich – rein lesende Auswertung.
@@ -53,6 +53,8 @@ export const TeamComparisonReport: React.FC<TeamComparisonReportProps> = ({
   testMinutes = [],
 }) => {
   const [sortKey, setSortKey] = useState<SortKey>('minutes');
+  const printAreaRef = useRef<HTMLDivElement>(null);
+  const [printMessage, setPrintMessage] = useState<string | null>(null);
 
   const rows = useMemo(() => {
     const squad = (players || []).filter((player: any) => {
@@ -158,6 +160,85 @@ export const TeamComparisonReport: React.FC<TeamComparisonReportProps> = ({
     { key: 'topSpeed', label: 'Top km/h', icon: <Activity size={12} /> },
   ];
 
+  /**
+   * PDF-Export über den System-Druckdialog.
+   * Bewusst ohne Canvas-Rasterung: Die Tabelle wird als echte, druckbare
+   * HTML-Tabelle übergeben – dadurch bleiben alle Werte scharf und der Export
+   * bleibt auch bei vielen Spielern sofort reaktionsfähig.
+   * Es werden ausschließlich bereits vorhandene Werte ausgegeben.
+   */
+  const handleExportPDF = () => {
+    const printNode = printAreaRef.current;
+    if (!printNode) return;
+
+    const printWindow = window.open('', '_blank', 'width=1200,height=900');
+    if (!printWindow) {
+      setPrintMessage('Bitte Pop-ups erlauben – dann öffnet sich der Druckdialog.');
+      return;
+    }
+
+    const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
+      .map((el) => el.outerHTML)
+      .join('\n');
+    const sortLabel = columns.find((column) => column.key === sortKey)?.label || 'Minuten';
+    const createdAt = new Date().toLocaleString('de-DE');
+
+    printWindow.document.open();
+    printWindow.document.write(`<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<title>Teamvergleich FC Auggen</title>
+${styles}
+<style>
+  @page { size: A4 landscape; margin: 8mm; }
+  html, body { background: #ffffff !important; margin: 0; padding: 0; }
+  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; color: #0f172a !important; }
+  button, [data-print-hide] { display: none !important; }
+  [data-print-only] { display: inline !important; }
+  .rounded-2xl { border-radius: 0 !important; }
+  .shadow-2xl, .shadow-lg { box-shadow: none !important; }
+  .print-head { font-family: Arial, sans-serif; border-bottom: 2px solid #0f172a; padding-bottom: 6px; margin-bottom: 10px; }
+  .print-head h1 { font-size: 16px; margin: 0 0 2px 0; color: #0f172a !important; }
+  .print-head p { font-size: 10px; margin: 0; color: #334155 !important; }
+  table { width: 100% !important; border-collapse: collapse !important; font-size: 10px !important; }
+  th, td { border: 1px solid #cbd5e1 !important; padding: 4px 5px !important; }
+  th, td, th *, td * { color: #0f172a !important; }
+  thead tr { background: #e2e8f0 !important; }
+  tbody tr { background: #ffffff !important; }
+  tfoot tr { background: #f1f5f9 !important; }
+  tr { break-inside: avoid; page-break-inside: avoid; }
+</style>
+</head>
+<body>
+  <div class="print-head">
+    <h1>Teamvergleich – FC Auggen</h1>
+    <p>Sortiert nach: ${sortLabel} &nbsp;|&nbsp; ${rows.length} Spieler &nbsp;|&nbsp; Erstellt: ${createdAt}</p>
+  </div>
+  ${printNode.outerHTML}
+</body>
+</html>`);
+    printWindow.document.close();
+
+    let printed = false;
+    const triggerPrint = () => {
+      if (printed) return;
+      printed = true;
+      try {
+        printWindow.focus();
+        printWindow.print();
+        setPrintMessage('Druckdialog geöffnet – dort „Als PDF speichern“ wählen.');
+      } catch (err) {
+        console.error('PDF print error:', err);
+        setPrintMessage('Druckdialog konnte nicht geöffnet werden. Bitte Strg+P nutzen.');
+      }
+    };
+
+    printWindow.onload = () => window.setTimeout(triggerPrint, 300);
+    // Fallback: auch wenn onload nicht feuert, öffnet sich der Druckdialog.
+    window.setTimeout(triggerPrint, 1200);
+  };
+
   if (rows.length === 0) {
     return (
       <div className="bg-[#121824] border border-[#334155] rounded-2xl p-8 text-center text-[#94A3B8]">
@@ -168,6 +249,13 @@ export const TeamComparisonReport: React.FC<TeamComparisonReportProps> = ({
 
   return (
     <div className="space-y-5 animate-fadeIn">
+      {printMessage && (
+        <div data-print-hide className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-xs font-bold shadow-lg">
+          <CheckCircle2 size={16} />
+          <span>{printMessage}</span>
+        </div>
+      )}
+      <div ref={printAreaRef} className="space-y-5">
       <div className="bg-[#121824] border border-[#334155] rounded-2xl p-5 flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#06B6D4]">
@@ -181,8 +269,20 @@ export const TeamComparisonReport: React.FC<TeamComparisonReportProps> = ({
             erfassten Analysen; Spalten ohne Messwerte zeigen „–“.
           </p>
         </div>
-        <div className="text-right text-[10px] uppercase tracking-wider text-[#64748B] font-black">
-          {rows.length} Spieler
+        <div className="flex items-center gap-3">
+          <div className="text-right text-[10px] uppercase tracking-wider text-[#64748B] font-black">
+            {rows.length} Spieler
+          </div>
+          <button
+            type="button"
+            data-print-hide="true"
+            onClick={handleExportPDF}
+            title="Teamvergleich als PDF speichern oder drucken"
+            className="flex items-center gap-2 bg-[#06B6D4] hover:bg-[#0891B2] text-[#0A0E17] px-4 py-2.5 rounded-lg font-black text-[11px] uppercase tracking-wider transition-all active:scale-95 shadow-[0_0_10px_rgba(6,182,212,0.35)]"
+          >
+            <Printer size={16} />
+            <span>PDF / Drucken</span>
+          </button>
         </div>
       </div>
 
@@ -198,6 +298,7 @@ export const TeamComparisonReport: React.FC<TeamComparisonReportProps> = ({
                   <th key={column.key} className="p-3 border-b border-[#334155] text-center">
                     <button
                       type="button"
+                      data-print-hide="true"
                       onClick={() => setSortKey(column.key)}
                       className={`inline-flex items-center gap-1 uppercase tracking-wider font-black transition-colors cursor-pointer ${
                         sortKey === column.key ? 'text-[#06B6D4]' : 'text-[#94A3B8] hover:text-[#F8FAFC]'
@@ -207,6 +308,7 @@ export const TeamComparisonReport: React.FC<TeamComparisonReportProps> = ({
                       {column.icon}
                       {column.label}
                     </button>
+                    <span data-print-only className="hidden">{column.label}</span>
                   </th>
                 ))}
                 <th className="p-3 border-b border-[#334155] min-w-[120px]">Anteil Minuten</th>
@@ -278,6 +380,7 @@ export const TeamComparisonReport: React.FC<TeamComparisonReportProps> = ({
         Hinweis: Der persönliche Saisonbericht bleibt bewusst ohne Mitspieler-Vergleich. Dieser
         Vergleich ist eine separate, rein lesende Ansicht.
       </p>
+      </div>
     </div>
   );
 };
