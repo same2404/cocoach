@@ -177,8 +177,18 @@ export const TeamComparisonReport: React.FC<TeamComparisonReportProps> = ({
       return;
     }
 
+    // Stylesheet-Links müssen absolut sein: Im neuen Druckfenster (about:blank)
+    // würde ein relatives "./assets/....css" sonst nicht geladen.
     const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
-      .map((el) => el.outerHTML)
+      .map((el) => {
+        if (el instanceof HTMLLinkElement) {
+          const link = el.cloneNode(false) as HTMLLinkElement;
+          const href = el.getAttribute('href') || document.baseURI;
+          link.href = new URL(href, document.baseURI).href;
+          return link.outerHTML;
+        }
+        return el.outerHTML;
+      })
       .join('\n');
     const sortLabel = columns.find((column) => column.key === sortKey)?.label || 'Minuten';
     const createdAt = new Date().toLocaleString('de-DE');
