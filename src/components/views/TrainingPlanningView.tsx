@@ -612,8 +612,10 @@ export const matchPlayerToMaster = (
   if (rawName.includes('pereira') || rawName.includes('marques')) {
     return masterPlayers.find(p => p.id === '8' || (p.lastName && p.lastName.toLowerCase().includes('pereira') || (p.lastName && p.lastName.toLowerCase().includes('marques')))) || null;
   }
+  // Tim Schäfer ist nicht mehr im aktiven Kader: keine Zuordnung auf die alten
+  // Vorlagen-IDs mehr. Historische Einträge behalten ihren ursprünglichen Namen.
   if (rawName.includes('schäfer') || rawName.includes('schaefer')) {
-    return masterPlayers.find(p => p.id === 'schaefer_tim' || (p.lastName && (p.lastName.toLowerCase() === 'schäfer' || p.lastName.toLowerCase() === 'schaefer'))) || null;
+    return null;
   }
   if (rawName.includes('bischoff')) {
     return masterPlayers.find(p => p.id === 'bischoff_bastian' || (p.lastName && p.lastName.toLowerCase() === 'bischoff')) || null;
@@ -793,6 +795,10 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
   const [manualPlayerPos, setManualPlayerPos] = useState('');
   const [manualPlayerCategory, setManualPlayerCategory] = useState<'player' | 'coach' | 'staff' | 'medical'>('player');
   const [notification, setNotification] = useState<string | null>(null);
+  const [showCleanupConfirm, setShowCleanupConfirm] = useState(false);
+  const [cleanupCompleted, setCleanupCompleted] = useState(() => {
+    try { return localStorage.getItem('fca_trainingplan_cleanup_so_mo_mi_2026_v1') === 'done'; } catch { return false; }
+  });
   const [librarySearch, setLibrarySearch] = useState('');
   const [replacingDocId, setReplacingDocId] = useState<string | null>(null);
   const [selectedLibraryDocId, setSelectedLibraryDocId] = useState<string | null>(null);
@@ -2562,64 +2568,73 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
       targetPriorSession = sortedSessions.find(s => s.players && s.players.length > 0);
     }
 
+    const activeRosterOnly = (entries: any[]) =>
+      deduplicateSessionPlayers(entries, players).filter(entry => !!matchPlayerToMaster(entry, players));
+
     if (targetPriorSession && targetPriorSession.players && targetPriorSession.players.length > 0) {
-      basePlayers = deduplicateSessionPlayers(targetPriorSession.players, players);
+      basePlayers = activeRosterOnly(targetPriorSession.players);
     } else if (lastSavedSquad && lastSavedSquad.length > 0) {
-      basePlayers = deduplicateSessionPlayers(lastSavedSquad, players);
+      basePlayers = activeRosterOnly(lastSavedSquad);
     } else {
-      const sortedSquad = sortPlayers(players.filter(isPlayer));
-      const sortedStaff = sortPlayers(players.filter(p => !isPlayer(p)));
-      basePlayers = [
-        ...sortedSquad.map(p => ({
-          name: getCanonicalPlayerName(p),
-          position: p.position,
-          status: '1' as any,
-          category: p.category
-        })),
-        ...sortedStaff.map(p => ({
-          name: getCanonicalPlayerName(p),
-          position: p.position,
-          status: '1' as any,
-          category: p.category
-        }))
-      ];
+      // Keine Vorlage vorhanden: bewusst keine Kaderspieler vorauswählen.
+      basePlayers = [];
     }
 
-    // Ensure all current club players and staff are present in base without creating phantom duplicates
-    players.forEach(p => {
-      const canonicalName = getCanonicalPlayerName(p);
-      const alreadyExists = basePlayers.some(bp => {
-        const matched = matchPlayerToMaster(bp, players);
-        return (matched && matched.id === p.id) || bp.name.toLowerCase() === canonicalName.toLowerCase();
-      });
+    // Früher wurden hier alle Vereinsspieler nachgezogen (inkl. neuer Kader-
+    // spieler). Das ist entfernt: neue Spieler sind wählbar, aber nicht vorausgewählt.
+    return basePlayers;
+  };
 
-      if (!alreadyExists) {
-        // PROFI-DATENFLUSS: Anwesenheitsstatus aus letzter Anwesenheits-Erfassung übernehmen
-        const attRecord = attendance.find(a => a.playerId === p.id);
-        let autoStatus: '1' | 'A' | 'B' | 'k' | 'e' = '1';
-        if (attRecord) {
-          // Finde den letzten belegten Status (von hinten nach vorne suchen)
-          const statusMap = attRecord.sessions || {};
-          const sessionNums = Object.keys(statusMap).map(Number).sort((a, b) => b - a);
-          for (const num of sessionNums) {
-            const s = statusMap[num];
-            if (s && s !== '') {
-              autoStatus = s as any;
-              break;
-            }
-          }
-        }
+  // Teilnehmer der zuletzt erstellten Einheit übernehmen, gefiltert gegen den
+  // aktuellen aktiven Kader. Neue Kaderspieler bleiben bewusst unausgewählt.
+  const getParticipantsForNewSession = (): any[] => {
+    const creationTime = (s: any) => {
+      const c = Number(s?.createdAt);
+      if (Number.isFinite(c) && c > 0) return c;
+      const n = Number(s?.id);
+      if (Number.isFinite(n) && n > 0) return n;
+      const d = parseSessionDate(s?.date).getTime();
+      return Number.isFinite(d) ? d : 0;
+    };
+    const lastSession = [...sessions].sort((a, b) => creationTime(b) - creationTime(a))[0];
+    if (!lastSession || !Array.isArray(lastSession.players) || lastSession.players.length === 0) return [];
+    return deduplicateSessionPlayers(lastSession.players, players)
+      .filter(entry => !!matchPlayerToMaster(entry, players));
+  };
 
-        basePlayers.push({
-          name: canonicalName,
-          position: p.position,
-          status: autoStatus,
-          category: p.category
-        });
-      }
+  // Temporärer Einmal-Cleanup: NUR Trainings an So/Mo/Mi im Zeitraum 04.10.–31.12.2026.
+  // Spiele und andere Wochentage werden nicht angefasst. Das Flag wird erst nach
+  // Erfolg gesetzt, damit ein Fehlschlag erneut versucht werden kann.
+  const runTrainingCleanup = async () => {
+    const FLAG = 'fca_trainingplan_cleanup_so_mo_mi_2026_v1';
+    const toIsoDate = (value: any) => {
+      const raw = String(value || '');
+      const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+      const d = parseSessionDate(raw);
+      if (isNaN(d.getTime())) return '';
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+    const targets = sessions.filter(s => {
+      const iso = toIsoDate(s.date);
+      if (!iso || iso < '2026-10-04' || iso > '2026-12-31') return false;
+      const weekday = new Date(`${iso}T12:00:00`).getDay();
+      return weekday === 0 || weekday === 1 || weekday === 3;
     });
-    
-    return deduplicateSessionPlayers(basePlayers, players);
+    try {
+      for (const s of targets) {
+        await deleteSession(s.id);
+      }
+      markDatesDeleted(targets.map(s => toIsoDate(s.date)));
+      try { localStorage.setItem(FLAG, 'done'); } catch { /* ignore */ }
+      setCleanupCompleted(true);
+      setShowCleanupConfirm(false);
+      setNotification(`${targets.length} Training(s) an So/Mo/Mi (04.10.–31.12.2026) gelöscht und dauerhaft gesperrt.`);
+    } catch (e) {
+      setShowCleanupConfirm(false);
+      setNotification(`Cleanup fehlgeschlagen: ${(e as any)?.message || e}. Bitte erneut versuchen.`);
+    }
+    setTimeout(() => setNotification(null), 5000);
   };
 
   const handleInheritFromPreviousSession = () => {
@@ -2642,7 +2657,8 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
     }
 
     if (prevSession && prevSession.players && prevSession.players.length > 0) {
-      const inherited = deduplicateSessionPlayers(prevSession.players, players);
+      const inherited = deduplicateSessionPlayers(prevSession.players, players)
+        .filter(entry => !!matchPlayerToMaster(entry, players));
       const updated: TrainingSession = {
         ...localSession,
         players: inherited
@@ -2652,14 +2668,14 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
       setNotification(`Spielerliste & Anwesenheit aus Training vom ${prevSession.date} übernommen.`);
       setTimeout(() => setNotification(null), 3000);
     } else {
-      const base = getPlayersFromLastSession(localSession.date);
+      const base = getParticipantsForNewSession();
       const updated: TrainingSession = {
         ...localSession,
         players: base
       };
       setLocalSession(updated);
       saveSession(updated);
-      setNotification("Aktueller Vereinskader übernommen.");
+      setNotification("Teilnehmer der letzten Einheit übernommen (nur aktiver Kader).");
       setTimeout(() => setNotification(null), 2500);
     }
   };
@@ -2690,7 +2706,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
   const handleAddSession = async () => {
     try {
       const today = new Date();
-      const inheritedPlayers = getPlayersFromLastSession(today);
+      const inheritedPlayers = getParticipantsForNewSession();
       
       const newSession: TrainingSession = {
         id: Date.now().toString(),
@@ -2750,7 +2766,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
     let guard = 0;
     
     // Get initial base players from the current latest session
-    const inheritedPlayers = getPlayersFromLastSession();
+    const inheritedPlayers = getParticipantsForNewSession();
 
     const newSessions: TrainingSession[] = [];
     while (current <= endDate && guard < 1200) { guard++;
@@ -2809,7 +2825,7 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
   const confirmReset = async () => {
     setShowResetConfirm(false);
     
-    const inheritedPlayers = getPlayersFromLastSession();
+    const inheritedPlayers = getParticipantsForNewSession();
 
     // Gelöschte Termine merken, damit die automatische Heilung sie nicht erneut anlegt.
     markDatesDeleted(sessions.map(s => String(s.date || '')).filter(Boolean));
@@ -4214,6 +4230,33 @@ export const TrainingPlanningView: React.FC<TrainingPlanningViewProps> = ({
               >
                 Löschliste ({deletedSessionDates.length}) zurücksetzen
               </button>
+              {!cleanupCompleted ? (
+                <button
+                  onClick={() => setShowCleanupConfirm(true)}
+                  className="px-2 py-0.5 rounded text-[7px] font-black uppercase border bg-red-700 text-white border-red-500 hover:bg-red-600 cursor-pointer"
+                  title="Temporär: nur Trainings an Sonntag/Montag/Mittwoch zwischen 04.10. und 31.12.2026 einmalig löschen. Spiele und andere Wochentage bleiben unberührt."
+                >
+                  Temporär: Cleanup So/Mo/Mi 2026
+                </button>
+              ) : (
+                <span className="text-[7px] font-black uppercase text-emerald-300">Cleanup So/Mo/Mi 2026 erledigt</span>
+              )}
+              {showCleanupConfirm && (
+                <span className="inline-flex items-center gap-1">
+                  <button
+                    onClick={runTrainingCleanup}
+                    className="px-2 py-0.5 rounded text-[7px] font-black uppercase border bg-red-600 text-white border-red-300 hover:bg-red-500 cursor-pointer"
+                  >
+                    Ja, jetzt löschen
+                  </button>
+                  <button
+                    onClick={() => setShowCleanupConfirm(false)}
+                    className="px-2 py-0.5 rounded text-[7px] font-black uppercase border bg-slate-600 text-white border-slate-500 hover:bg-slate-500 cursor-pointer"
+                  >
+                    Abbrechen
+                  </button>
+                </span>
+              )}
               <button
                 onClick={() => {
                   healCurrentWeek(true).then((created) => {

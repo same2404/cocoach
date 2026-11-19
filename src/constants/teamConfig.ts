@@ -64,7 +64,6 @@ export const FC_AUGGEN: TeamConfig = {
     { id: 'roth-matti', number: 28, firstName: 'Matti', lastName: 'Roth', positions: ['ZDM', 'ZM'], role: 'mittelfeld' },
     { id: 'roth-yanik', number: 24, firstName: 'Yanik', lastName: 'Roth', positions: ['ZM', 'ZOM', 'LF', 'RF'], role: 'mittelfeld' },
     { id: 'scalici-giuliano', number: 8, firstName: 'Giuliano', lastName: 'Scalici', positions: ['ZM', 'ZOM', 'LF'], role: 'mittelfeld' },
-    { id: 'schafer-tim', number: 17, firstName: 'Tim', lastName: 'Schäfer', positions: ['ZDM'], role: 'mittelfeld' },
     { id: 'valchuk-david', number: 17, firstName: 'David', lastName: 'Valchuk', positions: ['ZM'], role: 'mittelfeld' },
 
     { id: 'tiedemann-tim', number: 9, firstName: 'Tim', lastName: 'Tiedemann', positions: ['ST', 'ZOM', 'RM'], role: 'sturm' },

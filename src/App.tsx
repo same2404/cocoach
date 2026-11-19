@@ -463,7 +463,47 @@ const App: React.FC = () => {
   const [showGoogleGmailModal, setShowGoogleGmailModal] = useState(false);
   const [kaderAgentPreset, setKaderAgentPreset] = useState<'beste_formation' | 'topform_startelf' | 'vollbild_ordnung' | 'laufwege_profi'>('beste_formation');
 
-  const { data: players, loading: loadingSpieler, addOrUpdateItem: saveSpieler, removeItem: deleteSpieler } = useCollectionSync<Spieler>('spieler', 'id', undefined, 'asc', true);
+  const { data: rawPlayers, loading: loadingSpieler, addOrUpdateItem: saveSpieler, removeItem: deleteSpieler } = useCollectionSync<Spieler>('spieler', 'id', undefined, 'asc', true);
+
+  // Doppelte Spieler (z. B. Gissinger / Björn Diestelhorst) beim Laden über die
+  // stabile Identität (playerId, sonst id) deduplizieren. Bei einer Kollision
+  // gewinnt der Eintrag mit Rückennummer – der Eintrag ohne Rückennummer entfällt.
+  // Der Name als Fallback fängt auch Datensätze mit unterschiedlichen ids ab.
+  const players = useMemo(() => {
+    const identityOf = (p: any) => String(p?.playerId || p?.id || '').trim().toLowerCase();
+    const nameOf = (p: any) => {
+      const first = String(p?.firstName || '').trim().toLowerCase();
+      const last = String(p?.lastName || '').trim().toLowerCase();
+      if (first || last) return `${last}|${first}`;
+      const raw = String(p?.name || '').trim().toLowerCase();
+      if (raw.includes(',')) {
+        const parts = raw.split(',').map((x: string) => x.trim());
+        return `${parts[0]}|${parts[1] || ''}`;
+      }
+      const words = raw.split(/\s+/).filter(Boolean);
+      return words.length >= 2 ? `${words[words.length - 1]}|${words[0]}` : raw;
+    };
+    const hasNumber = (p: any) => Number(p?.number ?? p?.nummer) > 0;
+    const result: Spieler[] = [];
+    const identityIndex = new Map<string, number>();
+    (rawPlayers || []).forEach((p) => {
+      const identity = identityOf(p);
+      const byIdentity = identity ? identityIndex.get(identity) : undefined;
+      if (byIdentity !== undefined) {
+        if (hasNumber(p) && !hasNumber(result[byIdentity])) result[byIdentity] = p;
+        return;
+      }
+      const name = nameOf(p);
+      const byName = name ? result.findIndex(q => nameOf(q) === name) : -1;
+      if (byName >= 0) {
+        if (hasNumber(p) && !hasNumber(result[byName])) result[byName] = p;
+        return;
+      }
+      if (identity) identityIndex.set(identity, result.length);
+      result.push(p);
+    });
+    return result;
+  }, [rawPlayers]);
   const { data: training, loading: loadingTraining, addOrUpdateItem: saveTraining, removeItem: deleteTraining } = useCollectionSync<Training>('training', 'id', undefined, 'asc', true);
   const { data: spiele, loading: loadingSpiele, addOrUpdateItem: saveSpiel, removeItem: deleteSpiel } = useCollectionSync<Spiel>('spiele', 'id', undefined, 'asc', true);
   const { data: budgetFinanz, loading: loadingFinanz, addOrUpdateItem: saveFinanz, removeItem: deleteFinanz } = useCollectionSync<Finanz>('budget_finanz', 'id', undefined, 'asc', true);
@@ -1054,6 +1094,21 @@ const App: React.FC = () => {
   }, [players, competitiveMinutes, testMinutes]);
 
   const sortedPlayers = useMemo(() => sortPlayers(playersWithMinutes), [playersWithMinutes]);
+
+  // Trainingsmodul: nur aktive Kaderspieler laden. Tim Schäfer ist nicht mehr im
+  // Kader und wird deshalb aus der Auswahl ausgeschlossen. Historische Daten
+  // (Anwesenheit, Spielberichte, Backups) bleiben davon unberührt.
+  const trainingPlayers = useMemo(() => sortedPlayers.filter((p: any) => {
+    const id = String(p.id || '').toLowerCase();
+    if (['schaefer_tim', 'schafer-tim', '1774353199979'].includes(id)) return false;
+    const first = String(p.firstName || '').trim().toLowerCase();
+    const last = String(p.lastName || '').trim().toLowerCase();
+    const legacyName = String(p.name || '').trim().toLowerCase();
+    if ((first === 'tim' && (last === 'schäfer' || last === 'schaefer')) ||
+        ['schäfer, tim', 'schaefer, tim', 'tim schäfer', 'tim schaefer'].includes(legacyName)) return false;
+    const status = String(p.status ?? 'Aktiv').trim().toLowerCase();
+    return !['inaktiv', 'passiv', 'ehemalig', 'ausgeschieden', '0'].includes(status);
+  }), [sortedPlayers]);
 
   // U23: automatisch alle Spieler ohne Einsatzzeit in der ersten Mannschaft
   // (0 Minuten in Pflichtspielen UND Testspielen)
@@ -2682,7 +2737,7 @@ saveSpieler(updatedPlayer as Spieler);
       case 'training_planning':
         return (
            <TrainingPlanningView 
-            players={sortedPlayers}
+            players={trainingPlayers}
             competitiveMatches={competitiveMatches}
             testMatches={testMatches}
             selectedSessionId={selectedSessionId}

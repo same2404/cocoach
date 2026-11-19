@@ -15,7 +15,6 @@ export const data = {
     { "id": "11", "number": 11, "firstName": "Julian", "lastName": "Ehret", "position": "ZM", "category": "player", "name": "Ehret, Julian", "nummer": 11, "geburtsdatum": "", "wochentag": "", "status": "Aktiv", "notizen": "", "finance": { "baseSalary": 0, "seasonExtra": 0, "individualBonus": 0, "sideAgreements": "", "bonusPerMatch": 0, "ist": 0 }, "analysis": {}, "trackerAnalysis": { "fileName": "WG__Tracker_Julian_Ehret_RNr_11", "fileUrl": "https://magentacloud.de/s/H3zDkjkx8pigtpw", "uploadDate": "2026-07-24", "totalDistanceKm": 11.4, "highSpeedDistanceM": 820, "sprintDistanceM": 340, "maxSpeedKmh": 32.8, "sprintCount": 28, "accelerations": 42, "decelerations": 38, "avgHeartRateBpm": 168, "maxHeartRateBpm": 192, "workloadIndex": 885, "heatMapZone": "Zentrum / Rechte Halbspur & Box-to-Box", "tacticalSummary": "Julian Ehret zeigt eine herausragende Laufleistung von 11,4 km als ZM. Hohe Intensität im Umschaltspiel mit 28 Vollsprints und exzellenter Abdeckung des zentralen Mittelfelds.", "recommendations": "Regeneration im Beugeapparat nach hoher Sprintbelastung. Beibehalten der aggressiven Raumabdeckung im Übergangsspiel." } },
     { "id": "10", "number": 10, "firstName": "Jonathan", "lastName": "Ehret", "position": "OM", "category": "player", "name": "Ehret, Jonathan", "nummer": 10, "geburtsdatum": "", "wochentag": "", "status": "Aktiv", "notizen": "", "finance": { "baseSalary": 400, "seasonExtra": 800, "individualBonus": 0, "sideAgreements": "", "bonusPerMatch": 0, "ist": 0 }, "analysis": {} },
     { "id": "8", "number": 8, "firstName": "Francisco", "lastName": "Pereira Marques", "position": "DM", "category": "player", "name": "Pereira Marques, Francisco", "nummer": 8, "geburtsdatum": "", "wochentag": "", "status": "Aktiv", "notizen": "", "finance": { "baseSalary": 200, "seasonExtra": 700, "individualBonus": 0, "sideAgreements": "", "bonusPerMatch": 0, "ist": 0 }, "analysis": {} },
-    { "id": "schaefer_tim", "number": 0, "firstName": "Tim", "lastName": "Schäfer", "position": "ZM", "category": "player", "name": "Schäfer, Tim", "nummer": 0, "geburtsdatum": "", "wochentag": "", "status": "Aktiv", "notizen": "", "finance": { "baseSalary": 0, "seasonExtra": 0, "individualBonus": 0, "sideAgreements": "", "bonusPerMatch": 0, "ist": 0 }, "analysis": {} },
     { "id": "27", "number": 27, "firstName": "Julien", "lastName": "Tschira", "position": "LM/LW", "category": "player", "name": "Tschira, Julien", "nummer": 27, "geburtsdatum": "", "wochentag": "", "status": "Aktiv", "notizen": "", "finance": { "baseSalary": 600, "seasonExtra": 0, "individualBonus": 0, "sideAgreements": "", "bonusPerMatch": 0, "ist": 0 }, "analysis": {} },
     { "id": "17", "number": 17, "firstName": "David", "lastName": "Valchuk", "position": "ZM", "category": "player", "name": "Valchuk, David", "nummer": 17, "geburtsdatum": "", "wochentag": "", "status": "Aktiv", "notizen": "", "finance": { "baseSalary": 0, "seasonExtra": 0, "individualBonus": 0, "sideAgreements": "", "bonusPerMatch": 0, "ist": 0 }, "analysis": {} },
     { "id": "14", "number": 14, "firstName": "Nico", "lastName": "Ziegler", "position": "ZM", "category": "player", "name": "Ziegler, Nico", "nummer": 14, "geburtsdatum": "", "wochentag": "", "status": "Aktiv", "notizen": "", "finance": { "baseSalary": 0, "seasonExtra": 0, "individualBonus": 0, "sideAgreements": "", "bonusPerMatch": 0, "ist": 0 }, "analysis": {} },
@@ -1373,12 +1372,6 @@ export const data = {
         {
           "name": "Pereira Marques, Francisco",
           "position": "DM",
-          "status": "1",
-          "category": "player"
-        },
-        {
-          "name": "Schäfer, Tim",
-          "position": "ZM",
           "status": "1",
           "category": "player"
         },

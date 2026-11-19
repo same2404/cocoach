@@ -112,23 +112,6 @@ export const completeRestoreData = {
       physical: { weight: 69, height: 0, bodyFat: 0, strongFoot: "Rechts" }
     },
     {
-      id: "1774353199979",
-      name: "Tim Schäfer",
-      firstName: "Tim",
-      lastName: "Schäfer",
-      nummer: 17,
-      number: 17,
-      position: "ZDM",
-      status: "Aktiv",
-      telefon: "0155-60536817",
-      email: "tim.schaefer1901@gmail.com",
-      adresse: "Burgunderstr. 24 79379 Müllheim",
-      geburtsdatum: "19.01.2004",
-      einsatzzeitenGesamt: 0,
-      finance: { baseSalary: 0, salaryBase: 0, months: 10, seasonExtra: 0, transferFeeIn: 0, transferFeeOut: 0, ist: 0, individualBonus: 0, bonusPerMatch: 0, sideAgreements: "" },
-      physical: { weight: 76, height: 0, bodyFat: 0, strongFoot: "Rechts" }
-    },
-    {
       id: "1774353406268",
       name: "Jack AKUEGWU",
       firstName: "Jack",
